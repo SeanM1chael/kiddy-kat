@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
   <title>Kiddy Kat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link id="appIcon" rel="apple-touch-icon" href="icon.png">
@@ -70,6 +71,19 @@
     #petChooser input { display: block; width: 70%; margin: 16px auto; font-size: 24px; padding: 12px;
                         border-radius: 12px; border: 2px solid var(--soft); text-align: center; }
 
+    /* Learning games */
+    #game { display: none; position: fixed; inset: 0; background: var(--bg); padding: 8vh 16px 0; z-index: 12; overflow-y: auto; }
+    #game .closeGame { position: absolute; top: 16px; right: 16px; font-size: 24px; background: none; border: none; }
+    #gameTitle { font-size: 22px; font-weight: bold; color: var(--main); }
+    #gameBowl { font-size: 36px; min-height: 44px; margin: 10px; }
+    #gameQuestion { font-size: 52px; font-weight: bold; margin: 16px 0; }
+    #game .choice { font-size: 32px; width: 42%; padding: 18px 0; margin: 8px 2%; border: none;
+                    border-radius: 18px; background: white; color: black; vertical-align: middle; }
+    #game .choice.right { background: #b6f2b6; }
+    #game .choice.wrong { background: #ffd6d6; }
+    #gameFeedback { font-size: 24px; margin-top: 16px; min-height: 30px; }
+    #practiceStats { font-size: 16px; }
+
     #party { display: none; position: fixed; inset: 0; background: rgba(255,244,230,0.95); }
     #party .cat { font-size: 150px; display: inline-block; margin-top: 15vh;
                   animation: dance 0.5s infinite alternate; }
@@ -92,6 +106,7 @@
     <div id="petMood"></div>
     <div id="petBar"><div id="petBarFill"></div></div>
     <button id="petChooseButton" onclick="openPetChooser()">Choose your pet</button>
+    <button onclick="openPractice()">🎮 Practice</button>
   </div>
 
   <div class="tabs">
@@ -133,6 +148,10 @@
     <div id="specialStatus"></div>
     <hr>
 
+    <h2>🎮 Practice</h2>
+    <div id="practiceStats"></div>
+    <hr>
+
     <button onclick="changeProfile()">👤 Change who uses this phone</button>
   </div>
 
@@ -156,6 +175,16 @@
     <button onclick="hatchPet()">Hatch! 🥚</button>
   </div>
 
+  <!-- Learning games (filled in by games.js) -->
+  <div id="game">
+    <button class="closeGame" onclick="closeGame()">✖</button>
+    <div id="gameTitle"></div>
+    <div id="gameBowl"></div>
+    <div id="gameQuestion"></div>
+    <div id="gameChoices"></div>
+    <div id="gameFeedback"></div>
+  </div>
+
   <div id="party" onclick="this.style.display='none'">
     <div class="cat" id="partyAnimal">🐱</div>
     <h2 id="partyMessage">You did it!</h2>
@@ -163,6 +192,7 @@
   </div>
 
   <script src="pet.js"></script>
+  <script src="games.js"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -231,9 +261,11 @@
 
     function changeProfile() {
       if (!confirm('Start over for a new person? This clears the name, tasks, pet and checkmarks on this phone.')) return;
-      ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist', 'kiddyKatPet'].forEach(k => localStorage.removeItem(k));
+      ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist', 'kiddyKatPet', 'kiddyKatPractice', 'kiddyKatMathLevel']
+        .forEach(k => localStorage.removeItem(k));
       profile = null;
       pet = null;
+      practice = [];
       showPet();
       document.getElementById('settings').style.display = 'none';
       applyProfile();
@@ -425,6 +457,7 @@
     showWeather();
     showPet();
     applyProfile();
+    showPracticeStats();
   </script>
 </body>
 </html>
