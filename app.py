@@ -72,6 +72,16 @@ def page(name):
     # Only .html pages are served, so files like .env can never be downloaded
     return send_from_directory(HERE, f"{name}.html")
 
+@app.route("/<name>.js")
+def script(name):
+    # JavaScript files the pages load, like pet.js and games.js
+    return send_from_directory(HERE, f"{name}.js")
+
+@app.route("/<name>.png")
+def icon(name):
+    # App icons (icon.png, tiger.png, lion.png)
+    return send_from_directory(HERE, f"{name}.png")
+
 
 # --- Photo reading -------------------------------------------------------
 
