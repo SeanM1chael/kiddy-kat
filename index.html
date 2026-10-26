@@ -15,6 +15,14 @@
                        margin: 12px auto; width: 80%; }
     #today { background: #e7f5ff; }
     #weather { background: #fff9db; }
+    .grownups { font-size: 16px; background: none; border: none; color: #999; margin: 30px; }
+    #settings { display: none; background: white; border-radius: 20px; width: 80%;
+                margin: 0 auto 30px; padding: 16px; font-size: 18px; text-align: left; }
+    #settings table { width: 100%; border-collapse: collapse; }
+    #settings td, #settings th { padding: 6px; border-bottom: 1px solid #eee; }
+    #settings input, #settings select { width: 100%; font-size: 16px; padding: 6px; box-sizing: border-box; }
+    #settings button { font-size: 18px; padding: 10px 20px; margin-top: 12px; border: none;
+                       border-radius: 12px; background: #ff7a00; color: white; }
     #party { display: none; position: fixed; inset: 0; background: rgba(255,244,230,0.95); }
     #party .cat { font-size: 150px; display: inline-block; margin-top: 15vh;
                   animation: dance 0.5s infinite alternate; }
@@ -57,6 +65,19 @@
     <div class="task" onclick="this.classList.toggle('done')">🪥 Brush teeth</div>
   </div>
 
+  <button class="grownups" onclick="toggleSettings()">⚙️ Grown-ups</button>
+
+  <div id="settings">
+    <h2>🗓️ Specials schedule</h2>
+    <p>Pick the day for each special and write the tip in her own words.</p>
+    <table>
+      <thead><tr><th>Special</th><th>Day</th><th>Tip she'll see</th></tr></thead>
+      <tbody id="specialRows"></tbody>
+    </table>
+    <button onclick="saveSpecials()">Save schedule</button>
+    <div id="specialStatus"></div>
+  </div>
+
   <div id="party" onclick="this.style.display='none'">
     <div class="cat">🐱</div>
     <h2>You did it!</h2>
@@ -71,19 +92,69 @@
     }
     show('morning');
 
-    // ---------- What's today? card ----------
-    const day = new Date().getDay();
-    const todayCard = document.getElementById('today');
-    const specials = JSON.parse(localStorage.getItem('kiddyKatSpecials') || '[]');
-    const todaysTips = specials.filter(s => Number(s.day) === day).map(s => s.tip);
+    // ---------- Specials schedule (saved on this device) ----------
+    const DEFAULT_TIPS = {
+      'PE': '🏃 PE day! Wear sneakers and comfy clothes 👟',
+      'Art': '🎨 Art day! Wear clothes that can get messy',
+      'Music': '🎵 Music day! Get ready to sing',
+      'Library': '📚 Library day! Bring your library book back',
+      'Computer Science': '💻 Computer day! Make sure your device is charged',
+      'Health': '🍎 Health day!',
+      'Humanities': '🌎 Humanities day!'
+    };
+    const DAYS = ['Not set', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-    if (day === 0 || day === 6) {
-      todayCard.textContent = '🎉 No school today! Have fun!';
-    } else if (todaysTips.length > 0) {
-      todayCard.innerHTML = todaysTips.join('<br>');
-    } else {
-      todayCard.textContent = '🏫 School day! Have a great day!';
+    let specials = JSON.parse(localStorage.getItem('kiddyKatSpecials') || 'null')
+      || Object.keys(DEFAULT_TIPS).map(n => ({ name: n, day: '', tip: DEFAULT_TIPS[n] }));
+
+    function toggleSettings() {
+      const box = document.getElementById('settings');
+      box.style.display = box.style.display === 'block' ? 'none' : 'block';
     }
+
+    function showSpecials() {
+      document.getElementById('specialRows').innerHTML = specials.map((s, i) => `
+        <tr>
+          <td>${s.name}</td>
+          <td><select id="day${i}">
+            ${DAYS.map((d, n) => `<option value="${n === 0 ? '' : n}">${d}</option>`).join('')}
+          </select></td>
+          <td><input id="tip${i}"></td>
+        </tr>`).join('');
+      specials.forEach((s, i) => {
+        document.getElementById('day' + i).value = s.day;
+        document.getElementById('tip' + i).value = s.tip;
+      });
+    }
+
+    function saveSpecials() {
+      specials = specials.map((s, i) => ({
+        name: s.name,
+        day: document.getElementById('day' + i).value,
+        tip: document.getElementById('tip' + i).value
+      }));
+      localStorage.setItem('kiddyKatSpecials', JSON.stringify(specials));
+      showToday();
+      document.getElementById('specialStatus').textContent = '✅ Saved! Check the blue card at the top.';
+    }
+
+    // ---------- What's today? card ----------
+    function showToday() {
+      const day = new Date().getDay();
+      const todayCard = document.getElementById('today');
+      const todaysTips = specials.filter(s => Number(s.day) === day).map(s => s.tip);
+
+      if (day === 0 || day === 6) {
+        todayCard.textContent = '🎉 No school today! Have fun!';
+      } else if (todaysTips.length > 0) {
+        todayCard.innerHTML = todaysTips.join('<br>');
+      } else {
+        todayCard.textContent = '🏫 School day! Have a great day!';
+      }
+    }
+
+    showSpecials();
+    showToday();
 
     // ---------- Weather card ----------
     const LAT = 36.17, LON = -115.14;   // Las Vegas
@@ -134,7 +205,7 @@
     }
 
     // ---------- Remember checkmarks until tomorrow ----------
-    const todayKey = new Date().toDateString();   // like "Mon Oct 26 2026"
+    const todayKey = new Date().toDateString();
 
     function saveProgress() {
       const done = [...document.querySelectorAll('.task')]
@@ -145,7 +216,7 @@
 
     function loadProgress() {
       const saved = JSON.parse(localStorage.getItem('kiddyKatChecklist') || 'null');
-      if (!saved || saved.date !== todayKey) return;   // a new day starts fresh
+      if (!saved || saved.date !== todayKey) return;
       const tasks = document.querySelectorAll('.task');
       saved.done.forEach(i => tasks[i] && tasks[i].classList.add('done'));
     }
