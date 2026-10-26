@@ -48,6 +48,28 @@
     #setup input { display: block; width: 70%; margin: 12px auto; font-size: 24px;
                    padding: 12px; border-radius: 12px; border: 2px solid var(--soft); text-align: center; }
 
+    /* Virtual pet */
+    #petCard { background: white; border-radius: 20px; width: 80%; margin: 12px auto;
+               padding: 12px; font-size: 20px; }
+    .petEmoji { font-size: 56px; display: inline-block; cursor: pointer; }
+    .petEmoji.stage1 { font-size: 70px; }
+    .petEmoji.stage2 { font-size: 88px; }
+    .petEmoji.stage3 { font-size: 106px; }
+    .bounce { animation: bounce 0.5s; }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-25px); } }
+    #petName { font-weight: bold; margin: 4px; }
+    #petMood { margin: 4px; }
+    #petBar { background: #eee; border-radius: 10px; height: 14px; width: 70%; margin: 8px auto; overflow: hidden; }
+    #petBarFill { background: var(--main); height: 100%; width: 0; }
+    #petCard button, #petChooser button { font-size: 18px; padding: 10px 20px; margin-top: 8px; border: none;
+                                          border-radius: 12px; background: var(--main); color: white; }
+    #petChooser { display: none; position: fixed; inset: 0; background: var(--bg); padding-top: 10vh; z-index: 11; }
+    #petChooser .petOption { font-size: 48px; background: white; color: black; margin: 6px;
+                             border: 4px solid transparent; }
+    #petChooser .petOption.picked { border-color: var(--main); }
+    #petChooser input { display: block; width: 70%; margin: 16px auto; font-size: 24px; padding: 12px;
+                        border-radius: 12px; border: 2px solid var(--soft); text-align: center; }
+
     #party { display: none; position: fixed; inset: 0; background: rgba(255,244,230,0.95); }
     #party .cat { font-size: 150px; display: inline-block; margin-top: 15vh;
                   animation: dance 0.5s infinite alternate; }
@@ -62,6 +84,15 @@
 <body>
   <h1 id="title">🐱 Kiddy Kat</h1>
   <p id="hello"></p>
+
+  <!-- Virtual pet -->
+  <div id="petCard">
+    <div id="petEmoji" class="petEmoji" onclick="petPoke()">🥚</div>
+    <div id="petName"></div>
+    <div id="petMood"></div>
+    <div id="petBar"><div id="petBarFill"></div></div>
+    <button id="petChooseButton" onclick="openPetChooser()">Choose your pet</button>
+  </div>
 
   <div class="tabs">
     <button onclick="show('morning')">☀️ Morning</button>
@@ -114,12 +145,24 @@
     <button onclick="startProfile()">Let's go!</button>
   </div>
 
+  <!-- Pick and name a pet -->
+  <div id="petChooser">
+    <h2>Pick your pet!</h2>
+    <button class="petOption" id="option-kitten" onclick="pickPetType('kitten')">🐱</button>
+    <button class="petOption" id="option-puppy" onclick="pickPetType('puppy')">🐶</button>
+    <button class="petOption" id="option-bunny" onclick="pickPetType('bunny')">🐰</button>
+    <button class="petOption" id="option-flower" onclick="pickPetType('flower')">🌻</button>
+    <input id="petNameInput" placeholder="Your pet's name">
+    <button onclick="hatchPet()">Hatch! 🥚</button>
+  </div>
+
   <div id="party" onclick="this.style.display='none'">
     <div class="cat" id="partyAnimal">🐱</div>
-    <h2>You did it!</h2>
+    <h2 id="partyMessage">You did it!</h2>
     <div class="stickers" id="stickers"></div>
   </div>
 
+  <script src="pet.js"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -187,9 +230,11 @@
     }
 
     function changeProfile() {
-      if (!confirm('Start over for a new person? This clears the name, tasks and checkmarks on this phone.')) return;
-      ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist'].forEach(k => localStorage.removeItem(k));
+      if (!confirm('Start over for a new person? This clears the name, tasks, pet and checkmarks on this phone.')) return;
+      ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist', 'kiddyKatPet'].forEach(k => localStorage.removeItem(k));
       profile = null;
+      pet = null;
+      showPet();
       document.getElementById('settings').style.display = 'none';
       applyProfile();
     }
@@ -339,13 +384,21 @@
       const total = list.querySelectorAll('.task').length;
       const done = list.querySelectorAll('.task.done').length;
       if (total > 0 && total === done) {
-        let pick = '';
-        for (let i = 0; i < 3; i++) {
-          pick += stickers[Math.floor(Math.random() * stickers.length)];
-        }
-        document.getElementById('stickers').textContent = pick;
-        document.getElementById('party').style.display = 'block';
+        const petMessage = carePet(list.id);          // feeds the pet (once per list per day)
+        celebrate(petMessage ? 'You did it! ' + petMessage : 'You did it!', animal.emoji);
       }
+    }
+
+    // Shows the dancing screen with a message and 3 random stickers
+    function celebrate(message, dancer) {
+      let pick = '';
+      for (let i = 0; i < 3; i++) {
+        pick += stickers[Math.floor(Math.random() * stickers.length)];
+      }
+      document.getElementById('partyAnimal').textContent = dancer;
+      document.getElementById('partyMessage').textContent = message;
+      document.getElementById('stickers').textContent = pick;
+      document.getElementById('party').style.display = 'block';
     }
 
     // ---------- Remember checkmarks until tomorrow ----------
@@ -370,6 +423,7 @@
     showSpecials();
     showToday();
     showWeather();
+    showPet();
     applyProfile();
   </script>
 </body>
