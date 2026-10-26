@@ -3,7 +3,14 @@
 <head>
   <title>Kiddy Kat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="apple-touch-icon" href="icon.png">
+  <link id="appIcon" rel="apple-touch-icon" href="icon.png">
+  <script>
+    // A link ending in ?icon=tiger or ?icon=lion uses that animal's home screen icon
+    const iconChoice = new URLSearchParams(location.search).get('icon');
+    if (iconChoice === 'tiger' || iconChoice === 'lion') {
+      document.getElementById('appIcon').href = iconChoice + '.png';
+    }
+  </script>
   <style>
     /* Colors for each animal. The page uses var(--main) etc. everywhere. */
     body        { --main: #ff7a00; --soft: #ffd8a8; --bg: #fff4e6; }   /* kitten */
@@ -27,7 +34,10 @@
                 margin: 0 auto 30px; padding: 16px; font-size: 18px; text-align: left; }
     #settings table { width: 100%; border-collapse: collapse; }
     #settings td, #settings th { padding: 6px; border-bottom: 1px solid #eee; }
-    #settings input, #settings select { width: 100%; font-size: 16px; padding: 6px; box-sizing: border-box; }
+    #settings input, #settings select, #settings textarea {
+      width: 100%; font-size: 16px; padding: 6px; box-sizing: border-box; font-family: sans-serif; }
+    #settings textarea { height: 120px; }
+    #settings label { display: block; font-weight: bold; margin-top: 12px; }
     #settings button, #setup button { font-size: 18px; padding: 10px 20px; margin-top: 12px; border: none;
                                       border-radius: 12px; background: var(--main); color: white; }
 
@@ -62,28 +72,26 @@
   <div id="today"></div>
   <div id="weather">🌤️ Checking the weather...</div>
 
-  <div id="morning" class="list">
-    <div class="task" onclick="this.classList.toggle('done')">🪥 Brush teeth</div>
-    <div class="task" onclick="this.classList.toggle('done')">🛏️ Make bed</div>
-    <div class="task" onclick="this.classList.toggle('done')">👕 Get dressed</div>
-    <div class="task" onclick="this.classList.toggle('done')">🥪 Pack lunch</div>
-  </div>
-
-  <div id="afternoon" class="list">
-    <div class="task" onclick="this.classList.toggle('done')">🎒 Unpack backpack</div>
-    <div class="task" onclick="this.classList.toggle('done')">🍎 Have a snack</div>
-    <div class="task" onclick="this.classList.toggle('done')">📚 Do homework</div>
-  </div>
-
-  <div id="bedtime" class="list">
-    <div class="task" onclick="this.classList.toggle('done')">🔌 Charge school devices</div>
-    <div class="task" onclick="this.classList.toggle('done')">👗 Pick out clothes for tomorrow</div>
-    <div class="task" onclick="this.classList.toggle('done')">🪥 Brush teeth</div>
-  </div>
+  <!-- The tasks are filled in by JavaScript from each kid's own lists -->
+  <div id="morning" class="list"></div>
+  <div id="afternoon" class="list"></div>
+  <div id="bedtime" class="list"></div>
 
   <button class="grownups" onclick="toggleSettings()">⚙️ Grown-ups</button>
 
   <div id="settings">
+    <h2>✅ My task lists</h2>
+    <p>One task per line. Emoji are welcome!</p>
+    <label>☀️ Morning</label>
+    <textarea id="editMorning"></textarea>
+    <label>🎒 After School</label>
+    <textarea id="editAfternoon"></textarea>
+    <label>🌙 Bedtime</label>
+    <textarea id="editBedtime"></textarea>
+    <button onclick="saveTasks()">Save tasks</button>
+    <div id="taskStatus"></div>
+    <hr>
+
     <h2>🗓️ Specials schedule</h2>
     <p>Pick the day for each special and write the tip in your own words.</p>
     <table>
@@ -93,6 +101,7 @@
     <button onclick="saveSpecials()">Save schedule</button>
     <div id="specialStatus"></div>
     <hr>
+
     <button onclick="changeProfile()">👤 Change who uses this phone</button>
   </div>
 
@@ -112,6 +121,25 @@
   </div>
 
   <script>
+    // ---------- Starting task lists for each animal ----------
+    const DEFAULT_TASKS = {
+      kitten: {
+        morning:   ['🪥 Brush teeth', '🛏️ Make bed', '👕 Get dressed', '🥪 Pack lunch'],
+        afternoon: ['🎒 Unpack backpack', '🍎 Have a snack', '📚 Do homework'],
+        bedtime:   ['🔌 Charge school devices', '👗 Pick out clothes for tomorrow', '🪥 Brush teeth']
+      },
+      tiger: {
+        morning:   ['🪥 Brush teeth', '🍳 Eat breakfast', '🎒 Pack backpack', '🥪 Pack lunch'],
+        afternoon: ['📚 Homework', '🧹 Chores', '🏀 Practice or activity'],
+        bedtime:   ['🔌 Charge devices', '👕 Lay out clothes', '📖 Read 20 minutes']
+      },
+      lion: {
+        morning:   ['🪥 Brush teeth', '🍳 Eat breakfast', '💻 Laptop and charger packed'],
+        afternoon: ['📅 Check grades and assignments', '📚 Homework', '🧹 Chores'],
+        bedtime:   ['🔌 Charge phone and laptop', '🎒 Pack for tomorrow', '😴 Screens off on time']
+      }
+    };
+
     // ---------- Profile: who uses this phone ----------
     function animalFor(age) {
       if (age <= 9)  return { emoji: '🐱', name: 'kitten', theme: 'kitten' };
@@ -121,6 +149,8 @@
 
     // Saved as a birth year, so the animal grows up with the kid
     let profile = JSON.parse(localStorage.getItem('kiddyKatProfile') || 'null');
+    let animal = animalFor(7);
+    let tasks = null;
 
     function applyProfile() {
       if (!profile) {
@@ -128,12 +158,20 @@
         return;
       }
       const age = new Date().getFullYear() - profile.birthYear;
-      const animal = animalFor(age);
+      animal = animalFor(age);
       document.body.className = animal.theme;
       document.getElementById('title').textContent = `${animal.emoji} Kiddy Kat`;
       document.getElementById('hello').textContent = `Hi, ${profile.name}! You're a ${animal.name}!`;
       document.getElementById('partyAnimal').textContent = animal.emoji;
+      if (!iconChoice && animal.theme !== 'kitten') {
+        document.getElementById('appIcon').href = animal.theme + '.png';
+      }
       document.getElementById('setup').style.display = 'none';
+
+      // This kid's own lists, or the starting lists for their animal
+      tasks = JSON.parse(localStorage.getItem('kiddyKatTasks') || 'null') || DEFAULT_TASKS[animal.theme];
+      showTasks();
+      showTaskEditor();
     }
 
     function startProfile() {
@@ -149,20 +187,58 @@
     }
 
     function changeProfile() {
-      if (!confirm('Change who uses this phone?')) return;
-      localStorage.removeItem('kiddyKatProfile');
+      if (!confirm('Start over for a new person? This clears the name, tasks and checkmarks on this phone.')) return;
+      ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist'].forEach(k => localStorage.removeItem(k));
       profile = null;
+      document.getElementById('settings').style.display = 'none';
       applyProfile();
     }
 
-    applyProfile();
+    // ---------- Showing the task lists ----------
+    function showTasks() {
+      ['morning', 'afternoon', 'bedtime'].forEach(listName => {
+        const box = document.getElementById(listName);
+        box.innerHTML = '';
+        tasks[listName].forEach(text => {
+          const task = document.createElement('div');
+          task.className = 'task';
+          task.textContent = text;
+          task.addEventListener('click', () => task.classList.toggle('done'));
+          task.addEventListener('click', checkDone);
+          task.addEventListener('click', saveProgress);
+          box.appendChild(task);
+        });
+      });
+      loadProgress();
+    }
 
-    // ---------- Switching lists ----------
     function show(name) {
       document.querySelectorAll('.list').forEach(list => list.style.display = 'none');
       document.getElementById(name).style.display = 'block';
     }
-    show('morning');
+
+    // ---------- Editing the task lists (Grown-ups) ----------
+    function showTaskEditor() {
+      document.getElementById('editMorning').value = tasks.morning.join('\n');
+      document.getElementById('editAfternoon').value = tasks.afternoon.join('\n');
+      document.getElementById('editBedtime').value = tasks.bedtime.join('\n');
+    }
+
+    function linesOf(id) {
+      return document.getElementById(id).value.split('\n').map(t => t.trim()).filter(t => t);
+    }
+
+    function saveTasks() {
+      tasks = {
+        morning: linesOf('editMorning'),
+        afternoon: linesOf('editAfternoon'),
+        bedtime: linesOf('editBedtime')
+      };
+      localStorage.setItem('kiddyKatTasks', JSON.stringify(tasks));
+      localStorage.removeItem('kiddyKatChecklist');   // lists changed, so start today's checkmarks fresh
+      showTasks();
+      document.getElementById('taskStatus').textContent = '✅ Saved! Your lists are updated.';
+    }
 
     // ---------- Specials schedule (saved on this phone) ----------
     const DEFAULT_TIPS = {
@@ -225,9 +301,6 @@
       }
     }
 
-    showSpecials();
-    showToday();
-
     // ---------- Weather card ----------
     const LAT = 36.17, LON = -115.14;   // Las Vegas
 
@@ -257,7 +330,6 @@
         box.textContent = '🌤️ The weather is taking a nap. Look outside!';
       }
     }
-    showWeather();
 
     // ---------- Celebration ----------
     const stickers = ['⭐', '🌈', '🦄', '🍭', '🎈', '🌟', '🐶', '🌸'];
@@ -266,7 +338,7 @@
       const list = this.parentElement;
       const total = list.querySelectorAll('.task').length;
       const done = list.querySelectorAll('.task.done').length;
-      if (total === done) {
+      if (total > 0 && total === done) {
         let pick = '';
         for (let i = 0; i < 3; i++) {
           pick += stickers[Math.floor(Math.random() * stickers.length)];
@@ -292,12 +364,13 @@
       const tasks = document.querySelectorAll('.task');
       saved.done.forEach(i => tasks[i] && tasks[i].classList.add('done'));
     }
-    loadProgress();
 
-    document.querySelectorAll('.task').forEach(task => {
-      task.addEventListener('click', checkDone);
-      task.addEventListener('click', saveProgress);
-    });
+    // ---------- Start up ----------
+    show('morning');
+    showSpecials();
+    showToday();
+    showWeather();
+    applyProfile();
   </script>
 </body>
 </html>
