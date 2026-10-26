@@ -5,10 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="apple-touch-icon" href="icon.png">
   <style>
-    body { font-family: sans-serif; background: #fff4e6; text-align: center; }
-    h1 { font-size: 48px; color: #ff7a00; }
+    /* Colors for each animal. The page uses var(--main) etc. everywhere. */
+    body        { --main: #ff7a00; --soft: #ffd8a8; --bg: #fff4e6; }   /* kitten */
+    body.tiger  { --main: #e8590c; --soft: #ffc078; --bg: #fff0e0; }
+    body.lion   { --main: #b8860b; --soft: #ffe066; --bg: #fffbe6; }
+
+    body { font-family: sans-serif; background: var(--bg); text-align: center; }
+    h1 { font-size: 48px; color: var(--main); margin-bottom: 0; }
+    #hello { font-size: 22px; margin-top: 4px; }
     .tabs button { font-size: 22px; padding: 12px 16px; margin: 4px;
-                   border: none; border-radius: 16px; background: #ffd8a8; }
+                   border: none; border-radius: 16px; background: var(--soft); }
     .task { font-size: 28px; padding: 20px; margin: 12px auto; width: 80%;
             background: white; border-radius: 20px; cursor: pointer; }
     .done { background: #b6f2b6; text-decoration: line-through; }
@@ -22,12 +28,20 @@
     #settings table { width: 100%; border-collapse: collapse; }
     #settings td, #settings th { padding: 6px; border-bottom: 1px solid #eee; }
     #settings input, #settings select { width: 100%; font-size: 16px; padding: 6px; box-sizing: border-box; }
-    #settings button { font-size: 18px; padding: 10px 20px; margin-top: 12px; border: none;
-                       border-radius: 12px; background: #ff7a00; color: white; }
+    #settings button, #setup button { font-size: 18px; padding: 10px 20px; margin-top: 12px; border: none;
+                                      border-radius: 12px; background: var(--main); color: white; }
+
+    /* First-time setup screen */
+    #setup { display: none; position: fixed; inset: 0; background: var(--bg);
+             padding-top: 12vh; z-index: 10; }
+    #setup .animals { font-size: 64px; }
+    #setup input { display: block; width: 70%; margin: 12px auto; font-size: 24px;
+                   padding: 12px; border-radius: 12px; border: 2px solid var(--soft); text-align: center; }
+
     #party { display: none; position: fixed; inset: 0; background: rgba(255,244,230,0.95); }
     #party .cat { font-size: 150px; display: inline-block; margin-top: 15vh;
                   animation: dance 0.5s infinite alternate; }
-    #party h2 { font-size: 40px; color: #ff7a00; }
+    #party h2 { font-size: 40px; color: var(--main); }
     #party .stickers { font-size: 64px; }
     @keyframes dance {
       from { transform: rotate(-15deg) translateY(0); }
@@ -36,7 +50,8 @@
   </style>
 </head>
 <body>
-  <h1>🐱 Kiddy Kat</h1>
+  <h1 id="title">🐱 Kiddy Kat</h1>
+  <p id="hello"></p>
 
   <div class="tabs">
     <button onclick="show('morning')">☀️ Morning</button>
@@ -70,22 +85,78 @@
 
   <div id="settings">
     <h2>🗓️ Specials schedule</h2>
-    <p>Pick the day for each special and write the tip in her own words.</p>
+    <p>Pick the day for each special and write the tip in your own words.</p>
     <table>
-      <thead><tr><th>Special</th><th>Day</th><th>Tip she'll see</th></tr></thead>
+      <thead><tr><th>Special</th><th>Day</th><th>Tip</th></tr></thead>
       <tbody id="specialRows"></tbody>
     </table>
     <button onclick="saveSpecials()">Save schedule</button>
     <div id="specialStatus"></div>
+    <hr>
+    <button onclick="changeProfile()">👤 Change who uses this phone</button>
+  </div>
+
+  <!-- First-time setup -->
+  <div id="setup">
+    <div class="animals">🐱 🐯 🦁</div>
+    <h2>Who's using Kiddy Kat?</h2>
+    <input id="setupName" placeholder="Your first name">
+    <input id="setupAge" type="number" inputmode="numeric" placeholder="Your age">
+    <button onclick="startProfile()">Let's go!</button>
   </div>
 
   <div id="party" onclick="this.style.display='none'">
-    <div class="cat">🐱</div>
+    <div class="cat" id="partyAnimal">🐱</div>
     <h2>You did it!</h2>
     <div class="stickers" id="stickers"></div>
   </div>
 
   <script>
+    // ---------- Profile: who uses this phone ----------
+    function animalFor(age) {
+      if (age <= 9)  return { emoji: '🐱', name: 'kitten', theme: 'kitten' };
+      if (age <= 13) return { emoji: '🐯', name: 'tiger',  theme: 'tiger' };
+      return                { emoji: '🦁', name: 'lion',   theme: 'lion' };
+    }
+
+    // Saved as a birth year, so the animal grows up with the kid
+    let profile = JSON.parse(localStorage.getItem('kiddyKatProfile') || 'null');
+
+    function applyProfile() {
+      if (!profile) {
+        document.getElementById('setup').style.display = 'block';
+        return;
+      }
+      const age = new Date().getFullYear() - profile.birthYear;
+      const animal = animalFor(age);
+      document.body.className = animal.theme;
+      document.getElementById('title').textContent = `${animal.emoji} Kiddy Kat`;
+      document.getElementById('hello').textContent = `Hi, ${profile.name}! You're a ${animal.name}!`;
+      document.getElementById('partyAnimal').textContent = animal.emoji;
+      document.getElementById('setup').style.display = 'none';
+    }
+
+    function startProfile() {
+      const name = document.getElementById('setupName').value.trim();
+      const age = Number(document.getElementById('setupAge').value);
+      if (!name || !age) {
+        alert('Please type your name and your age.');
+        return;
+      }
+      profile = { name: name, birthYear: new Date().getFullYear() - age };
+      localStorage.setItem('kiddyKatProfile', JSON.stringify(profile));
+      applyProfile();
+    }
+
+    function changeProfile() {
+      if (!confirm('Change who uses this phone?')) return;
+      localStorage.removeItem('kiddyKatProfile');
+      profile = null;
+      applyProfile();
+    }
+
+    applyProfile();
+
     // ---------- Switching lists ----------
     function show(name) {
       document.querySelectorAll('.list').forEach(list => list.style.display = 'none');
@@ -93,7 +164,7 @@
     }
     show('morning');
 
-    // ---------- Specials schedule (saved on this device) ----------
+    // ---------- Specials schedule (saved on this phone) ----------
     const DEFAULT_TIPS = {
       'PE': '🏃 PE day! Wear sneakers and comfy clothes 👟',
       'Art': '🎨 Art day! Wear clothes that can get messy',
