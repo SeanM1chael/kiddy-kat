@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Kiddy Kat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; background: #fff4e6; text-align: center; }
+    h1 { font-size: 48px; color: #ff7a00; }
+    .tabs button { font-size: 22px; padding: 12px 16px; margin: 4px;
+                   border: none; border-radius: 16px; background: #ffd8a8; }
+    .task { font-size: 28px; padding: 20px; margin: 12px auto; width: 80%;
+            background: white; border-radius: 20px; cursor: pointer; }
+    .done { background: #b6f2b6; text-decoration: line-through; }
+    #today, #weather { font-size: 26px; border-radius: 20px; padding: 16px;
+                       margin: 12px auto; width: 80%; }
+    #today { background: #e7f5ff; }
+    #weather { background: #fff9db; }
+    #party { display: none; position: fixed; inset: 0; background: rgba(255,244,230,0.95); }
+    #party .cat { font-size: 150px; display: inline-block; margin-top: 15vh;
+                  animation: dance 0.5s infinite alternate; }
+    #party h2 { font-size: 40px; color: #ff7a00; }
+    #party .stickers { font-size: 64px; }
+    @keyframes dance {
+      from { transform: rotate(-15deg) translateY(0); }
+      to   { transform: rotate(15deg) translateY(-30px); }
+    }
+  </style>
+</head>
+<body>
+  <h1>🐱 Kiddy Kat</h1>
+
+  <div class="tabs">
+    <button onclick="show('morning')">☀️ Morning</button>
+    <button onclick="show('afternoon')">🎒 After School</button>
+    <button onclick="show('bedtime')">🌙 Bedtime</button>
+  </div>
+
+  <div id="today"></div>
+  <div id="weather">🌤️ Checking the weather...</div>
+
+  <div id="morning" class="list">
+    <div class="task" onclick="this.classList.toggle('done')">🪥 Brush teeth</div>
+    <div class="task" onclick="this.classList.toggle('done')">🛏️ Make bed</div>
+    <div class="task" onclick="this.classList.toggle('done')">👕 Get dressed</div>
+    <div class="task" onclick="this.classList.toggle('done')">🥪 Pack lunch</div>
+  </div>
+
+  <div id="afternoon" class="list">
+    <div class="task" onclick="this.classList.toggle('done')">🎒 Unpack backpack</div>
+    <div class="task" onclick="this.classList.toggle('done')">🍎 Have a snack</div>
+    <div class="task" onclick="this.classList.toggle('done')">📚 Do homework</div>
+  </div>
+
+  <div id="bedtime" class="list">
+    <div class="task" onclick="this.classList.toggle('done')">🔌 Charge school devices</div>
+    <div class="task" onclick="this.classList.toggle('done')">👗 Pick out clothes for tomorrow</div>
+    <div class="task" onclick="this.classList.toggle('done')">🪥 Brush teeth</div>
+  </div>
+
+  <div id="party" onclick="this.style.display='none'">
+    <div class="cat">🐱</div>
+    <h2>You did it!</h2>
+    <div class="stickers" id="stickers"></div>
+  </div>
+
+  <script>
+    // ---------- Switching lists ----------
+    function show(name) {
+      document.querySelectorAll('.list').forEach(list => list.style.display = 'none');
+      document.getElementById(name).style.display = 'block';
+    }
+    show('morning');
+
+    // ---------- What's today? card ----------
+    const day = new Date().getDay();
+    const todayCard = document.getElementById('today');
+    const specials = JSON.parse(localStorage.getItem('kiddyKatSpecials') || '[]');
+    const todaysTips = specials.filter(s => Number(s.day) === day).map(s => s.tip);
+
+    if (day === 0 || day === 6) {
+      todayCard.textContent = '🎉 No school today! Have fun!';
+    } else if (todaysTips.length > 0) {
+      todayCard.innerHTML = todaysTips.join('<br>');
+    } else {
+      todayCard.textContent = '🏫 School day! Have a great day!';
+    }
+
+    // ---------- Weather card ----------
+    const LAT = 36.17, LON = -115.14;   // Las Vegas
+
+    async function showWeather() {
+      const box = document.getElementById('weather');
+      try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
+          '&current=temperature_2m' +
+          '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
+          '&temperature_unit=fahrenheit&timezone=auto&forecast_days=1';
+        const data = await (await fetch(url)).json();
+
+        const now = Math.round(data.current.temperature_2m);
+        const high = Math.round(data.daily.temperature_2m_max[0]);
+        const low = Math.round(data.daily.temperature_2m_min[0]);
+        const rain = data.daily.precipitation_probability_max[0];
+
+        const tips = [];
+        if (low < 50) tips.push('🧥 Cold morning! Wear a warm jacket');
+        else if (low < 65) tips.push('🧶 Chilly morning! Bring a sweater');
+        if (high >= 95) tips.push('🥵 Hot day! Wear light clothes and bring water');
+        if (rain >= 50) tips.push('☔ It might rain! Bring a raincoat');
+        if (tips.length === 0) tips.push('😎 Nice weather today!');
+
+        box.innerHTML = `🌡️ ${now}° now, up to ${high}° today<br>` + tips.join('<br>');
+      } catch (err) {
+        box.textContent = '🌤️ The weather is taking a nap. Look outside!';
+      }
+    }
+    showWeather();
+
+    // ---------- Celebration ----------
+    const stickers = ['⭐', '🌈', '🦄', '🍭', '🎈', '🌟', '🐶', '🌸'];
+
+    function checkDone() {
+      const list = this.parentElement;
+      const total = list.querySelectorAll('.task').length;
+      const done = list.querySelectorAll('.task.done').length;
+      if (total === done) {
+        let pick = '';
+        for (let i = 0; i < 3; i++) {
+          pick += stickers[Math.floor(Math.random() * stickers.length)];
+        }
+        document.getElementById('stickers').textContent = pick;
+        document.getElementById('party').style.display = 'block';
+      }
+    }
+
+    // ---------- Remember checkmarks until tomorrow ----------
+    const todayKey = new Date().toDateString();   // like "Mon Oct 26 2026"
+
+    function saveProgress() {
+      const done = [...document.querySelectorAll('.task')]
+        .map((task, i) => task.classList.contains('done') ? i : null)
+        .filter(i => i !== null);
+      localStorage.setItem('kiddyKatChecklist', JSON.stringify({ date: todayKey, done: done }));
+    }
+
+    function loadProgress() {
+      const saved = JSON.parse(localStorage.getItem('kiddyKatChecklist') || 'null');
+      if (!saved || saved.date !== todayKey) return;   // a new day starts fresh
+      const tasks = document.querySelectorAll('.task');
+      saved.done.forEach(i => tasks[i] && tasks[i].classList.add('done'));
+    }
+    loadProgress();
+
+    document.querySelectorAll('.task').forEach(task => {
+      task.addEventListener('click', checkDone);
+      task.addEventListener('click', saveProgress);
+    });
+  </script>
+</body>
+</html>

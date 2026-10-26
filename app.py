@@ -1,0 +1,102 @@
+import json
+from pathlib import Path
+import base64
+
+import anthropic
+from dotenv import load_dotenv
+from flask import Flask, abort, jsonify, request, send_from_directory
+
+load_dotenv()                       # reads your API key from .env
+client = anthropic.Anthropic()
+app = Flask(__name__)
+HERE = Path(__file__).parent        # the kiddy-kat folder
+
+SUBJECTS = ["Math", "Reading", "Grammar", "Spelling", "Writing",
+            "Science", "Social Studies", "Other"]
+
+MEDIA_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+               ".png": "image/png", ".webp": "image/webp"}
+
+WORKSHEET_PROMPT = """This is a photo of a graded school assignment for a young elementary student.
+Reply with ONLY JSON in this exact shape, nothing else:
+{"subject": one of SUBJECT_LIST,
+ "name": "short assignment title",
+ "date": "the date written on the page as M/D/YYYY, or null if there is none",
+ "score": number correct,
+ "outOf": total number of questions,
+ "topics": ["short skill name", ...],
+ "missed": ["short skill name", ...]}
+Rules:
+- Use the grade written on the page if there is one. If it is a percent, count the questions for outOf and work out score from the percent.
+- "topics" lists every skill the page practices (like "plural nouns"), each once.
+- "missed" lists the skills of questions marked wrong, using the same names as in "topics". Empty list if nothing was wrong.
+- A date like 10-8-26 means 10/8/2026.""".replace("SUBJECT_LIST", " or ".join(f'"{s}"' for s in SUBJECTS))
+
+REPORT_CARD_PROMPT = """This is a photo of an elementary school report card or progress report.
+Reply with ONLY JSON in this exact shape, nothing else:
+{"school_year": "like 2026-2027",
+ "report_date": "the date printed on it as M/D/YYYY, or null",
+ "classes": [{"name": "class name exactly as printed", "percent": number or null, "mark": "letter or code as printed, or null"}, ...],
+ "attendance": {"enrolled": number or null, "absent": number or null, "tardy": number or null}}
+Rules:
+- Include EVERY class row, even ones with no grade yet (use null).
+- Do NOT include the student's name, student ID, teacher, principal, school name, address or phone number.
+- Percent is just the number, like 67.26, without the % sign."""
+def ask_claude(image_bytes, media_type, prompt):
+    """Send one photo plus instructions to Claude and return its JSON answer."""
+    message = client.messages.create(
+        model="claude-sonnet-5-5",
+        max_tokens=1024,
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "image",
+                 "source": {"type": "base64", "media_type": media_type,
+                            "data": base64.standard_b64encode(image_bytes).decode()}},
+                {"type": "text", "text": prompt},
+            ],
+        }],
+    )
+    reply = message.content[0].text
+    return json.loads(reply[reply.find("{"): reply.rfind("}") + 1])
+
+
+# --- Pages ---------------------------------------------------------------
+
+@app.route("/")
+def home():
+    return send_from_directory(HERE, "index.html")
+
+@app.route("/<name>.html")
+def page(name):
+    # Only .html pages are served, so files like .env can never be downloaded
+    return send_from_directory(HERE, f"{name}.html")
+
+
+# --- Photo reading -------------------------------------------------------
+
+@app.post("/read-worksheet")
+def read_worksheet():
+    photo = request.files.get("photo")
+    if not photo:
+        return jsonify(error="No photo was sent."), 400
+
+    media_type = MEDIA_TYPES.get(Path(photo.filename).suffix.lower())
+    if not media_type:
+        return jsonify(error="Please use a JPG, PNG or WebP photo. iPhone HEIC photos won't work."), 400
+
+    return jsonify(ask_claude(photo.read(), media_type, WORKSHEET_PROMPT))
+
+@app.post("/read-report-card")
+def read_report_card():
+    photo = request.files.get("photo")
+    if not photo:
+        return jsonify(error="No photo was sent."), 400
+
+    media_type = MEDIA_TYPES.get(Path(photo.filename).suffix.lower())
+    if not media_type:
+        return jsonify(error="Please use a JPG, PNG or WebP photo. iPhone HEIC photos won't work."), 400
+
+    return jsonify(ask_claude(photo.read(), media_type, REPORT_CARD_PROMPT))
+if __name__ == "__main__":
+    app.run(port=5000, debug=True)
