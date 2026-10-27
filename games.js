@@ -263,12 +263,13 @@ function endRound() {
 
   const treat = givePetTreat();
   addStars(round.correct);                       // 1 star for each right answer
+  const pay = earnMoney('round');                // practice pays into the wallet
   clearGame();
   document.getElementById('gameTitle').textContent = '🎉 Round done!';
   document.getElementById('gameQuestion').textContent =
     `You got ${round.correct} out of ${QUESTIONS_PER_ROUND}! ${'⭐'.repeat(round.correct)}`;
   document.getElementById('gameFeedback').textContent = pet
-    ? `${treat || ''} +${round.correct} ⭐ for the shop!`
+    ? `${treat || ''} +${round.correct} ⭐ for the shop! ${pay}`
     : 'Hatch a pet to give it treats!';
 
   const box = document.getElementById('gameChoices');

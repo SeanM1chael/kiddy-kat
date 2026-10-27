@@ -5,13 +5,14 @@
 // {parent} in a reward name becomes what the kids call you (default "Dad").
 // =====================================================================
 
+// Money rewards (like "$15 shopping") now come from the Wallet's take-home pay,
+// so these lists are just non-money treats and privileges.
 // Rough star math: a kid who does all 3 lists, 3 game rounds and the
 // challenge earns about 15-25 stars a day, or 100-150 a week.
 const DEFAULT_REWARDS = {
   kitten: [
     ['📖', 'Extra bedtime story', 30],
     ['🎬', 'Pick the family movie', 60],
-    ['💵', '$3 prize money', 80],
     ['🛝', 'Trip to the playground', 100],
     ['🍦', 'Ice cream date with {parent}', 120],
     ['🎨', 'Small toy or craft kit', 150],
@@ -22,9 +23,7 @@ const DEFAULT_REWARDS = {
     ['🎮', '30 extra minutes of gaming', 60],
     ['🌙', 'Stay up 30 minutes later (weekend)', 70],
     ['🍕', 'Pick dinner for the family', 80],
-    ['🐷', '$5 for the new game fund', 100],
     ['🎮', '60 extra minutes of gaming', 110],
-    ['💳', '$10 gaming credit', 200],
     ['🤝', 'One-on-one outing with {parent}', 300],
     ['🏎️', 'Go-karts or arcade outing', 400]
   ],
@@ -32,10 +31,8 @@ const DEFAULT_REWARDS = {
     ['☕', 'Starbucks or favorite food run', 100],
     ['🚗', 'Extra time out with friends', 150],
     ['🗓️', 'Choose a weekend activity', 200],
-    ['🛍️', '$15 shopping allowance', 250],
-    ['💅', '$20 toward nails, hair or beauty', 300],
-    ['🎤', '$20 movie or concert fund', 300],
-    ['🏦', '$50 toward a big goal (after a great report card)', 800]
+    ['🍽️', 'Pick the restaurant for family dinner', 250],
+    ['🎬', 'Movie night with friends at home', 300]
   ]
 };
 

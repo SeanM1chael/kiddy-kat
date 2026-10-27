@@ -308,6 +308,7 @@ function winChallenge() {
     localStorage.setItem('kiddyKatChallenge', JSON.stringify({ date: new Date().toDateString(), done: true }));
     localStorage.setItem('kiddyKatTrophies', trophies() + 1);
     addStars(5);
+    const pay = earnMoney('challenge');
 
     // New followers: more for a streak of days in a row
     const streak = addWinToStreak();
@@ -315,7 +316,7 @@ function winChallenge() {
     localStorage.setItem('kiddyKatFollowers', followers() + newFans);
     updateViewers();
     setTimeout(() => addChat('Kiddy Kat', `🎉 +${newFans} new followers! You have ${followers()} now!`), 2000);
-    setTimeout(() => celebrate(`Challenge complete! 🏆 +5 ⭐  (${trophies()} ${trophies() === 1 ? "trophy" : "trophies"})`, '🏆'), 2200);
+    setTimeout(() => celebrate(`Challenge complete! 🏆 +5 ⭐ ${pay}  (${trophies()} ${trophies() === 1 ? "trophy" : "trophies"})`, '🏆'), 2200);
   } else {
     setTimeout(() => celebrate('You did it again! 🎉', '🏆', false), 2200);
   }
