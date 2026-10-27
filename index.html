@@ -150,6 +150,29 @@
     #parentRewards button { margin: 6px 6px 0 0; }
     .parentRow { padding: 6px 0; border-bottom: 1px solid #eee; }
 
+    /* Grown-ups PIN gate and the task editor */
+    #pinGate { display: none; position: fixed; inset: 0; background: var(--bg); padding-top: 18vh; z-index: 15; }
+    #pinGate input { display: block; width: 50%; margin: 12px auto; font-size: 32px; padding: 10px;
+                     text-align: center; letter-spacing: 10px; border-radius: 12px; border: 2px solid var(--soft); }
+    #pinGate button { font-size: 18px; padding: 10px 20px; margin: 6px; border: none; border-radius: 12px;
+                      background: var(--main); color: white; }
+    #pinGateMessage { color: #e03131; min-height: 22px; }
+    #pinBanner { display: none; background: #fff3bf; border-radius: 12px; padding: 10px; margin-bottom: 10px; }
+    #myTasksButton { display: none; margin: 0 auto; }
+    #taskEditor { display: none; background: white; border-radius: 20px; width: 80%;
+                  margin: 0 auto 20px; padding: 16px; font-size: 18px; text-align: left; }
+    #taskEditor label { display: block; font-weight: bold; margin-top: 12px; }
+    #taskEditor textarea { width: 100%; height: 120px; font-size: 16px; padding: 6px; box-sizing: border-box; font-family: sans-serif; }
+    #taskEditor button { font-size: 18px; padding: 10px 20px; margin-top: 12px; border: none;
+                         border-radius: 12px; background: var(--main); color: white; }
+    #pinGate .plain, #taskEditor .plain { background: none; color: #777; }
+
+    /* Challenge photo proof */
+    .proofShot { max-width: 70%; max-height: 40vh; border-radius: 16px; border: 4px solid white; }
+    #proofPhotos { display: flex; flex-wrap: wrap; gap: 8px; }
+    .proofCard { width: 46%; font-size: 13px; }
+    .proofCard img { width: 100%; border-radius: 10px; }
+
     #album { display: none; position: fixed; inset: 0; background: var(--bg); padding: 6vh 12px 30px;
              z-index: 12; overflow-y: auto; }
     #album .closeGame { position: absolute; top: 16px; right: 16px; font-size: 24px; background: none; border: none; }
@@ -274,9 +297,11 @@
   <div id="afternoon" class="list"></div>
   <div id="bedtime" class="list"></div>
 
-  <button class="grownups" onclick="toggleSettings()">⚙️ Grown-ups</button>
+  <!-- Teens (lions) can edit their own tasks without the parent PIN -->
+  <button id="myTasksButton" class="grownups" onclick="openTaskEditor()">✏️ Edit my tasks</button>
 
-  <div id="settings">
+  <!-- Task list editor: opened from Grown-ups, or by a lion from the button above -->
+  <div id="taskEditor">
     <h2>✅ My task lists</h2>
     <p>One task per line. Emoji are welcome!</p>
     <label>☀️ Morning</label>
@@ -286,7 +311,27 @@
     <label>🌙 Bedtime</label>
     <textarea id="editBedtime"></textarea>
     <button onclick="saveTasks()">Save tasks</button>
+    <button class="plain" onclick="closeTaskEditor()">Close</button>
     <div id="taskStatus"></div>
+  </div>
+
+  <button class="grownups" onclick="toggleSettings()">⚙️ Grown-ups</button>
+
+  <!-- Asks for the parent PIN before Grown-ups opens -->
+  <div id="pinGate">
+    <h2>🔒 Grown-ups only</h2>
+    <p>Type the parent PIN</p>
+    <input id="pinGateInput" type="password" inputmode="numeric" maxlength="4" placeholder="••••">
+    <div id="pinGateMessage"></div>
+    <button onclick="checkPinGate()">Unlock</button>
+    <button class="plain" onclick="closePinGate()">Cancel</button>
+  </div>
+
+  <div id="settings">
+    <div id="pinBanner">🔓 Grown-ups isn't locked yet. Set a parent PIN in the 🎁 Rewards section below to lock it.</div>
+
+    <h2>✅ Task lists</h2>
+    <button onclick="openTaskEditor()">Edit task lists</button>
     <hr>
 
     <h2>🗓️ Specials schedule</h2>
@@ -310,6 +355,10 @@
     <input id="editNicknames" placeholder="Junior, Juju">
     <button onclick="saveNames()">Save names</button>
     <div id="nameStatus"></div>
+    <hr>
+
+    <h2>📸 Challenge photos</h2>
+    <div id="proofPhotos"></div>
     <hr>
 
     <h2>🎮 Practice</h2>
@@ -406,6 +455,7 @@
       document.getElementById('editName').value = profile.name;
       document.getElementById('editNicknames').value = (profile.nicknames || []).join(', ');
       document.getElementById('partyAnimal').textContent = animal.emoji;
+      document.getElementById('myTasksButton').style.display = animal.theme === 'lion' ? 'inline-block' : 'none';
       if (!iconChoice && animal.theme !== 'kitten') {
         document.getElementById('appIcon').href = animal.theme + '.png';
       }
@@ -456,7 +506,7 @@
       if (!confirm('Start over for a new person? This clears the name, tasks, pet and checkmarks on this phone.')) return;
       ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist', 'kiddyKatPet', 'kiddyKatPets', 'kiddyKatActivePet', 'kiddyKatPractice', 'kiddyKatMathLevel', 'kiddyKatChallenge', 'kiddyKatTrophies',
        'kiddyKatFollowers', 'kiddyKatStreak', 'kiddyKatStickers', 'kiddyKatSetsDone',
-       'kiddyKatRewards', 'kiddyKatRewardRequests', 'kiddyKatGoal']
+       'kiddyKatRewards', 'kiddyKatRewardRequests', 'kiddyKatGoal', 'kiddyKatProofPhotos']
         .forEach(k => localStorage.removeItem(k));
       stickerBook = {};
       rewardList = null;
@@ -532,11 +582,57 @@
     let specials = JSON.parse(localStorage.getItem('kiddyKatSpecials') || 'null')
       || Object.keys(DEFAULT_TIPS).map(n => ({ name: n, day: '', tip: DEFAULT_TIPS[n] }));
 
+    // Grown-ups asks for the parent PIN (once one is set), and locks again when it closes
     function toggleSettings() {
       const box = document.getElementById('settings');
-      box.style.display = box.style.display === 'block' ? 'none' : 'block';
-      parentUnlocked = false;          // the rewards section locks again every time
+      if (box.style.display === 'block') {
+        box.style.display = 'none';
+        parentUnlocked = false;
+        return;
+      }
+      if (localStorage.getItem('kiddyKatParentPin')) {
+        document.getElementById('pinGateInput').value = '';
+        document.getElementById('pinGateMessage').textContent = '';
+        document.getElementById('pinGate').style.display = 'block';
+      } else {
+        openSettings(false);
+      }
+    }
+
+    function checkPinGate() {
+      const typed = document.getElementById('pinGateInput').value;
+      if (typed !== localStorage.getItem('kiddyKatParentPin')) {
+        document.getElementById('pinGateMessage').textContent = "That's not the right PIN.";
+        document.getElementById('pinGateInput').value = '';
+        return;
+      }
+      closePinGate();
+      openSettings(true);
+    }
+
+    function closePinGate() {
+      document.getElementById('pinGate').style.display = 'none';
+    }
+
+    function openSettings(unlocked) {
+      parentUnlocked = unlocked;        // PIN already typed, so rewards open too
       showParentRewards();
+      showProofPhotos();
+      const box = document.getElementById('settings');
+      box.style.display = 'block';
+      box.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function openTaskEditor() {
+      showTaskEditor();
+      document.getElementById('taskStatus').textContent = '';
+      const box = document.getElementById('taskEditor');
+      box.style.display = 'block';
+      box.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function closeTaskEditor() {
+      document.getElementById('taskEditor').style.display = 'none';
     }
 
     function showSpecials() {

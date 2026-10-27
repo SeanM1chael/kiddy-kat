@@ -12,9 +12,9 @@
 //   math / spell = get enough right answers before time runs out
 const CHALLENGES = {
   kitten: [
-    { kind: 'move',  text: 'Do 10 jumping jacks!', seconds: 30 },
-    { kind: 'move',  text: 'Hop on one foot 10 times!', seconds: 30 },
-    { kind: 'move',  text: 'Touch your toes 10 times!', seconds: 30 },
+    { kind: 'move',  text: 'Do 10 jumping jacks!', seconds: 30, reps: 10, strength: 17 },
+    { kind: 'move',  text: 'Hop on one foot 10 times!', seconds: 30, reps: 10, strength: 15 },
+    { kind: 'move',  text: 'Touch your toes 10 times!', seconds: 30, reps: 10, strength: 13 },
     { kind: 'hold',  text: 'Dance like your pet!', seconds: 20 },
     { kind: 'hold',  text: 'Balance on one foot!', seconds: 15 },
     { kind: 'move',  text: 'Crab walk across the room!', seconds: 45 },
@@ -29,7 +29,7 @@ const CHALLENGES = {
     { kind: 'spell', text: 'Spell 3 words right!', goal: 3, seconds: 60 }
   ],
   tiger: [
-    { kind: 'move',  text: 'Do 20 jumping jacks!', seconds: 40 },
+    { kind: 'move',  text: 'Do 20 jumping jacks!', seconds: 40, reps: 20, strength: 17 },
     { kind: 'move',  text: 'Do 10 push-ups!', seconds: 40 },
     { kind: 'hold',  text: 'Wall sit!', seconds: 30 },
     { kind: 'hold',  text: 'Hold a plank!', seconds: 30 },
@@ -40,7 +40,7 @@ const CHALLENGES = {
     { kind: 'spell', text: 'Spell 4 tricky words right!', goal: 4, seconds: 60 }
   ],
   lion: [
-    { kind: 'move',  text: 'Do 25 squats!', seconds: 45 },
+    { kind: 'move',  text: 'Do 25 squats!', seconds: 45, reps: 25, strength: 13 },
     { kind: 'move',  text: 'Do 15 push-ups!', seconds: 45 },
     { kind: 'hold',  text: 'Hold a plank!', seconds: 45 },
     { kind: 'kind',  text: 'Make your bed hotel-perfect!' },
@@ -145,6 +145,7 @@ function openChallenge() {
 }
 
 function closeChallenge() {
+  stopRepCounter();
   clearInterval(challengeTimer);
   clearInterval(chatTimer);
   document.getElementById('challenge').style.display = 'none';
@@ -162,7 +163,8 @@ function addChallengeButton(box, label, action) {
 }
 
 // ---------- 3, 2, 1, GO! ----------
-function startCountdown() {
+async function startCountdown() {
+  if (live.item.reps) live.motionOK = await askForMotion();
   const area = document.getElementById('chArea');
   area.textContent = '';
   let count = 3;
@@ -188,12 +190,19 @@ function runChallenge() {
   area.textContent = '';
 
   if (item.kind === 'kind') {
+    // Someone in the family has to say they saw it
     document.getElementById('chTimer').textContent = '💛';
-    addChallengeButton(area, '✅ I did it!', winChallenge);
+    const note = document.createElement('p');
+    note.textContent = 'When you\'re done, ask someone who saw it to tap the button!';
+    area.appendChild(note);
+    addChallengeButton(area, '👀 I saw it! (family member taps)', () => {
+      if (confirm(`Did you see ${profile ? callName() : 'them'} do it? Tap OK if yes!`)) winChallenge();
+    });
     return;
   }
-  if (item.kind === 'move') addChallengeButton(area, '✅ I did it!', winChallenge);
-  if (item.kind === 'find') addChallengeButton(area, '✅ I found it!', winChallenge);
+  if (item.kind === 'move' && item.reps && live.motionOK) startRepCounter(item);
+  else if (item.kind === 'move') addChallengeButton(area, '✅ I did it!', winChallenge);
+  if (item.kind === 'find') addPhotoProof(area);
   if (item.kind === 'math' || item.kind === 'spell') nextBlitzQuestion();
 
   let left = item.seconds;
@@ -213,6 +222,7 @@ function showSeconds(left) {
 }
 
 function timeUp() {
+  stopRepCounter();
   const item = live.item;
   if (item.kind === 'hold') { winChallenge(); return; }   // kept going the whole time!
   const area = document.getElementById('chArea');
@@ -220,6 +230,11 @@ function timeUp() {
   document.getElementById('chTimer').textContent = '⏰ Time!';
   if (item.kind === 'math' || item.kind === 'spell') {
     addChat(randomFan(), `so close!! ${live.right} out of ${item.goal} 💪`);
+  } else if (item.reps && live.motionOK) {
+    addChat(randomFan(), `so close!! ${live.reps} out of ${item.reps} 💪 try again!`);   // the counter is the proof
+  } else if (item.kind === 'find') {
+    addChat(randomFan(), 'take the photo when you find it!! 📸');
+    addPhotoProof(area);
   } else {
     addChat(randomFan(), 'did you finish?? 👀');
     addChallengeButton(area, '✅ Yes, I did it!', winChallenge);
@@ -281,6 +296,7 @@ function nextBlitzQuestion() {
 
 // ---------- Winning ----------
 function winChallenge() {
+  stopRepCounter();
   clearInterval(challengeTimer);
   const firstWinToday = !challengeStatus().done;
   document.getElementById('chArea').textContent = '';
@@ -352,4 +368,124 @@ function spawnHearts(count) {
     box.appendChild(heart);
     setTimeout(() => heart.remove(), 2600);
   }
+}
+
+// =====================================================================
+// Challenge proof
+//   move challenges with reps -> the phone's motion sensor counts them
+//   find challenges            -> a photo of what they found
+//   kindness challenges        -> a family member taps "I saw it!"
+// =====================================================================
+
+let motionHandler = null;
+
+// iPhones ask "Allow motion and orientation?" the first time
+async function askForMotion() {
+  if (typeof DeviceMotionEvent === 'undefined') return false;
+  if (typeof DeviceMotionEvent.requestPermission === 'function') {
+    try { return (await DeviceMotionEvent.requestPermission()) === 'granted'; }
+    catch (err) { return false; }
+  }
+  return 'ondevicemotion' in window;
+}
+
+function startRepCounter(item) {
+  const area = document.getElementById('chArea');
+  live.reps = 0;
+  const counter = document.createElement('div');
+  counter.className = 'chQuestion';
+  counter.id = 'repCount';
+  counter.textContent = `0 / ${item.reps}`;
+  const tip = document.createElement('p');
+  tip.textContent = '📱 Hold your phone tight in one hand and GO!';
+  area.append(counter, tip);
+
+  let movedHard = false;
+  let lastRep = 0;
+  motionHandler = event => {
+    const a = event.accelerationIncludingGravity;
+    if (!a || a.x === null) return;
+    const strength = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);   // about 9.8 when still
+    const now = Date.now();
+    if (!movedHard && strength > item.strength && now - lastRep > 350) {
+      movedHard = true;                  // one big move = one rep
+      lastRep = now;
+      live.reps += 1;
+      counter.textContent = `${live.reps} / ${item.reps}`;
+      spawnHearts(1);
+      if (live.reps >= item.reps) winChallenge();
+    } else if (movedHard && strength < 11) {
+      movedHard = false;                 // back to normal: ready for the next rep
+    }
+  };
+  window.addEventListener('devicemotion', motionHandler);
+}
+
+function stopRepCounter() {
+  if (motionHandler) window.removeEventListener('devicemotion', motionHandler);
+  motionHandler = null;
+}
+
+// ---------- Photo proof ----------
+function addPhotoProof(area) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'environment';         // opens the back camera on phones
+  input.style.display = 'none';
+  input.addEventListener('change', () => {
+    if (input.files[0]) savePhotoProof(input.files[0]);
+  });
+  area.appendChild(input);
+  addChallengeButton(area, '📸 Take a photo of it!', () => input.click());
+}
+
+// Shrinks the photo so it fits in the phone's storage, then saves it
+function savePhotoProof(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const size = 260;
+      const scale = Math.min(1, size / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const small = canvas.toDataURL('image/jpeg', 0.6);
+
+      const photos = JSON.parse(localStorage.getItem('kiddyKatProofPhotos') || '[]');
+      photos.push({ text: live.item.text, date: new Date().toDateString(), image: small });
+      localStorage.setItem('kiddyKatProofPhotos', JSON.stringify(photos.slice(-12)));   // keep the last 12
+
+      const area = document.getElementById('chArea');
+      area.textContent = '';
+      const shot = document.createElement('img');
+      shot.src = small;
+      shot.className = 'proofShot';
+      area.appendChild(shot);
+      addChat(randomFan(), 'WOW great find 📸🔥');
+      setTimeout(winChallenge, 1200);
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Photos for grown-ups to look at (in Grown-ups)
+function showProofPhotos() {
+  const box = document.getElementById('proofPhotos');
+  if (!box) return;
+  const photos = JSON.parse(localStorage.getItem('kiddyKatProofPhotos') || '[]');
+  box.textContent = photos.length ? '' : 'No challenge photos yet.';
+  photos.slice().reverse().forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'proofCard';
+    const shot = document.createElement('img');
+    shot.src = p.image;
+    const label = document.createElement('div');
+    label.textContent = `${p.text} (${p.date})`;
+    card.append(shot, label);
+    box.appendChild(card);
+  });
 }

@@ -181,6 +181,8 @@ function showParentRewards() {
   const box = document.getElementById('parentRewards');
   box.textContent = '';
   const pin = localStorage.getItem('kiddyKatParentPin');
+  const banner = document.getElementById('pinBanner');
+  if (banner) banner.style.display = pin ? 'none' : 'block';
 
   if (!pin || !parentUnlocked) {
     const note = document.createElement('p');
@@ -265,11 +267,28 @@ function showParentRewards() {
     status.textContent = `✅ Saved ${parsed.length} rewards.`;
   });
 
+  const pinLabel = document.createElement('label');
+  pinLabel.textContent = 'Change the parent PIN';
+  const newPin = document.createElement('input');
+  newPin.type = 'password';
+  newPin.inputMode = 'numeric';
+  newPin.maxLength = 4;
+  newPin.placeholder = 'New 4-digit PIN';
+  const pinButton = document.createElement('button');
+  pinButton.textContent = 'Change PIN';
+  pinButton.addEventListener('click', () => {
+    if (!/^\d{4}$/.test(newPin.value)) { alert('Please use exactly 4 numbers.'); return; }
+    localStorage.setItem('kiddyKatParentPin', newPin.value);
+    newPin.value = '';
+    status.textContent = '✅ PIN changed.';
+  });
+
   const lock = document.createElement('button');
   lock.textContent = '🔒 Lock';
   lock.addEventListener('click', () => { parentUnlocked = false; showParentRewards(); });
 
-  box.append(nameLabel, nameInput, phoneLabel, phoneInput, listLabel, listInput, save, lock, status);
+  box.append(nameLabel, nameInput, phoneLabel, phoneInput, listLabel, listInput, save,
+             pinLabel, newPin, pinButton, lock, status);
 }
 
 // "🍦 Ice cream date | 120"  ->  ['🍦', 'Ice cream date', 120]

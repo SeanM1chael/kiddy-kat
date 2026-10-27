@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
   <title>Kiddy Kat Grades</title>
   <style>
     body { font-family: sans-serif; background: #f4f6fb; max-width: 900px; margin: 30px auto; padding: 0 16px; }
@@ -26,16 +27,32 @@
     .strong { background: #c8f0c8; }
     .ok { background: #eee; }
     .help { background: #ffd6d6; }
+    .kidBar { display: flex; gap: 10px; align-items: center; }
+    .kidBar select { width: auto; font-size: 18px; padding: 6px; }
+    .kidBar button { margin-top: 0; padding: 8px 14px; background: #eee; color: #333; }
+    .missing { color: #c92a2a; font-weight: bold; }
+    .comment { background: #f8f9fa; border-left: 4px solid #74c0fc; padding: 8px 12px; margin: 8px 0; }
+    #campus .row { padding: 6px 0; border-bottom: 1px solid #eee; }
+    #campus .row input { width: auto; margin-right: 8px; }
   </style>
 </head>
 <body>
   <h1>🐱 Kiddy Kat Grades</h1>
+
+  <!-- Which kid's grades are showing -->
+  <div class="panel kidBar">
+    <b>Kid:</b>
+    <select id="kidPicker" onchange="switchKid(this.value)"></select>
+    <button onclick="addKid()">+ Add kid</button>
+    <button onclick="renameKid()">Rename</button>
+  </div>
 
   <!-- 1. Upload a photo -->
   <div class="panel">
     <h2>📷 Upload a photo</h2>
     <label class="choice"><input type="radio" name="kind" value="worksheet" checked>Worksheet, quiz or test</label>
     <label class="choice"><input type="radio" name="kind" value="report-card">Report card</label>
+    <label class="choice"><input type="radio" name="kind" value="campus">Infinite Campus screenshot (grades, assignments or teacher comments)</label>
     <label>Photo (JPG or PNG)</label>
     <input type="file" id="photo" accept="image/jpeg,image/png,image/webp">
     <button onclick="uploadPhoto()">Read photo</button>
@@ -99,6 +116,12 @@
     </table>
     <p id="rcAttendance"></p>
   </div>
+  <!-- Infinite Campus imports -->
+  <div class="panel" id="campus" style="display:none">
+    <h2>🏫 From Infinite Campus</h2>
+    <div id="campusBody"></div>
+  </div>
+
   <!-- Specials schedule -->
   <div class="panel">
     <h2>🗓️ Specials schedule</h2>
@@ -122,8 +145,54 @@
   </div>
 
   <script>
-    let grades = JSON.parse(localStorage.getItem('kiddyKatGrades') || '[]');
-    let reportCard = JSON.parse(localStorage.getItem('kiddyKatReportCard') || 'null');
+    // ---------- Which kid ----------
+    // The first kid keeps the original storage names, so nothing already saved is lost.
+    let kids = JSON.parse(localStorage.getItem('kiddyKatGradeKids') || 'null') || [{ id: 'main', name: 'Kid 1' }];
+    let kidId = localStorage.getItem('kiddyKatGradeKid') || kids[0].id;
+    if (!kids.some(k => k.id === kidId)) kidId = kids[0].id;
+
+    function keyFor(name) {
+      return kidId === 'main' ? name : name + '_' + kidId;
+    }
+
+    function saveKids() {
+      localStorage.setItem('kiddyKatGradeKids', JSON.stringify(kids));
+      localStorage.setItem('kiddyKatGradeKid', kidId);
+    }
+
+    function showKidPicker() {
+      const picker = document.getElementById('kidPicker');
+      picker.textContent = '';
+      kids.forEach(k => picker.add(new Option(k.name, k.id)));
+      picker.value = kidId;
+    }
+
+    function switchKid(id) {
+      kidId = id;
+      saveKids();
+      location.reload();          // reload so everything shows this kid's grades
+    }
+
+    function addKid() {
+      const name = prompt("Kid's first name or nickname:");
+      if (!name || !name.trim()) return;
+      const id = 'kid' + Date.now();
+      kids.push({ id: id, name: name.trim() });
+      switchKid(id);
+    }
+
+    function renameKid() {
+      const kid = kids.find(k => k.id === kidId);
+      const name = prompt('New name:', kid.name);
+      if (!name || !name.trim()) return;
+      kid.name = name.trim();
+      saveKids();
+      showKidPicker();
+    }
+
+    let grades = JSON.parse(localStorage.getItem(keyFor('kiddyKatGrades')) || '[]');
+    let reportCard = JSON.parse(localStorage.getItem(keyFor('kiddyKatReportCard')) || 'null');
+    let campus = JSON.parse(localStorage.getItem(keyFor('kiddyKatCampus')) || 'null');
 
     // Turns "a, b, c" into ["a", "b", "c"]
     function splitList(text) {
@@ -154,6 +223,8 @@
         }
         if (kind === 'worksheet') {
           fillForm(result);
+        } else if (kind === 'campus') {
+          saveCampus(result);
         } else {
           saveReportCard(result);
         }
@@ -178,11 +249,112 @@
 
     function saveReportCard(r) {
       reportCard = r;
-      localStorage.setItem('kiddyKatReportCard', JSON.stringify(reportCard));
+      localStorage.setItem(keyFor('kiddyKatReportCard'), JSON.stringify(reportCard));
       addReportCardSubjects();
       showReportCard();
       showSummary();
       document.getElementById('status').textContent = '✅ Report card saved. See it below the summary.';
+    }
+
+    // ---------- Infinite Campus screenshots ----------
+    // Each screenshot adds to what's saved: classes are updated, assignments and comments are added.
+    function saveCampus(r) {
+      campus = campus || { classes: [], assignments: [], comments: [], updated: '' };
+      (r.classes || []).forEach(c => {
+        const old = campus.classes.find(x => x.name === c.name);
+        if (old) Object.assign(old, c); else campus.classes.push(c);
+      });
+      (r.assignments || []).forEach(a => {
+        const same = campus.assignments.find(x => x.name === a.name && x.class === a.class);
+        if (same) Object.assign(same, a); else campus.assignments.push({ ...a, saved: false });
+      });
+      (r.comments || []).forEach(c => {
+        if (!campus.comments.some(x => x.comment === c.comment)) campus.comments.push({ ...c, date: new Date().toLocaleDateString() });
+      });
+      campus.updated = new Date().toLocaleDateString();
+      localStorage.setItem(keyFor('kiddyKatCampus'), JSON.stringify(campus));
+      (r.classes || []).forEach(c => addSubject(c.name));
+      showCampus();
+      showSummary();
+      document.getElementById('status').textContent =
+        `✅ Read ${(r.classes || []).length} classes, ${(r.assignments || []).length} assignments and ${(r.comments || []).length} comment${(r.comments || []).length === 1 ? '' : 's'}. See "From Infinite Campus" below.`;
+    }
+
+    function showCampus() {
+      if (!campus) return;
+      document.getElementById('campus').style.display = 'block';
+      const body = document.getElementById('campusBody');
+      body.textContent = '';
+      const add = (tag, text, cls) => {
+        const el = document.createElement(tag);
+        el.textContent = text;
+        if (cls) el.className = cls;
+        body.appendChild(el);
+        return el;
+      };
+      add('p', `Last updated ${campus.updated}`);
+
+      // Missing first: these are the ones that need action
+      const missing = campus.assignments.filter(a => a.status === 'missing' || a.status === 'late');
+      add('h3', missing.length ? `⚠️ Missing or late (${missing.length})` : '✅ Nothing missing');
+      missing.forEach(a => add('div', `${a.status === 'late' ? '⏰ Late' : '❌ Missing'}: ${a.name}` +
+        (a.class ? ` (${a.class})` : '') + (a.due ? `, due ${a.due}` : ''), 'row missing'));
+      if (missing.length) add('p', '💡 Tip: add these to the kid\'s After School list on their phone (Grown-ups → Task lists).');
+
+      // Class grades
+      if (campus.classes.length) {
+        add('h3', '📊 Class grades');
+        campus.classes.forEach(c => {
+          const row = add('div', `${c.name}: ${c.percent === null || c.percent === undefined ? '—' : c.percent + '%'} ${c.mark || ''} `, 'row');
+          if (typeof c.percent === 'number') row.insertAdjacentHTML('beforeend', rating(c.percent));
+        });
+      }
+
+      // Graded assignments that can be added to the grades list
+      const graded = campus.assignments.filter(a => a.status === 'graded' && a.outOf && !a.saved);
+      if (graded.length) {
+        add('h3', '📝 Graded assignments (check the ones to save to this kid\'s grades)');
+        graded.forEach((a, i) => {
+          const row = add('label', '', 'row');
+          const box = document.createElement('input');
+          box.type = 'checkbox';
+          box.checked = true;
+          box.dataset.index = campus.assignments.indexOf(a);
+          row.append(box, `${a.name}${a.class ? ' (' + a.class + ')' : ''}: ${a.score}/${a.outOf}`);
+        });
+        const button = add('button', 'Save checked grades');
+        button.addEventListener('click', saveCampusGrades);
+      }
+
+      // Teacher comments
+      if (campus.comments.length) {
+        add('h3', '💬 Teacher comments');
+        campus.comments.slice().reverse().forEach(c =>
+          add('div', `${c.class ? c.class + ': ' : ''}${c.comment}  (${c.date})`, 'comment'));
+      }
+
+      const clear = add('button', '🗑️ Clear Infinite Campus info');
+      clear.style.background = '#eee';
+      clear.style.color = '#333';
+      clear.addEventListener('click', () => {
+        if (!confirm('Clear everything imported from Infinite Campus for this kid?')) return;
+        campus = null;
+        localStorage.removeItem(keyFor('kiddyKatCampus'));
+        document.getElementById('campus').style.display = 'none';
+      });
+    }
+
+    function saveCampusGrades() {
+      document.querySelectorAll('#campusBody input[type=checkbox]:checked').forEach(box => {
+        const a = campus.assignments[Number(box.dataset.index)];
+        grades.push({ date: a.due || new Date().toLocaleDateString(), subject: a.class || 'Other', name: a.name,
+                      score: Number(a.score) || 0, outOf: Number(a.outOf), topics: [], missed: [] });
+        a.saved = true;
+      });
+      localStorage.setItem(keyFor('kiddyKatCampus'), JSON.stringify(campus));
+      saveGrades();
+      showGrades();
+      showCampus();
     }
 
     // ---------- Subject list ----------
@@ -226,7 +398,7 @@
     }
 
     function saveGrades() {
-      localStorage.setItem('kiddyKatGrades', JSON.stringify(grades));
+      localStorage.setItem(keyFor('kiddyKatGrades'), JSON.stringify(grades));
     }
 
     function deleteGrade(i) {
@@ -288,6 +460,17 @@
           if (c.percent >= 90) great.push(`📋 ${c.name} (${c.percent}% on report card)`);
           if (c.percent < 70) practice.push(`📋 ${c.name} (${c.percent}% on report card)`);
         });
+      }
+
+      // 1b. Infinite Campus: current class grades and missing work
+      if (campus) {
+        campus.classes.forEach(c => {
+          if (typeof c.percent !== 'number') return;
+          if (c.percent >= 90) great.push(`🏫 ${c.name} (${c.percent}% in Infinite Campus)`);
+          if (c.percent < 70) practice.push(`🏫 ${c.name} (${c.percent}% in Infinite Campus)`);
+        });
+        const missing = campus.assignments.filter(a => a.status === 'missing').length;
+        if (missing) practice.unshift(`❌ ${missing} missing assignment${missing === 1 ? '' : 's'} in Infinite Campus`);
       }
 
       // 2. Worksheets: subjects averaging 85%+
@@ -380,8 +563,11 @@
 
     showSpecials();
     // ---------- Start up ----------
+    showKidPicker();
+    if (campus) campus.classes.forEach(c => addSubject(c.name));
     addReportCardSubjects();
     showReportCard();
+    showCampus();
     showGrades();
   </script>
 </body>

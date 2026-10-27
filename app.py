@@ -42,11 +42,27 @@ Rules:
 - Include EVERY class row, even ones with no grade yet (use null).
 - Do NOT include the student's name, student ID, teacher, principal, school name, address or phone number.
 - Percent is just the number, like 67.26, without the % sign."""
-def ask_claude(image_bytes, media_type, prompt):
+CAMPUS_PROMPT = """This is a screenshot from Infinite Campus (the Campus Parent or Campus Student app or website)
+showing a student's grades, assignments, or teacher comments.
+Reply with ONLY JSON in this exact shape, nothing else:
+{"classes": [{"name": "class name", "percent": number or null, "mark": "letter grade or null"}],
+ "assignments": [{"class": "class name or null", "name": "assignment name", "due": "M/D/YYYY or null",
+                  "score": number or null, "outOf": number or null,
+                  "status": "missing" or "late" or "graded" or "not graded"}],
+ "comments": [{"class": "class name or null", "comment": "the teacher's comment"}]}
+Rules:
+- Only include what you can actually see in the screenshot. Use empty lists when there is nothing.
+- An assignment is "missing" if it is marked Missing, M, or flagged as not turned in.
+- Do NOT include the student's name, student ID, teacher names, school name or any contact info.
+  If a comment mentions the student by name, write "the student" instead.
+- Percent is just the number, like 87.5, without the % sign."""
+
+
+def ask_claude(image_bytes, media_type, prompt, max_tokens=1024):
     """Send one photo plus instructions to Claude and return its JSON answer."""
     message = client.messages.create(
         model="claude-sonnet-5-5",
-        max_tokens=1024,
+        max_tokens=max_tokens,
         messages=[{
             "role": "user",
             "content": [
@@ -108,5 +124,21 @@ def read_report_card():
         return jsonify(error="Please use a JPG, PNG or WebP photo. iPhone HEIC photos won't work."), 400
 
     return jsonify(ask_claude(photo.read(), media_type, REPORT_CARD_PROMPT))
+
+
+@app.post("/read-campus")
+def read_campus():
+    photo = request.files.get("photo")
+    if not photo:
+        return jsonify(error="No photo was sent."), 400
+
+    media_type = MEDIA_TYPES.get(Path(photo.filename).suffix.lower())
+    if not media_type:
+        return jsonify(error="Please use a JPG, PNG or WebP screenshot."), 400
+
+    # Assignment lists can be long, so allow a longer answer
+    return jsonify(ask_claude(photo.read(), media_type, CAMPUS_PROMPT, max_tokens=4096))
+
+
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
