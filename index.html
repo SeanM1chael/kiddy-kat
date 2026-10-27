@@ -71,6 +71,27 @@
     #petChooser input { display: block; width: 70%; margin: 16px auto; font-size: 24px; padding: 12px;
                         border-radius: 12px; border: 2px solid var(--soft); text-align: center; }
 
+    /* Stars, accessories, room, poop and the shop */
+    #petCard { position: relative; }
+    #petStars { position: absolute; top: 10px; right: 14px; font-size: 20px; font-weight: bold; }
+    #petAvatar { position: relative; display: inline-block; }
+    #petWear { position: absolute; top: -6px; right: -26px; font-size: 38px; pointer-events: none; }
+    #petRoom { font-size: 30px; min-height: 4px; }
+    #petPoops .poop { font-size: 34px; background: none; border: none; padding: 4px; margin: 0 4px; cursor: pointer; }
+    #petPoops .poop.onMat { background: #c8a27a; border-radius: 10px; }
+    #shop { display: none; position: fixed; inset: 0; background: var(--bg); padding: 6vh 12px 30px;
+            z-index: 12; overflow-y: auto; }
+    #shop .closeGame { position: absolute; top: 16px; right: 16px; font-size: 24px; background: none; border: none; }
+    #shopStars { font-size: 22px; font-weight: bold; margin-bottom: 12px; }
+    #shopItems { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .shopCard { background: white; border-radius: 16px; width: 140px; padding: 10px; font-size: 16px; }
+    .shopEmoji { font-size: 44px; }
+    .shopNote { font-size: 12px; color: #777; margin-top: 4px; }
+    .shopCard button { margin-top: 8px; font-size: 15px; padding: 8px 10px; border: none; border-radius: 10px;
+                       background: var(--main); color: white; }
+    .shopCard button:disabled { background: #ccc; }
+    #party { z-index: 20; }   /* the dancing screen shows on top of the shop */
+
     /* Learning games */
     #game { display: none; position: fixed; inset: 0; background: var(--bg); padding: 8vh 16px 0; z-index: 12; overflow-y: auto; }
     #game .closeGame { position: absolute; top: 16px; right: 16px; font-size: 24px; background: none; border: none; }
@@ -101,12 +122,27 @@
 
   <!-- Virtual pet -->
   <div id="petCard">
-    <div id="petEmoji" class="petEmoji" onclick="petPoke()">🥚</div>
+    <div id="petStars"></div>
+    <div id="petAvatar">
+      <div id="petEmoji" class="petEmoji" onclick="petPoke()">🥚</div>
+      <div id="petWear"></div>
+    </div>
+    <div id="petRoom"></div>
+    <div id="petPoops"></div>
     <div id="petName"></div>
     <div id="petMood"></div>
     <div id="petBar"><div id="petBarFill"></div></div>
     <button id="petChooseButton" onclick="openPetChooser()">Choose your pet</button>
     <button onclick="openPractice()">🎮 Practice</button>
+    <button id="shopButton" onclick="openShop()">🛍️ Shop</button>
+  </div>
+
+  <!-- Pet shop (filled in by pet.js) -->
+  <div id="shop">
+    <button class="closeGame" onclick="closeShop()">✖</button>
+    <h2>🛍️ Pet Shop</h2>
+    <div id="shopStars"></div>
+    <div id="shopItems"></div>
   </div>
 
   <div class="tabs">

@@ -200,11 +200,14 @@ function endRound() {
   showPracticeStats();
 
   const treat = givePetTreat();
+  addStars(round.correct);                       // 1 star for each right answer
   clearGame();
   document.getElementById('gameTitle').textContent = '🎉 Round done!';
   document.getElementById('gameQuestion').textContent =
     `You got ${round.correct} out of ${QUESTIONS_PER_ROUND}! ${'⭐'.repeat(round.correct)}`;
-  document.getElementById('gameFeedback').textContent = treat || (pet ? '' : 'Hatch a pet to give it treats!');
+  document.getElementById('gameFeedback').textContent = pet
+    ? `${treat || ''} +${round.correct} ⭐ for the shop!`
+    : 'Hatch a pet to give it treats!';
 
   const box = document.getElementById('gameChoices');
   if (roundsToday() < ROUNDS_PER_DAY) addMenuButton(box, '▶️ Play again', openPractice);
