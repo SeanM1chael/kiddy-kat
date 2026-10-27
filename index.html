@@ -92,6 +92,29 @@
     .shopCard button:disabled { background: #ccc; }
     #party { z-index: 20; }   /* the dancing screen shows on top of the shop */
 
+    /* Challenge of the Day: a pretend live stream */
+    #challenge { display: none; position: fixed; inset: 0; z-index: 13; overflow: hidden;
+                 background: linear-gradient(180deg, #2b1055, #7597de); color: white; padding: 12px; }
+    .liveBar { display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: bold; }
+    .liveBadge { background: #e03131; padding: 4px 10px; border-radius: 8px; animation: blink 1.2s infinite; }
+    @keyframes blink { 50% { opacity: 0.55; } }
+    #challenge .closeGame { margin-left: auto; font-size: 24px; background: none; border: none; color: white; }
+    #chTitle { font-size: 30px; font-weight: bold; margin: 5vh 0 10px; }
+    #chTimer { font-size: 64px; font-weight: bold; min-height: 76px; }
+    #chArea { margin: 10px 0; }
+    .chButton { font-size: 24px; padding: 14px 22px; margin: 6px; border: none; border-radius: 16px;
+                background: #ffd43b; color: #2b1055; font-weight: bold; }
+    .chButton.chChoice { width: 42%; background: white; }
+    .chProgress { font-size: 20px; }
+    .chQuestion { font-size: 44px; font-weight: bold; margin: 8px; }
+    #chChat { position: absolute; left: 12px; right: 70px; bottom: 16px; text-align: left; font-size: 16px;
+              background: rgba(0,0,0,0.25); border-radius: 12px; padding: 8px; }
+    #heartButton { position: absolute; right: 12px; bottom: 20px; font-size: 34px; background: rgba(255,255,255,0.2);
+                   border: none; border-radius: 50%; width: 56px; height: 56px; }
+    .floatHeart { position: absolute; bottom: 60px; font-size: 32px; animation: floatUp 2.4s ease-out forwards; pointer-events: none; }
+    @keyframes floatUp { to { transform: translateY(-60vh) scale(1.4); opacity: 0; } }
+    #challengeButton.newChallenge { background: #e03131; }
+
     /* Learning games */
     #game { display: none; position: fixed; inset: 0; background: var(--bg); padding: 8vh 16px 0; z-index: 12; overflow-y: auto; }
     #game .closeGame { position: absolute; top: 16px; right: 16px; font-size: 24px; background: none; border: none; }
@@ -135,6 +158,21 @@
     <button id="petChooseButton" onclick="openPetChooser()">Choose your pet</button>
     <button onclick="openPractice()">🎮 Practice</button>
     <button id="shopButton" onclick="openShop()">🛍️ Shop</button>
+    <button id="challengeButton" onclick="openChallenge()">🔴 Challenge</button>
+  </div>
+
+  <!-- Challenge of the Day, styled like a live stream (filled in by challenge.js) -->
+  <div id="challenge">
+    <div class="liveBar">
+      <span class="liveBadge">🔴 LIVE</span>
+      <span id="viewers"></span>
+      <button class="closeGame" onclick="closeChallenge()">✖</button>
+    </div>
+    <div id="chTitle"></div>
+    <div id="chTimer"></div>
+    <div id="chArea"></div>
+    <div id="chChat"></div>
+    <button id="heartButton" onclick="spawnHearts(3)">❤️</button>
   </div>
 
   <!-- Pet shop (filled in by pet.js) -->
@@ -229,6 +267,7 @@
 
   <script src="pet.js"></script>
   <script src="games.js"></script>
+  <script src="challenge.js"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -297,7 +336,7 @@
 
     function changeProfile() {
       if (!confirm('Start over for a new person? This clears the name, tasks, pet and checkmarks on this phone.')) return;
-      ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist', 'kiddyKatPet', 'kiddyKatPractice', 'kiddyKatMathLevel']
+      ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist', 'kiddyKatPet', 'kiddyKatPractice', 'kiddyKatMathLevel', 'kiddyKatChallenge', 'kiddyKatTrophies']
         .forEach(k => localStorage.removeItem(k));
       profile = null;
       pet = null;
@@ -494,6 +533,7 @@
     showPet();
     applyProfile();
     showPracticeStats();
+    showChallengeButton();
   </script>
 </body>
 </html>
