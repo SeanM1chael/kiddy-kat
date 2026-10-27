@@ -73,7 +73,9 @@ def ask_claude(image_bytes, media_type, prompt, max_tokens=1024):
             ],
         }],
     )
-    reply = message.content[0].text
+    # Claude's answer can include a "thinking" part before the text part,
+    # so join only the text parts instead of assuming the first part is text
+    reply = "".join(block.text for block in message.content if block.type == "text")
     return json.loads(reply[reply.find("{"): reply.rfind("}") + 1])
 
 
@@ -138,6 +140,21 @@ def read_campus():
 
     # Assignment lists can be long, so allow a longer answer
     return jsonify(ask_claude(photo.read(), media_type, CAMPUS_PROMPT, max_tokens=4096))
+
+
+# --- Errors ---------------------------------------------------------------
+# Send problems back as a short message the page can show, instead of a web page
+
+@app.errorhandler(Exception)
+def show_error(error):
+    print("PROBLEM:", type(error).__name__, error)           # also shows in the terminal
+    message = f"{type(error).__name__}: {error}"
+    if getattr(error, "code", None) == 404:
+        return jsonify(error="That address isn't on the server. If app.py was just updated, "
+                             "restart it: Ctrl+C in its terminal, then py app.py"), 404
+    if isinstance(error, json.JSONDecodeError):
+        message = "Claude's answer was cut off or wasn't in the expected format. Try a smaller screenshot (one section at a time)."
+    return jsonify(error="The server hit a problem. " + message), 500
 
 
 if __name__ == "__main__":

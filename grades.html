@@ -115,6 +115,12 @@
       <tbody id="rcRows"></tbody>
     </table>
     <p id="rcAttendance"></p>
+    <div class="kidBar">
+      <button onclick="removeReportCard()">🗑️ Remove report card</button>
+      <span>Move to:</span>
+      <select id="rcMoveTo"></select>
+      <button onclick="moveReportCard()">Move</button>
+    </div>
   </div>
   <!-- Infinite Campus imports -->
   <div class="panel" id="campus" style="display:none">
@@ -210,6 +216,7 @@
       }
 
       const kind = document.querySelector('input[name="kind"]:checked').value;
+      localStorage.setItem('kiddyKatLastUpload', kind);     // remember the choice for next time
       const form = new FormData();
       form.append('photo', file);
       status.textContent = '⏳ Claude is reading the photo... (about 10 seconds)';
@@ -430,8 +437,32 @@
       return '<span class="tag ok">OK</span>';
     }
 
+    function removeReportCard() {
+      if (!confirm('Remove this report card from ' + kids.find(k => k.id === kidId).name + '?')) return;
+      reportCard = null;
+      localStorage.removeItem(keyFor('kiddyKatReportCard'));
+      document.getElementById('reportCard').style.display = 'none';
+      showSummary();
+    }
+
+    // Moves the report card to another kid (replacing any report card they have)
+    function moveReportCard() {
+      const toId = document.getElementById('rcMoveTo').value;
+      const toKid = kids.find(k => k.id === toId);
+      if (!toKid || toId === kidId) return;
+      if (!confirm(`Move this report card to ${toKid.name}?`)) return;
+      const toKey = toId === 'main' ? 'kiddyKatReportCard' : 'kiddyKatReportCard_' + toId;
+      localStorage.setItem(toKey, JSON.stringify(reportCard));
+      localStorage.removeItem(keyFor('kiddyKatReportCard'));
+      switchKid(toId);            // show the kid it moved to
+    }
+
     function showReportCard() {
       if (!reportCard) return;
+      const moveTo = document.getElementById('rcMoveTo');
+      moveTo.textContent = '';
+      kids.filter(k => k.id !== kidId).forEach(k => moveTo.add(new Option(k.name, k.id)));
+      if (!moveTo.options.length) moveTo.add(new Option('(add another kid first)', ''));
       document.getElementById('reportCard').style.display = 'block';
       document.getElementById('rcDate').textContent =
         reportCard.report_date ? '(' + reportCard.report_date + ')' : '';
@@ -564,6 +595,11 @@
     showSpecials();
     // ---------- Start up ----------
     showKidPicker();
+    const lastUpload = localStorage.getItem('kiddyKatLastUpload');
+    if (lastUpload) {
+      const option = document.querySelector(`input[name="kind"][value="${lastUpload}"]`);
+      if (option) option.checked = true;
+    }
     if (campus) campus.classes.forEach(c => addSubject(c.name));
     addReportCardSubjects();
     showReportCard();
