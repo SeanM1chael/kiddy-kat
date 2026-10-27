@@ -128,6 +128,28 @@
     #petChooser .cancelChoose { background: none; color: #777; }
     #petChooser { z-index: 14; }
 
+    /* Real-life rewards */
+    #petGoal { font-size: 16px; margin-top: 4px; color: #555; }
+    #rewards { display: none; position: fixed; inset: 0; background: var(--bg); padding: 6vh 12px 30px;
+               z-index: 12; overflow-y: auto; }
+    #rewards .closeGame { position: absolute; top: 16px; right: 16px; font-size: 24px; background: none; border: none; }
+    #rewardStars { font-size: 22px; font-weight: bold; margin-bottom: 10px; }
+    .waitingCard { background: #fff3bf; border-radius: 14px; padding: 10px; margin: 8px auto; max-width: 420px; font-size: 17px; }
+    .textParent { display: inline-block; margin-top: 6px; padding: 6px 12px; border-radius: 10px;
+                  background: #40c057; color: white; text-decoration: none; }
+    .rewardCard { background: white; border-radius: 16px; padding: 12px; margin: 10px auto; max-width: 420px; text-align: left; }
+    .rewardCard.goal { box-shadow: 0 0 0 3px var(--main); }
+    .rewardTitle { font-size: 19px; font-weight: bold; }
+    .rewardPrice { font-size: 16px; color: #555; margin: 2px 0 6px; }
+    .rewardBar { background: #eee; border-radius: 8px; height: 10px; overflow: hidden; }
+    .rewardBarFill { background: var(--main); height: 100%; }
+    .rewardCard button { margin: 8px 6px 0 0; font-size: 15px; padding: 8px 12px; border: none; border-radius: 10px;
+                         background: var(--main); color: white; }
+    .rewardCard button:disabled { background: #ccc; }
+    #rewardHistory { font-size: 15px; color: #555; }
+    #parentRewards button { margin: 6px 6px 0 0; }
+    .parentRow { padding: 6px 0; border-bottom: 1px solid #eee; }
+
     #album { display: none; position: fixed; inset: 0; background: var(--bg); padding: 6vh 12px 30px;
              z-index: 12; overflow-y: auto; }
     #album .closeGame { position: absolute; top: 16px; right: 16px; font-size: 24px; background: none; border: none; }
@@ -172,6 +194,7 @@
   <!-- Virtual pet -->
   <div id="petCard">
     <div id="petStars"></div>
+    <div id="petGoal"></div>
     <div id="petAvatar">
       <div id="petEmoji" class="petEmoji" onclick="petPoke()">🥚</div>
       <div id="petWear"></div>
@@ -187,6 +210,17 @@
     <button id="challengeButton" onclick="openChallenge()">🔴 Challenge</button>
     <button onclick="openAlbum()">📒 Stickers</button>
     <button id="houseButton" onclick="openPetHouse()">🏠 Pet House</button>
+    <button onclick="openRewards()">🎁 Rewards</button>
+  </div>
+
+  <!-- Real-life rewards (filled in by rewards.js) -->
+  <div id="rewards">
+    <button class="closeGame" onclick="closeRewards()">✖</button>
+    <h2>🎁 Rewards</h2>
+    <div id="rewardStars"></div>
+    <div id="rewardWaiting"></div>
+    <div id="rewardItems"></div>
+    <p id="rewardHistory"></p>
   </div>
 
   <!-- Pet House (filled in by pet.js) -->
@@ -265,6 +299,10 @@
     <div id="specialStatus"></div>
     <hr>
 
+    <h2>🎁 Rewards (parents)</h2>
+    <div id="parentRewards"></div>
+    <hr>
+
     <h2>👤 Name and nicknames</h2>
     <label>Name</label>
     <input id="editName">
@@ -322,6 +360,7 @@
   <script src="stickers.js"></script>
   <script src="games.js"></script>
   <script src="challenge.js"></script>
+  <script src="rewards.js"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -416,9 +455,12 @@
     function changeProfile() {
       if (!confirm('Start over for a new person? This clears the name, tasks, pet and checkmarks on this phone.')) return;
       ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist', 'kiddyKatPet', 'kiddyKatPets', 'kiddyKatActivePet', 'kiddyKatPractice', 'kiddyKatMathLevel', 'kiddyKatChallenge', 'kiddyKatTrophies',
-       'kiddyKatFollowers', 'kiddyKatStreak', 'kiddyKatStickers', 'kiddyKatSetsDone']
+       'kiddyKatFollowers', 'kiddyKatStreak', 'kiddyKatStickers', 'kiddyKatSetsDone',
+       'kiddyKatRewards', 'kiddyKatRewardRequests', 'kiddyKatGoal']
         .forEach(k => localStorage.removeItem(k));
       stickerBook = {};
+      rewardList = null;
+      rewardRequests = [];
       setsDone = [];
       profile = null;
       pet = null;
@@ -493,6 +535,8 @@
     function toggleSettings() {
       const box = document.getElementById('settings');
       box.style.display = box.style.display === 'block' ? 'none' : 'block';
+      parentUnlocked = false;          // the rewards section locks again every time
+      showParentRewards();
     }
 
     function showSpecials() {

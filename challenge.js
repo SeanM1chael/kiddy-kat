@@ -240,10 +240,10 @@ function nextBlitzQuestion() {
 
   let prompt, options, answer;
   if (item.kind === 'math') {
-    const [a, sign, b, result] = MATH_LEVELS[getMathLevel()].make();
-    prompt = `${a} ${sign} ${b} = ?`;
-    answer = result;
-    options = makeChoices(result);
+    const q = mathQuestion(getMathLevel());
+    prompt = q.prompt;
+    answer = q.answer;
+    options = q.choices;
   } else {
     const words = SPELLING[animal.theme];
     const pick = words[Math.floor(Math.random() * words.length)];
@@ -255,6 +255,7 @@ function nextBlitzQuestion() {
 
   const question = document.createElement('div');
   question.className = 'chQuestion';
+  question.style.whiteSpace = 'pre-line';
   question.textContent = prompt;
   if (item.kind === 'spell') {
     question.style.cursor = 'pointer';
@@ -263,7 +264,7 @@ function nextBlitzQuestion() {
   area.appendChild(question);
 
   options.forEach(option => {
-    const button = addChallengeButton(area, option, () => {
+    const button = addChallengeButton(area, item.kind === 'math' ? showNumber(option) : option, () => {
       if (option === answer) {
         live.right += 1;
         spawnHearts(2);

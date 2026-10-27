@@ -351,6 +351,7 @@ function showPetExtras() {
     document.getElementById('petMood').textContent =
       pet.type === 'flower' ? 'Some leaves fell! Tap to tidy up 🍂' : 'Uh oh! Tap the 💩 to scoop it!';
   }
+  if (typeof showGoal === 'function') showGoal();   // reward goal line (rewards.js)
 }
 
 // ---------- The shop ----------

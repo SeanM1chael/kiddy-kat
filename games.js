@@ -65,12 +65,69 @@ const MATH_LEVELS = [
   }},
   { name: 'Division facts', make: () => {
       const b = randomInt(2, 10), answer = randomInt(2, 10); return [b * answer, '÷', b, answer];
+  }},
+
+  // ----- Middle and high school levels. These return { prompt, answer } -----
+  { name: 'Percents', make: () => {
+      const pct = [10, 20, 25, 50, 75][randomInt(0, 4)];
+      const base = (pct === 25 || pct === 75) ? 4 * randomInt(2, 25) : 10 * randomInt(1, 20);
+      return { prompt: `${pct}% of ${base} = ?`, answer: base * pct / 100 };
+  }},
+  { name: 'Negative numbers', negatives: true, make: () => {
+      const a = randomInt(-15, 15), b = randomInt(-15, 15);
+      const second = b < 0 ? `(${showNumber(b)})` : b;
+      if (Math.random() < 0.5) return { prompt: `${showNumber(a)} + ${second} = ?`, answer: a + b };
+      return { prompt: `${showNumber(a)} − ${second} = ?`, answer: a - b };
+  }},
+  { name: 'Fractions of a number', make: () => {
+      const bottom = [2, 3, 4, 5, 6, 8, 10][randomInt(0, 6)];
+      let top = randomInt(1, bottom - 1);
+      while (gcd(top, bottom) !== 1) top = randomInt(1, bottom - 1);   // only simplest fractions, like 2/3 not 2/6
+      const times = randomInt(2, 12);
+      return { prompt: `${top}/${bottom} of ${bottom * times} = ?`, answer: top * times };
+  }},
+  { name: 'Solve for x', make: () => {
+      const a = randomInt(2, 9), x = randomInt(1, 12), b = randomInt(1, 20);
+      if (Math.random() < 0.5 && a * x - b > 0) return { prompt: `${a}x − ${b} = ${a * x - b}\nx = ?`, answer: x };
+      return { prompt: `${a}x + ${b} = ${a * x + b}\nx = ?`, answer: x };
+  }},
+  { name: 'Powers and square roots', make: () => {
+      const n = randomInt(2, 12);
+      if (Math.random() < 0.5) return { prompt: `${n}² = ?`, answer: n * n };
+      return { prompt: `√${n * n} = ?`, answer: n };
   }}
 ];
 
+// Greatest common divisor: gcd(2, 6) = 2, so 2/6 isn't in simplest form
+function gcd(a, b) {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+// Shows negative numbers with a real minus sign: −5
+function showNumber(n) {
+  return n < 0 ? '−' + Math.abs(n) : String(n);
+}
+
+// One question from a level, always as { prompt, answer, full }
+function mathQuestion(level) {
+  let q = MATH_LEVELS[level].make();
+  if (Array.isArray(q)) {                       // older levels give [a, sign, b, answer]
+    const [a, sign, b, answer] = q;
+    q = { prompt: `${a} ${sign} ${b} = ?`, answer: answer };
+  }
+  q.full = q.prompt.replace('?', showNumber(q.answer)).replace('\n', '  ');
+  q.choices = makeChoices(q.answer, MATH_LEVELS[level].negatives);
+  return q;
+}
+
 // Kittens practice levels 0-3 (2nd grade); tigers and lions practice 4-5
+// Kittens: adding to 10 up to 2-digit regrouping (2nd grade)
+// Tigers: times tables up to fractions (about 4th-7th grade)
+// Lions: percents up to solving for x and powers (middle and high school)
 function mathRange() {
-  return animal.theme === 'kitten' ? [0, 3] : [4, 5];
+  if (animal.theme === 'kitten') return [0, 3];
+  if (animal.theme === 'tiger') return [4, 8];
+  return [6, 10];
 }
 
 function getMathLevel() {
@@ -80,12 +137,13 @@ function getMathLevel() {
 }
 
 // Answer plus 3 close wrong answers, mixed up
-function makeChoices(answer) {
+function makeChoices(answer, allowNegative = false) {
   const options = new Set([answer]);
   const nudges = shuffle([1, -1, 2, -2, 10, -10, 3, -3]);
+  if (allowNegative && answer !== 0) nudges.unshift(-2 * answer);   // the classic sign mistake: -answer
   for (const n of nudges) {
     if (options.size === 4) break;
-    if (answer + n >= 0) options.add(answer + n);
+    if (allowNegative || answer + n >= 0) options.add(answer + n);
   }
   return shuffle([...options]);
 }
@@ -143,19 +201,22 @@ function nextMathQuestion() {
   if (round.number === QUESTIONS_PER_ROUND) { endRound(); return; }
   round.number += 1;
 
-  const [a, sign, b, answer] = MATH_LEVELS[round.level].make();
+  const q = mathQuestion(round.level);
   document.getElementById('gameTitle').textContent =
     `➕ ${MATH_LEVELS[round.level].name}  (${round.number} of ${QUESTIONS_PER_ROUND})`;
-  document.getElementById('gameQuestion').textContent = `${a} ${sign} ${b} = ?`;
+  const question = document.getElementById('gameQuestion');
+  question.style.whiteSpace = 'pre-line';                       // lets "x = ?" sit on its own line
+  question.style.fontSize = q.prompt.length > 12 ? '40px' : '';
+  question.textContent = q.prompt;
   document.getElementById('gameFeedback').textContent = '';
 
   const box = document.getElementById('gameChoices');
   box.textContent = '';
-  makeChoices(answer).forEach(option => {
+  q.choices.forEach(option => {
     const button = document.createElement('button');
     button.className = 'choice';
-    button.textContent = option;
-    button.addEventListener('click', () => checkMathAnswer(button, option, answer, `${a} ${sign} ${b} = ${answer}`));
+    button.textContent = showNumber(option);
+    button.addEventListener('click', () => checkMathAnswer(button, option, q.answer, q.full));
     box.appendChild(button);
   });
 }
