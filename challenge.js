@@ -274,6 +274,7 @@ function nextBlitzQuestion() {
       nextBlitzQuestion();
     });
     button.classList.add('chChoice');
+    if (Math.max(...options.map(o => String(o).length)) > 7) button.style.width = '90%';   // long words: full width
   });
 }
 

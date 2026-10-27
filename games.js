@@ -350,7 +350,10 @@ function showWordChoices(options, rightOption, explain) {
     const button = document.createElement('button');
     button.className = 'choice';
     button.textContent = option;
-    if (option.length > 14) { button.style.width = '90%'; button.style.fontSize = '20px'; }
+    // Long words get full-width buttons so they never spill out of the button
+    const longest = Math.max(...options.map(o => o.length));
+    if (longest > 14) { button.style.width = '90%'; button.style.fontSize = '20px'; }
+    else if (longest > 7) { button.style.width = '90%'; button.style.fontSize = '26px'; }
     button.addEventListener('click', () => checkWordAnswer(button, option === rightOption, explain));
     box.appendChild(button);
   });
