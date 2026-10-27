@@ -185,7 +185,7 @@ function showParentRewards() {
   if (!pin || !parentUnlocked) {
     const note = document.createElement('p');
     note.textContent = pin
-      ? '🔒 Enter the parent PIN to approve rewards or change them.'
+      ? '🔒 Locked. Type your PIN and tap Unlock to approve rewards, edit the rewards list and prices, and add your phone number.'
       : 'Set a 4-digit parent PIN. Only grown-ups who know it can approve or change rewards.';
     const input = document.createElement('input');
     input.type = 'password';
