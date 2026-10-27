@@ -50,7 +50,8 @@
   <!-- 1. Upload a photo -->
   <div class="panel">
     <h2>📷 Upload a photo</h2>
-    <label class="choice"><input type="radio" name="kind" value="worksheet" checked>Worksheet, quiz or test</label>
+    <label class="choice"><input type="radio" name="kind" value="auto" checked>✨ Let Claude figure it out (recommended)</label>
+    <label class="choice"><input type="radio" name="kind" value="worksheet">Worksheet, quiz or test</label>
     <label class="choice"><input type="radio" name="kind" value="report-card">Report card</label>
     <label class="choice"><input type="radio" name="kind" value="campus">Infinite Campus screenshot (grades, assignments or teacher comments)</label>
     <label>Photo (JPG or PNG)</label>
@@ -216,21 +217,26 @@
       }
 
       const kind = document.querySelector('input[name="kind"]:checked').value;
-      localStorage.setItem('kiddyKatLastUpload', kind);     // remember the choice for next time
+      localStorage.setItem('kiddyKatLastUpload2', kind);     // remember the choice for next time
       const form = new FormData();
       form.append('photo', file);
       status.textContent = '⏳ Claude is reading the photo... (about 10 seconds)';
 
       try {
         const response = await fetch('/read-' + kind, { method: 'POST', body: form });
-        const result = await response.json();
+        let result = await response.json();
         if (!response.ok) {
           status.textContent = '⚠️ ' + result.error;
           return;
         }
-        if (kind === 'worksheet') {
+        let readAs = kind;
+        if (kind === 'auto') {             // the server tells us what it decided the picture was
+          readAs = result.kind;
+          result = result.result;
+        }
+        if (readAs === 'worksheet') {
           fillForm(result);
-        } else if (kind === 'campus') {
+        } else if (readAs === 'campus') {
           saveCampus(result);
         } else {
           saveReportCard(result);
@@ -302,11 +308,35 @@
       add('p', `Last updated ${campus.updated}`);
 
       // Missing first: these are the ones that need action
-      const missing = campus.assignments.filter(a => a.status === 'missing' || a.status === 'late');
-      add('h3', missing.length ? `⚠️ Missing or late (${missing.length})` : '✅ Nothing missing');
+      // Not turned in AND past the due date = really missing. Due later = still coming up.
+      const missing = reallyMissing();
+      const upcoming = campus.assignments.filter(a => (a.status === 'missing' || a.status === 'late') && isFuture(a.due));
+      add('h3', missing.length ? `❌ Missing or late (${missing.length})` : '✅ Nothing missing');
       missing.forEach(a => add('div', `${a.status === 'late' ? '⏰ Late' : '❌ Missing'}: ${a.name}` +
         (a.class ? ` (${a.class})` : '') + (a.due ? `, due ${a.due}` : ''), 'row missing'));
-      if (missing.length) add('p', '💡 Tip: add these to the kid\'s After School list on their phone (Grown-ups → Task lists).');
+      if (upcoming.length) {
+        add('h3', `⏳ Coming up (${upcoming.length})`);
+        upcoming.forEach(a => add('div', `⏳ ${a.name}` + (a.class ? ` (${a.class})` : '') + `, due ${a.due}`, 'row'));
+      }
+
+      // Catch-up plan: oldest first, a few a day
+      if (missing.length) {
+        add('h3', '📚 Catch-up plan');
+        const perDay = 3;
+        const days = Math.ceil(missing.length / perDay);
+        add('p', `${missing.length} to catch up on. At ${perDay} a day, oldest first, that's about ${days} school day${days === 1 ? '' : 's'}.`);
+        const copy = add('button', '📋 Copy catch-up list');
+        const note = add('div', '');
+        copy.addEventListener('click', async () => {
+          const text = missing.map(a => `${a.name}${a.class ? ' (' + a.class + ')' : ''}`).join('\n');
+          try {
+            await navigator.clipboard.writeText(text);
+            note.textContent = '✅ Copied! On the kid\'s phone: ⚙️ Grown-ups → 📚 Catch-up list → paste → Save.';
+          } catch (err) {
+            note.textContent = 'Could not copy automatically. Select the missing list above and copy it.';
+          }
+        });
+      }
 
       // Class grades
       if (campus.classes.length) {
@@ -349,6 +379,22 @@
         localStorage.removeItem(keyFor('kiddyKatCampus'));
         document.getElementById('campus').style.display = 'none';
       });
+    }
+
+    // True when a date like 11/6/2026 is after today
+    function isFuture(due) {
+      if (!due) return false;
+      const date = new Date(due);
+      const today = new Date();
+      today.setHours(23, 59, 59);
+      return !isNaN(date) && date > today;
+    }
+
+    // Missing or late, and already past due, oldest first
+    function reallyMissing() {
+      return campus.assignments
+        .filter(a => (a.status === 'missing' || a.status === 'late') && !isFuture(a.due))
+        .sort((a, b) => new Date(a.due || 0) - new Date(b.due || 0));
     }
 
     function saveCampusGrades() {
@@ -500,7 +546,7 @@
           if (c.percent >= 90) great.push(`🏫 ${c.name} (${c.percent}% in Infinite Campus)`);
           if (c.percent < 70) practice.push(`🏫 ${c.name} (${c.percent}% in Infinite Campus)`);
         });
-        const missing = campus.assignments.filter(a => a.status === 'missing').length;
+        const missing = reallyMissing().length;
         if (missing) practice.unshift(`❌ ${missing} missing assignment${missing === 1 ? '' : 's'} in Infinite Campus`);
       }
 
@@ -595,7 +641,7 @@
     showSpecials();
     // ---------- Start up ----------
     showKidPicker();
-    const lastUpload = localStorage.getItem('kiddyKatLastUpload');
+    const lastUpload = localStorage.getItem('kiddyKatLastUpload2');
     if (lastUpload) {
       const option = document.querySelector(`input[name="kind"][value="${lastUpload}"]`);
       if (option) option.checked = true;

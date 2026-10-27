@@ -142,6 +142,43 @@ def read_campus():
     return jsonify(ask_claude(photo.read(), media_type, CAMPUS_PROMPT, max_tokens=4096))
 
 
+WHAT_IS_IT_PROMPT = """What kind of picture is this? Answer with ONLY one word:
+worksheet   = a graded school assignment, quiz or test on paper
+reportcard  = a printed report card or progress report
+campus      = a screenshot of the Infinite Campus app or website (grades, assignments or comments)
+other       = anything else"""
+
+
+@app.post("/read-auto")
+def read_auto():
+    """Figures out what kind of picture it is, then reads it the right way."""
+    photo = request.files.get("photo")
+    if not photo:
+        return jsonify(error="No photo was sent."), 400
+    media_type = MEDIA_TYPES.get(Path(photo.filename).suffix.lower())
+    if not media_type:
+        return jsonify(error="Please use a JPG, PNG or WebP photo. iPhone HEIC photos won't work."), 400
+
+    image = photo.read()
+    message = client.messages.create(
+        model="claude-sonnet-5-5",
+        max_tokens=300,          # room in case Claude thinks before answering
+        messages=[{"role": "user", "content": [
+            {"type": "image", "source": {"type": "base64", "media_type": media_type,
+                                         "data": base64.standard_b64encode(image).decode()}},
+            {"type": "text", "text": WHAT_IS_IT_PROMPT}]}],
+    )
+    answer = "".join(b.text for b in message.content if b.type == "text").strip().lower()
+
+    if "campus" in answer:
+        return jsonify(kind="campus", result=ask_claude(image, media_type, CAMPUS_PROMPT, max_tokens=4096))
+    if "report" in answer:
+        return jsonify(kind="report-card", result=ask_claude(image, media_type, REPORT_CARD_PROMPT))
+    if "worksheet" in answer:
+        return jsonify(kind="worksheet", result=ask_claude(image, media_type, WORKSHEET_PROMPT))
+    return jsonify(error="That doesn't look like schoolwork, a report card or an Infinite Campus screenshot."), 400
+
+
 # --- Errors ---------------------------------------------------------------
 # Send problems back as a short message the page can show, instead of a web page
 

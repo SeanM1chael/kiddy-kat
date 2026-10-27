@@ -196,6 +196,13 @@
     .historyRow { font-size: 13px; color: #555; padding: 2px 0; }
     #parentWallet textarea { height: 110px; }
 
+    /* Catch-up card */
+    #catchupCard { display: none; background: #fff0f6; border-radius: 20px; padding: 14px; margin: 12px auto; width: 80%; }
+    .catchupTitle { font-size: 18px; font-weight: bold; margin-bottom: 8px; }
+    .catchupItem { display: block; width: 100%; text-align: left; font-size: 18px; padding: 12px; margin: 6px 0;
+                   border: none; border-radius: 12px; background: white; }
+    .catchupNote { font-size: 15px; color: #666; margin-top: 6px; }
+
     #album { display: none; position: fixed; inset: 0; background: var(--bg); padding: 6vh 12px 30px;
              z-index: 12; overflow-y: auto; }
     #album .closeGame { position: absolute; top: 16px; right: 16px; font-size: 24px; background: none; border: none; }
@@ -322,6 +329,7 @@
 
   <div id="today"></div>
   <div id="weather">🌤️ Checking the weather...</div>
+  <div id="catchupCard"></div>
 
   <!-- The tasks are filled in by JavaScript from each kid's own lists -->
   <div id="morning" class="list"></div>
@@ -377,6 +385,10 @@
 
     <h2>🎁 Rewards (parents)</h2>
     <div id="parentRewards"></div>
+    <hr>
+
+    <h2>📚 Catch-up list</h2>
+    <div id="parentCatchUp"></div>
     <hr>
 
     <h2>💵 Wallet (parents)</h2>
@@ -446,6 +458,7 @@
   <script src="challenge.js"></script>
   <script src="rewards.js"></script>
   <script src="wallet.js"></script>
+  <script src="catchup.js"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -543,12 +556,13 @@
       ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist', 'kiddyKatPet', 'kiddyKatPets', 'kiddyKatActivePet', 'kiddyKatPractice', 'kiddyKatMathLevel', 'kiddyKatChallenge', 'kiddyKatTrophies',
        'kiddyKatFollowers', 'kiddyKatStreak', 'kiddyKatStickers', 'kiddyKatSetsDone',
        'kiddyKatRewards', 'kiddyKatRewardRequests', 'kiddyKatGoal', 'kiddyKatProofPhotos',
-       'kiddyKatWallet', 'kiddyKatMoney']
+       'kiddyKatWallet', 'kiddyKatMoney', 'kiddyKatCatchUp']
         .forEach(k => localStorage.removeItem(k));
       stickerBook = {};
       rewardList = null;
       wallet = null;
       money = null;
+      catchUp = { items: [], perDay: 3, pay: 50 };
       rewardRequests = [];
       setsDone = [];
       profile = null;
@@ -657,6 +671,7 @@
       parentUnlocked = unlocked;        // PIN already typed, so rewards open too
       showParentRewards();
       showParentWallet();
+      showParentCatchUp();
       showProofPhotos();
       const box = document.getElementById('settings');
       box.style.display = 'block';
@@ -804,6 +819,7 @@
     showPracticeStats();
     showChallengeButton();
     checkPayday();          // runs payday if it's due
+    showCatchUp();
   </script>
 </body>
 </html>

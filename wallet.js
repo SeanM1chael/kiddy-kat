@@ -333,6 +333,7 @@ function showParentWallet() {
       logMoney(r.name, r.cents);
       saveWallet();
       showParentWallet();
+      if (typeof showCatchUp === 'function') showCatchUp();
     });
     const no = document.createElement('button');
     no.textContent = '↩️ Not done yet';
