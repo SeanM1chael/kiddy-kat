@@ -142,6 +142,55 @@ def read_campus():
     return jsonify(ask_claude(photo.read(), media_type, CAMPUS_PROMPT, max_tokens=4096))
 
 
+PACK_PROMPT = """Make a short practice pack for a kid.
+Kid's level: LEVEL
+Practice these topics (from schoolwork they missed or classes where they're struggling):
+TOPICS
+
+Write exactly COUNT multiple-choice questions. Mix the topics. Make them encouraging, clear and right for the kid's age.
+For young kids: short words, simple sentences, small numbers. For teens: real grade-level questions.
+Reply with ONLY JSON in this exact shape, nothing else:
+{"title": "short fun title for the pack",
+ "questions": [{"topic": "which topic", "q": "the question", "choices": ["A", "B", "C", "D"], "a": 0, "why": "one short sentence explaining the right answer"}]}
+Rules:
+- "a" is the position of the right answer in "choices" (0 to 3). Put the right answer in different positions.
+- Exactly 4 choices, all different, with exactly one correct answer. Double-check every answer is right.
+- No questions that need a picture. Keep each choice under 40 characters."""
+
+LEVELS = {
+    "kitten": "about 2nd grade (age 7-9)",
+    "tiger": "about 6th-7th grade (age 10-13)",
+    "lion": "about 10th-11th grade (age 14-17)",
+}
+
+
+@app.post("/make-pack")
+def make_pack():
+    """Asks Claude to write practice questions for the topics a kid needs."""
+    data = request.get_json(silent=True) or {}
+    topics = [t.strip() for t in data.get("topics", []) if str(t).strip()][:12]
+    if not topics:
+        return jsonify(error="Add at least one topic to practice."), 400
+    count = min(max(int(data.get("count", 10)), 5), 20)
+    level = LEVELS.get(data.get("level"), LEVELS["kitten"])
+    prompt = (PACK_PROMPT.replace("LEVEL", level)
+                         .replace("TOPICS", "\n".join("- " + t for t in topics))
+                         .replace("COUNT", str(count)))
+    message = client.messages.create(model="claude-sonnet-5-5", max_tokens=6000,
+                                     messages=[{"role": "user", "content": prompt}])
+    reply = "".join(b.text for b in message.content if b.type == "text")
+    pack = json.loads(reply[reply.find("{"): reply.rfind("}") + 1])
+
+    # Keep only questions that are built correctly
+    good = [q for q in pack.get("questions", [])
+            if isinstance(q.get("choices"), list) and len(q["choices"]) == 4
+            and len(set(q["choices"])) == 4 and q.get("a") in (0, 1, 2, 3) and q.get("q")]
+    if not good:
+        return jsonify(error="Claude's questions didn't come out right. Try again."), 500
+    return jsonify(title=pack.get("title", "Practice pack"), level=data.get("level", "kitten"),
+                   topics=topics, questions=good)
+
+
 WHAT_IS_IT_PROMPT = """What kind of picture is this? Answer with ONLY one word:
 worksheet   = a graded school assignment, quiz or test on paper
 reportcard  = a printed report card or progress report

@@ -169,6 +169,7 @@ function openPractice() {
   addMenuButton(menu, '➕ Math', startMath);
   addMenuButton(menu, '✏️ Fix the sentence', startGrammar);
   addMenuButton(menu, '🔊 Spelling', startSpelling);
+  if (typeof addPackButton === 'function') addPackButton(menu);   // Claude practice pack (packs.js)
 }
 
 function addMenuButton(box, label, action) {
@@ -256,8 +257,9 @@ function checkMathAnswer(button, picked, answer, fullProblem) {
 function endRound() {
   if (round.game === 'math') localStorage.setItem('kiddyKatMathLevel', round.level);
 
+  const total = round.total || QUESTIONS_PER_ROUND;
   practice.push({ date: new Date().toDateString(), game: round.game,
-                  correct: round.correct, total: QUESTIONS_PER_ROUND });
+                  correct: round.correct, total: total });
   savePractice();
   showPracticeStats();
 
@@ -267,7 +269,7 @@ function endRound() {
   clearGame();
   document.getElementById('gameTitle').textContent = '🎉 Round done!';
   document.getElementById('gameQuestion').textContent =
-    `You got ${round.correct} out of ${QUESTIONS_PER_ROUND}! ${'⭐'.repeat(round.correct)}`;
+    `You got ${round.correct} out of ${total}! ${'⭐'.repeat(round.correct)}`;
   document.getElementById('gameFeedback').textContent = pet
     ? `${treat || ''} +${round.correct} ⭐ for the shop! ${pay}`
     : 'Hatch a pet to give it treats!';
@@ -275,6 +277,7 @@ function endRound() {
   const box = document.getElementById('gameChoices');
   if (roundsToday() < ROUNDS_PER_DAY) addMenuButton(box, '▶️ Play again', openPractice);
   addMenuButton(box, '🏠 Done', closeGame);
+  if (round.game === 'pack') afterPackRound();
   round = null;
 }
 
@@ -294,7 +297,7 @@ function showPracticeStats() {
     byGame[p.game].total += p.total;
     byGame[p.game].rounds += 1;
   });
-  const names = { math: 'Math', grammar: 'Fix the sentence', spelling: 'Spelling' };
+  const names = { math: 'Math', grammar: 'Fix the sentence', spelling: 'Spelling', pack: 'Practice pack' };
   const lines = Object.keys(byGame).map(g =>
     `${names[g] || g}: ${byGame[g].rounds} round${byGame[g].rounds === 1 ? "" : "s"}, ${Math.round(byGame[g].correct / byGame[g].total * 100)}% right`);
   lines.unshift(`Last 7 days: ${week.length} rounds, ${Math.round(correct / total * 100)}% right`);
@@ -439,11 +442,12 @@ function checkWordAnswer(button, isRight, explain) {
 }
 
 function nextWordQuestion() {
-  if (round.number === QUESTIONS_PER_ROUND) { endRound(); return; }
+  if (round.number === (round.total || QUESTIONS_PER_ROUND)) { endRound(); return; }
   const item = round.items[round.number];
   round.number += 1;
   document.getElementById('gameFeedback').textContent = '';
-  if (round.game === 'grammar') showGrammarQuestion(item);
+  if (round.game === 'pack') showPackQuestion(item);
+  else if (round.game === 'grammar') showGrammarQuestion(item);
   else showSpellingQuestion(item);
 }
 

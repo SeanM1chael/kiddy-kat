@@ -22,7 +22,7 @@
     .great { background: #e6f9e6; }
     .practice { background: #fff0e0; }
     .box h3 { margin-top: 0; }
-    .del { margin: 0; padding: 4px 10px; background: #eee; }
+    .del { margin: 0; padding: 4px 10px; background: #eee; color: #333; }
     .tag { padding: 2px 10px; border-radius: 10px; font-size: 14px; }
     .strong { background: #c8f0c8; }
     .ok { background: #eee; }
@@ -34,6 +34,11 @@
     .comment { background: #f8f9fa; border-left: 4px solid #74c0fc; padding: 8px 12px; margin: 8px 0; }
     #campus .row { padding: 6px 0; border-bottom: 1px solid #eee; }
     #campus .row input { width: auto; margin-right: 8px; }
+    #packTopics label { font-weight: normal; margin-top: 6px; }
+    #packTopics input { width: auto; margin-right: 8px; }
+    .packQ { background: #f8f9fa; border-radius: 10px; padding: 10px 14px; margin: 8px 0; }
+    .packQ .right { color: #2b8a3e; font-weight: bold; }
+    .packQ .why { color: #666; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -106,6 +111,28 @@
       <h3>📚 Needs practice</h3>
       <ul id="practiceList"></ul>
     </div>
+  </div>
+
+  <!-- 3b. Practice pack made by Claude -->
+  <div class="panel">
+    <h2>🧠 Make a practice pack</h2>
+    <p>Claude writes practice questions from the topics below. Check the ones to practice.</p>
+    <div id="packTopics"></div>
+    <label>Other topics (separate with commas)</label>
+    <input id="packExtra" placeholder="fractions, main idea, Spanish colors">
+    <label>Level</label>
+    <select id="packLevel">
+      <option value="kitten">🐱 Kitten (about 2nd grade)</option>
+      <option value="tiger">🐯 Tiger (about 6th–7th grade)</option>
+      <option value="lion">🦁 Lion (about 10th–11th grade)</option>
+    </select>
+    <label>How many questions</label>
+    <select id="packCount">
+      <option>10</option><option selected>15</option><option>20</option>
+    </select>
+    <button onclick="makePack()">🧠 Make practice pack</button>
+    <div id="packStatus"></div>
+    <div id="packPreview"></div>
   </div>
 
   <!-- 4. Report card -->
@@ -639,6 +666,130 @@
     }
 
     showSpecials();
+
+    // ---------- Practice packs ----------
+    // Topics to practice: missed worksheet topics, low classes, and missing work
+    function packTopicList() {
+      const topics = [];
+      const counts = {};
+      grades.forEach(g => g.missed.forEach(t => {
+        const topic = t.toLowerCase();
+        counts[topic] = (counts[topic] || 0) + 1;
+      }));
+      Object.keys(counts).sort((a, b) => counts[b] - counts[a]).forEach(t => topics.push(t));
+      const low = new Set();
+      if (campus) campus.classes.forEach(c => { if (typeof c.percent === 'number' && c.percent < 70) low.add(c.name); });
+      if (reportCard) reportCard.classes.forEach(c => { if (c.percent !== null && c.percent < 70) low.add(c.name); });
+      low.forEach(name => topics.push(`${name} (main skills for this grade)`));
+      if (campus) reallyMissing().forEach(a => topics.push(`${a.name}${a.class ? ' (' + a.class + ')' : ''}`));
+      return [...new Set(topics)];
+    }
+
+    function showPackMaker() {
+      const box = document.getElementById('packTopics');
+      box.textContent = '';
+      const topics = packTopicList();
+      if (!topics.length) box.textContent = 'No missed topics yet. Type some below.';
+      topics.forEach((t, i) => {
+        const row = document.createElement('label');
+        const check = document.createElement('input');
+        check.type = 'checkbox';
+        check.value = t;
+        check.checked = i < 8;              // first 8 checked; Claude takes up to 12
+        row.append(check, t);
+        box.appendChild(row);
+      });
+      const level = localStorage.getItem(keyFor('kiddyKatPackLevel'));
+      if (level) document.getElementById('packLevel').value = level;
+      const saved = JSON.parse(localStorage.getItem(keyFor('kiddyKatPackMade')) || 'null');
+      if (saved) showPackPreview(saved);
+    }
+
+    async function makePack() {
+      const status = document.getElementById('packStatus');
+      const topics = [...document.querySelectorAll('#packTopics input:checked')].map(c => c.value)
+        .concat(splitList(document.getElementById('packExtra').value));
+      if (!topics.length) { status.textContent = 'Check or type at least one topic.'; return; }
+      if (topics.length > 12) { status.textContent = `That's ${topics.length} topics. Pick 12 or fewer.`; return; }
+      const level = document.getElementById('packLevel').value;
+      localStorage.setItem(keyFor('kiddyKatPackLevel'), level);
+      status.textContent = '⏳ Claude is writing questions... (about 30 seconds)';
+      try {
+        const response = await fetch('/make-pack', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topics: topics, level: level,
+                                 count: Number(document.getElementById('packCount').value) })
+        });
+        const pack = await response.json();
+        if (!response.ok || pack.error) { status.textContent = '⚠️ ' + (pack.error || 'Something went wrong.'); return; }
+        localStorage.setItem(keyFor('kiddyKatPackMade'), JSON.stringify(pack));
+        status.textContent = `✅ "${pack.title}": ${pack.questions.length} questions. Check them below, then copy the code.`;
+        showPackPreview(pack);
+      } catch (err) {
+        status.textContent = '⚠️ Could not reach the server. Is app.py running?';
+      }
+    }
+
+    // Pack code = "KKPACK1:" + base64, so it survives texting or email
+    function packCode(pack) {
+      const bytes = new TextEncoder().encode(JSON.stringify(
+        { title: pack.title, level: pack.level, topics: pack.topics, questions: pack.questions }));
+      let text = '';
+      bytes.forEach(b => text += String.fromCharCode(b));
+      return 'KKPACK1:' + btoa(text);
+    }
+
+    function showPackPreview(pack) {
+      const box = document.getElementById('packPreview');
+      box.textContent = '';
+      const title = document.createElement('h3');
+      title.textContent = `📦 ${pack.title} (${pack.questions.length} questions)`;
+      box.appendChild(title);
+
+      const copy = document.createElement('button');
+      copy.textContent = '📋 Copy pack code';
+      const note = document.createElement('div');
+      copy.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(packCode(pack));
+          note.textContent = '✅ Copied! Text or email it to yourself, then on the kid\'s phone: ' +
+                             '⚙️ Grown-ups → 🧠 Practice pack → paste → Load.';
+        } catch (err) {
+          note.textContent = 'Could not copy automatically.';
+        }
+      });
+      box.append(copy, note);
+
+      pack.questions.forEach((q, i) => {
+        const card = document.createElement('div');
+        card.className = 'packQ';
+        const ask = document.createElement('div');
+        ask.innerHTML = `<b>${i + 1}.</b> `;
+        ask.append(q.q + (q.topic ? `  [${q.topic}]` : ''));
+        const choices = document.createElement('div');
+        q.choices.forEach((c, n) => {
+          const span = document.createElement('span');
+          span.textContent = `${'ABCD'[n]}) ${c}   `;
+          if (n === q.a) span.className = 'right';
+          choices.appendChild(span);
+        });
+        const why = document.createElement('div');
+        why.className = 'why';
+        why.textContent = q.why || '';
+        const remove = document.createElement('button');
+        remove.className = 'del';
+        remove.textContent = 'Remove';
+        remove.addEventListener('click', () => {
+          pack.questions.splice(i, 1);
+          localStorage.setItem(keyFor('kiddyKatPackMade'), JSON.stringify(pack));
+          showPackPreview(pack);
+        });
+        card.append(ask, choices, why, remove);
+        box.appendChild(card);
+      });
+    }
+
     // ---------- Start up ----------
     showKidPicker();
     const lastUpload = localStorage.getItem('kiddyKatLastUpload2');
@@ -651,6 +802,7 @@
     showReportCard();
     showCampus();
     showGrades();
+    showPackMaker();
   </script>
 </body>
 </html>
