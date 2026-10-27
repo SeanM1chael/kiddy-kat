@@ -74,6 +74,43 @@ function trophies() {
   return Number(localStorage.getItem('kiddyKatTrophies') || 0);
 }
 
+function followers() {
+  return Number(localStorage.getItem('kiddyKatFollowers') || 0);
+}
+
+// Days in a row with a challenge win
+function winStreak() {
+  const streak = JSON.parse(localStorage.getItem('kiddyKatStreak') || 'null');
+  if (!streak) return 0;
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+  return (streak.last === new Date().toDateString() || streak.last === yesterday) ? streak.count : 0;
+}
+
+function addWinToStreak() {
+  const today = new Date().toDateString();
+  const count = winStreak() + 1;
+  localStorage.setItem('kiddyKatStreak', JSON.stringify({ last: today, count: count }));
+  return count;
+}
+
+// Chat lines that know the kid: their name, the pet's outfit, trophies, streak
+function personalCheers() {
+  const name = callName();   // her name or a nickname
+  const lines = [`GO ${name.toUpperCase()}!! 🔥`, `${name} is the best streamer ever`, `hi ${name}!! 👋`,
+                 `${name} for president 😂`, `I came back just to watch ${name}!!`, `${callName().toUpperCase()}!!! ❤️`];
+  if (pet) {
+    lines.push(`${pet.name} is sooo cute 😍`, `say hi to ${pet.name}!!`);
+    if (pet.wearing) {
+      const item = shopItem(pet.wearing);
+      lines.push(`love ${pet.name}'s ${item.name.toLowerCase()} ${item.emoji}`);
+    }
+  }
+  if (trophies() > 0) lines.push(`${trophies()} ${trophies() === 1 ? 'trophy' : 'trophies'} already?! legend 🏆`);
+  if (winStreak() > 1) lines.push(`${winStreak()} days in a row!! 🔥🔥`);
+  if (followers() > 0) lines.push(`one of your ${followers()} followers here ❤️`);
+  return lines;
+}
+
 function showChallengeButton() {
   const button = document.getElementById('challengeButton');
   if (!button) return;
@@ -84,20 +121,24 @@ function showChallengeButton() {
 
 // ---------- Opening the live screen ----------
 function openChallenge() {
-  live = { item: todayChallenge(), right: 0, viewers: Math.floor(Math.random() * 6) + 3 };
+  // More followers means more viewers show up
+  const startViewers = 3 + Math.floor(followers() / 3) + Math.floor(Math.random() * 6);
+  live = { item: todayChallenge(), right: 0, viewers: startViewers };
   document.getElementById('challenge').style.display = 'block';
   document.getElementById('chChat').textContent = '';
   document.getElementById('chTimer').textContent = '';
   document.getElementById('chTitle').textContent = live.item.text;
   updateViewers();
 
+  const host = pet ? pet.name : 'Kiddy Kat';
+  const name = callName();
   const area = document.getElementById('chArea');
   area.textContent = '';
   if (challengeStatus().done) {
-    addChat(pet ? pet.name : 'Kiddy Kat', 'You already won today! 🏆 New challenge tomorrow!');
+    addChat(host, `You already won today, ${name}! 🏆 New challenge tomorrow!`);
     addChallengeButton(area, '🔁 Do it again for fun', startCountdown);
   } else {
-    addChat(pet ? pet.name : 'Kiddy Kat', 'Welcome to the stream!! Today\'s challenge is ready 👀');
+    addChat(host, `Welcome to ${name}'s stream!! Today's challenge is ready 👀`);
     addChallengeButton(area, '▶️ Start the challenge!', startCountdown);
   }
   startChat();
@@ -249,9 +290,16 @@ function winChallenge() {
     localStorage.setItem('kiddyKatChallenge', JSON.stringify({ date: new Date().toDateString(), done: true }));
     localStorage.setItem('kiddyKatTrophies', trophies() + 1);
     addStars(5);
+
+    // New followers: more for a streak of days in a row
+    const streak = addWinToStreak();
+    const newFans = 3 + Math.floor(Math.random() * 5) + Math.min(streak - 1, 5);
+    localStorage.setItem('kiddyKatFollowers', followers() + newFans);
+    updateViewers();
+    setTimeout(() => addChat('Kiddy Kat', `🎉 +${newFans} new followers! You have ${followers()} now!`), 2000);
     setTimeout(() => celebrate(`Challenge complete! 🏆 +5 ⭐  (${trophies()} ${trophies() === 1 ? "trophy" : "trophies"})`, '🏆'), 2200);
   } else {
-    setTimeout(() => celebrate('You did it again! 🎉', '🏆'), 2200);
+    setTimeout(() => celebrate('You did it again! 🎉', '🏆', false), 2200);
   }
   showChallengeButton();
 }
@@ -272,14 +320,19 @@ function addChat(name, message) {
 }
 
 function updateViewers() {
-  document.getElementById('viewers').textContent = `👀 ${live.viewers}`;
+  if (!live) return;
+  document.getElementById('viewers').textContent = `👀 ${live.viewers}   ❤️ ${followers()} followers`;
 }
 
 function startChat() {
   clearInterval(chatTimer);
   chatTimer = setInterval(() => {
     if (!live) return;
-    if (Math.random() < 0.6) addChat(randomFan(), CHEERS[Math.floor(Math.random() * CHEERS.length)]);
+    if (Math.random() < 0.6) {
+      // About half the comments are personal
+      const pool = Math.random() < 0.5 ? personalCheers() : CHEERS;
+      addChat(randomFan(), pool[Math.floor(Math.random() * pool.length)]);
+    }
     if (Math.random() < 0.5) { live.viewers += Math.floor(Math.random() * 3); updateViewers(); }
   }, 2500);
 }

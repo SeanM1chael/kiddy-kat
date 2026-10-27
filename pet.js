@@ -339,5 +339,5 @@ function buyItem(item) {
   savePet();
   showPet();
   showShop();
-  celebrate(`${pet.name} got a ${item.name.toLowerCase()}!`, item.emoji);
+  celebrate(`${pet.name} got a ${item.name.toLowerCase()}!`, item.emoji, false);
 }

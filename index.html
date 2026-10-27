@@ -115,6 +115,21 @@
     @keyframes floatUp { to { transform: translateY(-60vh) scale(1.4); opacity: 0; } }
     #challengeButton.newChallenge { background: #e03131; }
 
+    /* Sticker album */
+    #stickerNote { font-size: 22px; font-weight: bold; color: var(--main); margin-top: 10px; padding: 0 12px; }
+    #album { display: none; position: fixed; inset: 0; background: var(--bg); padding: 6vh 12px 30px;
+             z-index: 12; overflow-y: auto; }
+    #album .closeGame { position: absolute; top: 16px; right: 16px; font-size: 24px; background: none; border: none; }
+    #albumCount { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+    .albumPage { background: white; border-radius: 16px; margin: 12px auto; padding: 10px; max-width: 420px; }
+    .albumPage h3 { margin: 4px 0 8px; }
+    .albumGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .albumSlot { position: relative; font-size: 40px; padding: 8px 0; border-radius: 12px; background: #f6f6f6; }
+    .albumSlot.rare { background: #e7f5ff; box-shadow: 0 0 0 2px #74c0fc; }
+    .albumSlot.superRare { background: #fff3bf; box-shadow: 0 0 0 3px #fab005; }
+    .albumSlot.missing { opacity: 0.35; }
+    .albumExtra { position: absolute; bottom: 2px; right: 6px; font-size: 13px; font-weight: bold; color: #555; }
+
     /* Learning games */
     #game { display: none; position: fixed; inset: 0; background: var(--bg); padding: 8vh 16px 0; z-index: 12; overflow-y: auto; }
     #game .closeGame { position: absolute; top: 16px; right: 16px; font-size: 24px; background: none; border: none; }
@@ -159,6 +174,15 @@
     <button onclick="openPractice()">🎮 Practice</button>
     <button id="shopButton" onclick="openShop()">🛍️ Shop</button>
     <button id="challengeButton" onclick="openChallenge()">🔴 Challenge</button>
+    <button onclick="openAlbum()">📒 Stickers</button>
+  </div>
+
+  <!-- Sticker album (filled in by stickers.js) -->
+  <div id="album">
+    <button class="closeGame" onclick="closeAlbum()">✖</button>
+    <h2>📒 My Sticker Album</h2>
+    <div id="albumCount"></div>
+    <div id="albumPages"></div>
   </div>
 
   <!-- Challenge of the Day, styled like a live stream (filled in by challenge.js) -->
@@ -222,6 +246,15 @@
     <div id="specialStatus"></div>
     <hr>
 
+    <h2>👤 Name and nicknames</h2>
+    <label>Name</label>
+    <input id="editName">
+    <label>Nicknames (separate with commas)</label>
+    <input id="editNicknames" placeholder="Junior, Juju">
+    <button onclick="saveNames()">Save names</button>
+    <div id="nameStatus"></div>
+    <hr>
+
     <h2>🎮 Practice</h2>
     <div id="practiceStats"></div>
     <hr>
@@ -235,6 +268,7 @@
     <h2>Who's using Kiddy Kat?</h2>
     <input id="setupName" placeholder="Your first name">
     <input id="setupAge" type="number" inputmode="numeric" placeholder="Your age">
+    <input id="setupNicknames" placeholder="Nicknames (optional), like Juju">
     <button onclick="startProfile()">Let's go!</button>
   </div>
 
@@ -263,9 +297,11 @@
     <div class="cat" id="partyAnimal">🐱</div>
     <h2 id="partyMessage">You did it!</h2>
     <div class="stickers" id="stickers"></div>
+    <div id="stickerNote"></div>
   </div>
 
   <script src="pet.js"></script>
+  <script src="stickers.js"></script>
   <script src="games.js"></script>
   <script src="challenge.js"></script>
   <script>
@@ -309,7 +345,9 @@
       animal = animalFor(age);
       document.body.className = animal.theme;
       document.getElementById('title').textContent = `${animal.emoji} Kiddy Kat`;
-      document.getElementById('hello').textContent = `Hi, ${profile.name}! You're a ${animal.name}!`;
+      document.getElementById('hello').textContent = `Hi, ${callName()}! You're a ${animal.name}!`;
+      document.getElementById('editName').value = profile.name;
+      document.getElementById('editNicknames').value = (profile.nicknames || []).join(', ');
       document.getElementById('partyAnimal').textContent = animal.emoji;
       if (!iconChoice && animal.theme !== 'kitten') {
         document.getElementById('appIcon').href = animal.theme + '.png';
@@ -322,6 +360,28 @@
       showTaskEditor();
     }
 
+    // Turns "Junior, Juju" into ["Junior", "Juju"]
+    function splitNames(text) {
+      return text.split(',').map(n => n.trim()).filter(n => n);
+    }
+
+    // Her name or one of her nicknames, picked at random
+    function callName() {
+      if (!profile) return 'you';
+      const names = [profile.name, ...(profile.nicknames || [])];
+      return names[Math.floor(Math.random() * names.length)];
+    }
+
+    function saveNames() {
+      const name = document.getElementById('editName').value.trim();
+      if (!name) { alert('Please type a name.'); return; }
+      profile.name = name;
+      profile.nicknames = splitNames(document.getElementById('editNicknames').value);
+      localStorage.setItem('kiddyKatProfile', JSON.stringify(profile));
+      applyProfile();
+      document.getElementById('nameStatus').textContent = '✅ Saved! The chat will use these names.';
+    }
+
     function startProfile() {
       const name = document.getElementById('setupName').value.trim();
       const age = Number(document.getElementById('setupAge').value);
@@ -329,15 +389,19 @@
         alert('Please type your name and your age.');
         return;
       }
-      profile = { name: name, birthYear: new Date().getFullYear() - age };
+      profile = { name: name, birthYear: new Date().getFullYear() - age,
+                  nicknames: splitNames(document.getElementById('setupNicknames').value) };
       localStorage.setItem('kiddyKatProfile', JSON.stringify(profile));
       applyProfile();
     }
 
     function changeProfile() {
       if (!confirm('Start over for a new person? This clears the name, tasks, pet and checkmarks on this phone.')) return;
-      ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist', 'kiddyKatPet', 'kiddyKatPractice', 'kiddyKatMathLevel', 'kiddyKatChallenge', 'kiddyKatTrophies']
+      ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist', 'kiddyKatPet', 'kiddyKatPractice', 'kiddyKatMathLevel', 'kiddyKatChallenge', 'kiddyKatTrophies',
+       'kiddyKatFollowers', 'kiddyKatStreak', 'kiddyKatStickers', 'kiddyKatSetsDone']
         .forEach(k => localStorage.removeItem(k));
+      stickerBook = {};
+      setsDone = [];
       profile = null;
       pet = null;
       practice = [];
@@ -492,19 +556,24 @@
       const done = list.querySelectorAll('.task.done').length;
       if (total > 0 && total === done) {
         const petMessage = carePet(list.id);          // feeds the pet (once per list per day)
-        celebrate(petMessage ? 'You did it! ' + petMessage : 'You did it!', animal.emoji);
+        // Stickers only the first time each list is finished today (when the pet gets cared for)
+        celebrate(petMessage ? 'You did it! ' + petMessage : 'You did it!', animal.emoji, petMessage !== null);
       }
     }
 
     // Shows the dancing screen with a message and 3 random stickers
-    function celebrate(message, dancer) {
-      let pick = '';
-      for (let i = 0; i < 3; i++) {
-        pick += stickers[Math.floor(Math.random() * stickers.length)];
+    // giveStickers = false for things like buying from the shop
+    function celebrate(message, dancer, giveStickers = true) {
+      let pick = '', note = '';
+      if (giveStickers) {
+        const earned = earnStickers(3);              // saved into the sticker album
+        pick = earned.emojis.join('');
+        note = earned.note;
       }
       document.getElementById('partyAnimal').textContent = dancer;
       document.getElementById('partyMessage').textContent = message;
       document.getElementById('stickers').textContent = pick;
+      document.getElementById('stickerNote').textContent = note;
       document.getElementById('party').style.display = 'block';
     }
 
