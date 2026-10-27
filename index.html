@@ -117,6 +117,17 @@
 
     /* Sticker album */
     #stickerNote { font-size: 22px; font-weight: bold; color: var(--main); margin-top: 10px; padding: 0 12px; }
+    #petHouse { display: none; position: fixed; inset: 0; background: var(--bg); padding: 6vh 12px 30px;
+                z-index: 12; overflow-y: auto; }
+    #petHouse .closeGame { position: absolute; top: 16px; right: 16px; font-size: 24px; background: none; border: none; }
+    #houseRooms { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .shopCard.playing { box-shadow: 0 0 0 3px var(--main); }
+    .shopCard.newEgg { background: #fff3bf; }
+    #petChooser .petOption.locked { opacity: 0.5; }
+    #petLockHint { font-size: 18px; margin-top: 8px; min-height: 24px; }
+    #petChooser .cancelChoose { background: none; color: #777; }
+    #petChooser { z-index: 14; }
+
     #album { display: none; position: fixed; inset: 0; background: var(--bg); padding: 6vh 12px 30px;
              z-index: 12; overflow-y: auto; }
     #album .closeGame { position: absolute; top: 16px; right: 16px; font-size: 24px; background: none; border: none; }
@@ -175,6 +186,14 @@
     <button id="shopButton" onclick="openShop()">🛍️ Shop</button>
     <button id="challengeButton" onclick="openChallenge()">🔴 Challenge</button>
     <button onclick="openAlbum()">📒 Stickers</button>
+    <button id="houseButton" onclick="openPetHouse()">🏠 Pet House</button>
+  </div>
+
+  <!-- Pet House (filled in by pet.js) -->
+  <div id="petHouse">
+    <button class="closeGame" onclick="closePetHouse()">✖</button>
+    <h2>🏠 Pet House</h2>
+    <div id="houseRooms"></div>
   </div>
 
   <!-- Sticker album (filled in by stickers.js) -->
@@ -275,12 +294,11 @@
   <!-- Pick and name a pet -->
   <div id="petChooser">
     <h2>Pick your pet!</h2>
-    <button class="petOption" id="option-kitten" onclick="pickPetType('kitten')">🐱</button>
-    <button class="petOption" id="option-puppy" onclick="pickPetType('puppy')">🐶</button>
-    <button class="petOption" id="option-bunny" onclick="pickPetType('bunny')">🐰</button>
-    <button class="petOption" id="option-flower" onclick="pickPetType('flower')">🌻</button>
+    <div id="petOptions"></div>
+    <div id="petLockHint"></div>
     <input id="petNameInput" placeholder="Your pet's name">
     <button onclick="hatchPet()">Hatch! 🥚</button>
+    <br><button class="cancelChoose" onclick="closePetChooser()">Not now</button>
   </div>
 
   <!-- Learning games (filled in by games.js) -->
@@ -397,13 +415,14 @@
 
     function changeProfile() {
       if (!confirm('Start over for a new person? This clears the name, tasks, pet and checkmarks on this phone.')) return;
-      ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist', 'kiddyKatPet', 'kiddyKatPractice', 'kiddyKatMathLevel', 'kiddyKatChallenge', 'kiddyKatTrophies',
+      ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist', 'kiddyKatPet', 'kiddyKatPets', 'kiddyKatActivePet', 'kiddyKatPractice', 'kiddyKatMathLevel', 'kiddyKatChallenge', 'kiddyKatTrophies',
        'kiddyKatFollowers', 'kiddyKatStreak', 'kiddyKatStickers', 'kiddyKatSetsDone']
         .forEach(k => localStorage.removeItem(k));
       stickerBook = {};
       setsDone = [];
       profile = null;
       pet = null;
+      petHouse = [];
       practice = [];
       showPet();
       document.getElementById('settings').style.display = 'none';

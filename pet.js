@@ -8,7 +8,22 @@ const PET_TYPES = {
   kitten: { stages: ['🥚', '🐱', '😺', '🐈'], sounds: ['Purr!', 'Meow!', '*swishes tail happily*'] },
   puppy:  { stages: ['🥚', '🐶', '🐕', '🦮'], sounds: ['Woof!', '*wags tail*', 'Arf arf!'] },
   bunny:  { stages: ['🥚', '🐰', '🐇', '🐇'], sounds: ['*hop hop*', '*wiggles nose*', '*happy thump*'] },
-  flower: { stages: ['🌰', '🌱', '🌷', '🌻'], sounds: ['*sways in the sun*', '*leaves wiggle*', '*smells sweet*'] }
+  flower: { stages: ['🌰', '🌱', '🌷', '🌻'], sounds: ['*sways in the sun*', '*leaves wiggle*', '*smells sweet*'] },
+  // Special pets, unlocked by milestones (see UNLOCKS below)
+  hamster: { stages: ['🥚', '🐭', '🐹', '🐹'], sounds: ['*stuffs cheeks*', '*runs on wheel*', 'Squeak!'] },
+  turtle:  { stages: ['🥚', '🐢', '🐢', '🐢'], sounds: ['*slow happy blink*', '*peeks out of shell*', '*tiny yawn*'] },
+  parrot:  { stages: ['🥚', '🐣', '🐥', '🦜'], sounds: ['Hello! Hello!', 'Pretty bird!', '*whistles a song*'] },
+  unicorn: { stages: ['🥚', '🦄', '🦄', '🦄'], sounds: ['*sparkles* ✨', '*rainbow neigh* 🌈', '*magic glitter*'] },
+  dragon:  { stages: ['🥚', '🦎', '🐲', '🐉'], sounds: ['*tiny puff of smoke*', 'RAWR! 🔥', '*flaps wings*'] }
+};
+
+// When each pet type can be picked. Starter pets are always available.
+const UNLOCKS = {
+  hamster: { need: () => grownCount() >= 1, hint: 'Raise 1 grown-up pet' },
+  turtle:  { need: () => grownCount() >= 1, hint: 'Raise 1 grown-up pet' },
+  parrot:  { need: () => grownCount() >= 1, hint: 'Raise 1 grown-up pet' },
+  unicorn: { need: () => (typeof trophies === 'function' ? trophies() : 0) >= 10, hint: 'Win 10 challenges' },
+  dragon:  { need: () => grownCount() >= 3, hint: 'Raise 3 grown-up pets' }
 };
 
 const STAGE_NAMES  = ['egg', 'baby', 'big kid', 'grown-up'];
@@ -23,33 +38,58 @@ const CARE = {
   bedtime:   'a cozy nap 😴'
 };
 
-let pet = JSON.parse(localStorage.getItem('kiddyKatPet') || 'null');
+// The Pet House: every pet the kid has raised. `pet` is the one out to play.
+// Older saves had just one pet under 'kiddyKatPet'; it becomes pet #1.
+let petHouse = JSON.parse(localStorage.getItem('kiddyKatPets') || 'null');
+if (!petHouse) {
+  const onlyPet = JSON.parse(localStorage.getItem('kiddyKatPet') || 'null');
+  petHouse = onlyPet ? [onlyPet] : [];
+}
+let pet = petHouse[Number(localStorage.getItem('kiddyKatActivePet') || 0)] || petHouse[0] || null;
 let pickedType = null;
 
 // Pets saved before the shop existed get the new fields
-if (pet) {
-  pet.stars = pet.stars || 0;
-  pet.owned = pet.owned || [];
-  pet.wearing = pet.wearing || null;
-  pet.poops = pet.poops || 0;
-}
+petHouse.forEach(p => {
+  p.stars = p.stars || 0;
+  p.owned = p.owned || [];
+  p.wearing = p.wearing || null;
+  p.poops = p.poops || 0;
+  p.cared = p.cared || {};
+  p.treats = p.treats || { date: '', count: 0 };
+});
 
 function savePet() {
-  localStorage.setItem('kiddyKatPet', JSON.stringify(pet));
+  localStorage.setItem('kiddyKatPets', JSON.stringify(petHouse));
+  localStorage.setItem('kiddyKatActivePet', Math.max(petHouse.indexOf(pet), 0));
 }
 
 function petToday() {
   return new Date().toDateString();
 }
 
-function petStage() {
+// Works for the pet out to play, or any pet passed in
+function petStage(p = pet) {
   let stage = 0;
-  STAGE_POINTS.forEach((points, i) => { if (pet.points >= points) stage = i; });
+  STAGE_POINTS.forEach((points, i) => { if (p.points >= points) stage = i; });
   return stage;
 }
 
-function stageName(stage) {
-  return pet.type === 'flower' ? FLOWER_NAMES[stage] : STAGE_NAMES[stage];
+function stageName(stage, p = pet) {
+  return p.type === 'flower' ? FLOWER_NAMES[stage] : STAGE_NAMES[stage];
+}
+
+function grownCount() {
+  return petHouse.filter(p => petStage(p) === 3).length;
+}
+
+// A new egg appears when every pet in the house is grown up
+function canHatchNewPet() {
+  return petHouse.length > 0 && grownCount() >= petHouse.length;
+}
+
+// Adds a note when the pet just became a grown-up
+function grownUpNote() {
+  return petStage() === 3 && canHatchNewPet() ? '  🥚 A new egg appeared in the Pet House!' : '';
 }
 
 // ---------- Drawing the pet card ----------
@@ -106,8 +146,39 @@ function petPoke() {
 }
 
 // ---------- Choosing and naming a pet ----------
+// The picture shown for each type in the chooser
+const CHOOSER_ICONS = { kitten: '🐱', puppy: '🐶', bunny: '🐰', flower: '🌻', hamster: '🐹',
+                        turtle: '🐢', parrot: '🦜', unicorn: '🦄', dragon: '🐉' };
+
 function openPetChooser() {
+  pickedType = null;
+  document.getElementById('petNameInput').value = '';
+  const box = document.getElementById('petOptions');
+  box.textContent = '';
+  Object.keys(PET_TYPES).forEach(type => {
+    const unlock = UNLOCKS[type];
+    const open = !unlock || unlock.need();
+    const button = document.createElement('button');
+    button.className = 'petOption';
+    button.id = 'option-' + type;
+    if (open) {
+      button.textContent = CHOOSER_ICONS[type];
+      button.addEventListener('click', () => pickPetType(type));
+    } else {
+      button.textContent = '🔒';
+      button.classList.add('locked');
+      button.addEventListener('click', () => {
+        document.getElementById('petLockHint').textContent = `🔒 ${unlock.hint} to unlock this one!`;
+      });
+    }
+    box.appendChild(button);
+  });
+  document.getElementById('petLockHint').textContent = '';
   document.getElementById('petChooser').style.display = 'block';
+}
+
+function closePetChooser() {
+  document.getElementById('petChooser').style.display = 'none';
 }
 
 function pickPetType(type) {
@@ -122,10 +193,14 @@ function hatchPet() {
     alert('Pick a pet and give it a name!');
     return;
   }
-  pet = { type: pickedType, name: name, points: 0, cared: {}, treats: { date: '', count: 0 },
-          stars: 0, owned: [], wearing: null, poops: 0 };
+  const newPet = { type: pickedType, name: name, points: 0, cared: {}, treats: { date: '', count: 0 },
+                   stars: 0, owned: [], wearing: null, poops: 0 };
+  if (pet) moveDailyStuff(pet, newPet);   // stars and today's progress follow the kid
+  petHouse.push(newPet);
+  pet = newPet;
   savePet();
   document.getElementById('petChooser').style.display = 'none';
+  closePetHouse();
   showPet();
   celebrate(`🎉 Welcome, ${name}!`, PET_TYPES[pet.type].stages[0]);
 }
@@ -142,7 +217,7 @@ function carePet(listName) {
   maybePoop();
   savePet();
   showPet();
-  if (petStage() > before) return `🎉 ${pet.name} grew into a ${stageName(petStage())}! +3 ⭐`;
+  if (petStage() > before) return `🎉 ${pet.name} grew into a ${stageName(petStage())}! +3 ⭐${grownUpNote()}`;
   return `${pet.name} got ${CARE[listName]}! +3 ⭐`;
 }
 
@@ -158,7 +233,7 @@ function givePetTreat() {
   maybePoop();
   savePet();
   showPet();
-  if (petStage() > before) return `🎉 ${pet.name} grew into a ${stageName(petStage())}!`;
+  if (petStage() > before) return `🎉 ${pet.name} grew into a ${stageName(petStage())}!${grownUpNote()}`;
   return `${pet.name} loved the treat! 🍪`;
 }
 
@@ -245,10 +320,14 @@ function showPetExtras() {
     room.textContent = '';
     poops.textContent = '';
     shopButton.style.display = 'none';
+    document.getElementById('houseButton').style.display = 'none';
     return;
   }
 
   shopButton.style.display = 'inline-block';
+  const houseButton = document.getElementById('houseButton');
+  houseButton.style.display = (petHouse.length > 1 || canHatchNewPet()) ? 'inline-block' : 'none';
+  houseButton.textContent = canHatchNewPet() ? '🏠 Pet House 🥚 NEW!' : '🏠 Pet House';
   stars.textContent = `⭐ ${pet.stars}`;
   wear.textContent = pet.wearing ? shopItem(pet.wearing).emoji : '';
   room.textContent = pet.owned
@@ -340,4 +419,80 @@ function buyItem(item) {
   showPet();
   showShop();
   celebrate(`${pet.name} got a ${item.name.toLowerCase()}!`, item.emoji, false);
+}
+
+// =====================================================================
+// The Pet House: all pets live here. One is out to play at a time;
+// the others nap happily and never get hungry or sad.
+// =====================================================================
+
+// Stars and today's care belong to the kid, so they move to whichever pet is out
+function moveDailyStuff(fromPet, toPet) {
+  toPet.stars = fromPet.stars;
+  toPet.cared = { ...fromPet.cared };
+  toPet.treats = { ...fromPet.treats };
+  fromPet.stars = 0;
+}
+
+function openPetHouse() {
+  document.getElementById('petHouse').style.display = 'block';
+  showPetHouse();
+}
+
+function closePetHouse() {
+  document.getElementById('petHouse').style.display = 'none';
+}
+
+function showPetHouse() {
+  const box = document.getElementById('houseRooms');
+  box.textContent = '';
+
+  petHouse.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'shopCard' + (p === pet ? ' playing' : '');
+    const look = document.createElement('div');
+    look.className = 'shopEmoji';
+    look.textContent = PET_TYPES[p.type].stages[petStage(p)] + (p.wearing ? shopItem(p.wearing).emoji : '');
+    const name = document.createElement('div');
+    name.textContent = `${p.name} the ${stageName(petStage(p), p)}`;
+    const status = document.createElement('button');
+    if (p === pet) {
+      status.textContent = '🎾 Playing now';
+      status.disabled = true;
+    } else {
+      status.textContent = '😴 Napping · Play!';
+      status.addEventListener('click', () => playWith(p));
+    }
+    card.append(look, name, status);
+    box.appendChild(card);
+  });
+
+  if (canHatchNewPet()) {
+    const egg = document.createElement('div');
+    egg.className = 'shopCard newEgg';
+    const look = document.createElement('div');
+    look.className = 'shopEmoji';
+    look.textContent = '🥚';
+    const name = document.createElement('div');
+    name.textContent = 'A new egg!';
+    const button = document.createElement('button');
+    button.textContent = 'Hatch it!';
+    button.addEventListener('click', openPetChooser);
+    egg.append(look, name, button);
+    box.appendChild(egg);
+  } else {
+    const hint = document.createElement('p');
+    const growing = petHouse.find(p => petStage(p) < 3);
+    hint.textContent = `🥚 Raise ${growing.name} to a grown-up to find a new egg!`;
+    box.appendChild(hint);
+  }
+}
+
+function playWith(p) {
+  moveDailyStuff(pet, p);
+  pet = p;
+  savePet();
+  showPet();
+  showPetHouse();
+  if (typeof showChallengeButton === 'function') showChallengeButton();
 }

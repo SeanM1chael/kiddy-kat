@@ -8,7 +8,8 @@ const ROUNDS_PER_DAY = 3;
 const QUESTIONS_PER_ROUND = 5;
 
 // Food that lands in the bowl, by pet type
-const PET_FOOD = { kitten: '🐟', puppy: '🦴', bunny: '🥕', flower: '💧' };
+const PET_FOOD = { kitten: '🐟', puppy: '🦴', bunny: '🥕', flower: '💧',
+                   hamster: '🌻', turtle: '🥬', parrot: '🍓', unicorn: '🌈', dragon: '🔥' };
 
 // Practice history, so grown-ups can see progress
 let practice = JSON.parse(localStorage.getItem('kiddyKatPractice') || '[]');
