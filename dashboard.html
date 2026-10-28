@@ -47,6 +47,12 @@
     .gift .amounts button.picked { background: var(--main); color: white; }
     .gift input, #fans input { width: 100%; font-size: 15px; padding: 8px; border: 2px solid #ffd8a8; border-radius: 10px; margin: 4px 0; }
     .giftList { font-size: 14px; color: #495057; padding: 2px 0; }
+    #leaguePanel { background: white; border-radius: 20px; padding: 16px; margin-bottom: 14px; }
+    #leaguePanel h3 { margin: 0 0 8px; }
+    #leaguePanel input { width: 100%; font-size: 15px; padding: 8px; border: 2px solid #ffd8a8; border-radius: 10px; margin: 4px 0; }
+    #leaguePanel button { font-size: 14px; padding: 6px 12px; margin: 4px 4px 0 0; }
+    .leagueCols { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 8px; }
+    .leagueCols > div { background: #fff9db; border-radius: 12px; padding: 8px 10px; font-size: 14px; }
     #fans { background: white; border-radius: 20px; padding: 16px; margin-bottom: 14px; }
     #fans h3 { margin: 0 0 8px; }
     .fanRow { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
@@ -74,6 +80,7 @@
       <button onclick="loadBoard()">🔄 Refresh</button>
       <button class="plain" onclick="logOut()">Log out</button>
     </div>
+    <div id="leaguePanel"></div>
     <div id="fans"></div>
     <div class="kids" id="kids"></div>
   </div>
@@ -157,6 +164,63 @@
       if (!result.kids.length) box.textContent = 'No kids yet. Add them in ⚙️ Grown-ups → ☁️ Online family on their phones.';
       result.kids.forEach(kid => box.appendChild(kidCard(kid)));
       showFans();
+      showLeaguePanel();
+    }
+
+    // ---------- League and team goal ----------
+    async function showLeaguePanel() {
+      const box = document.getElementById('leaguePanel');
+      const token = sessionStorage.getItem('kiddyKatDashToken');
+      const [standings, team] = await Promise.all([cloudCall('league_standings', { p_token: token }),
+                                                  cloudCall('family_team', { p_token: token })]);
+      box.textContent = '';
+      const add = (parent, tag, text, cls) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (cls) el.className = cls; parent.appendChild(el); return el; };
+      add(box, 'h3', '🏆 League and team goal');
+      if (!standings.ok) { add(box, 'div', '⚠️ ' + standings.error, 'empty'); return; }
+      if (team.ok) add(box, 'div', `🤝 Team goal this week: ${team.total} of ${team.goal} points` +
+                                   (team.total >= team.goal ? ' ✅ Reached! Everyone gets +10 ⭐' : ''));
+
+      if (!standings.in_league) {
+        add(box, 'div', 'Start a private league with cousins or friends, or join one with a code from another parent.', 'empty');
+        const name = add(box, 'input'); name.placeholder = 'League name, like Cousins League';
+        add(box, 'button').textContent = '➕ Start a league';
+        box.lastChild.addEventListener('click', async () => {
+          const r = await cloudCall('create_league', { p_token: token, p_name: name.value });
+          if (!r.ok) { alert(r.error); return; }
+          showLeaguePanel();
+        });
+        const code = add(box, 'input'); code.placeholder = 'League code from another parent, like LG-7QM4XZ';
+        add(box, 'button').textContent = '🔗 Join league';
+        box.lastChild.addEventListener('click', async () => {
+          const r = await cloudCall('join_league', { p_token: token, p_code: code.value });
+          if (!r.ok) { alert(r.error); return; }
+          showLeaguePanel();
+        });
+        return;
+      }
+
+      add(box, 'div', `${standings.name} · code ${standings.code} (share it with other parents)` +
+                      (standings.league_on ? '' : ' · ⏸️ Turned off for your kids'));
+      const cols = add(box, 'div', undefined, 'leagueCols');
+      Object.keys(standings.groups).forEach(animal => {
+        const g = standings.groups[animal];
+        const col = add(cols, 'div');
+        add(col, 'b', `${ANIMALS[animal] || ''} ${animal}s`);
+        g.top.forEach(k => add(col, 'div', `👑 ${k.nickname} (${k.family}): ${k.points}`));
+        if (g.others.length) add(col, 'div', 'Also: ' + g.others.map(k => k.nickname + (k.goal ? ' ⭐' : '')).join(', '));
+      });
+      if (standings.cup.length) add(box, 'div', '🏅 Family Cup: ' + standings.cup.map((c, i) => `${['🥇', '🥈', '🥉'][i]} ${c.family} (${c.average} avg)`).join('  '));
+      const toggle = add(box, 'button', standings.league_on ? '⏸️ Turn off for my kids' : '▶️ Turn back on', 'plain');
+      toggle.addEventListener('click', async () => {
+        await cloudCall('set_league_on', { p_token: token, p_on: !standings.league_on });
+        showLeaguePanel();
+      });
+      const leave = add(box, 'button', 'Leave league', 'plain');
+      leave.addEventListener('click', async () => {
+        if (!confirm(`Leave ${standings.name}?`)) return;
+        await cloudCall('leave_league', { p_token: token });
+        showLeaguePanel();
+      });
     }
 
     // ---------- Fans (grandparents, aunts, uncles) ----------
@@ -199,6 +263,13 @@
     // Reads one saved value safely ("null" if it's missing or broken)
     function read(data, key, fallback) {
       try { return data[key] ? JSON.parse(data[key]) : fallback; } catch (err) { return fallback; }
+    }
+
+    // Monday of this week, like "2026-10-26" (matches league.js on the phones)
+    function mondayKey(date = new Date()) {
+      const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      d.setDate(d.getDate() - (d.getDay() + 6) % 7);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
 
     function money(cents) {
@@ -253,6 +324,8 @@
       const listsPaid = wallet && wallet.paidToday && wallet.paidToday.date === today ? wallet.paidToday.lists : [];
 
       const todayBox = section('✅ Today');
+      const lg = read(data, '_league', null);
+      const weekPoints = lg && lg.week === mondayKey() ? lg.points : 0;
       let offset = 0;
       LISTS.forEach(([key, label]) => {
         const items = tasks ? tasks[key] || [] : [];
@@ -271,6 +344,10 @@
           add(todayBox, 'div', 'Still to do: ' + left.join(', '), 'left');
         }
       });
+
+      const lgRow = add(todayBox, 'div', undefined, 'list');
+      add(lgRow, 'span', '🏆 League points this week');
+      add(lgRow, 'span', weekPoints >= 60 ? `${weekPoints} ⭐ goal!` : `${weekPoints} of 60`, weekPoints >= 60 ? 'done' : 'none');
 
       // Waiting for a grown-up: decide right here. The kid's phone carries it out when it syncs.
       const rewards = read(data, 'kiddyKatRewardRequests', []).filter(r => r.status === 'waiting');

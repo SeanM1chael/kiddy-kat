@@ -99,6 +99,8 @@ function cloudCollect() {
   }
   // For the parent dashboard: the task lists this kid sees right now (including the starting lists)
   if (typeof tasks !== 'undefined' && tasks) data._tasks = JSON.stringify(tasks);
+  // For the League: this week's points (league.js)
+  if (typeof leagueForCloud === 'function') data._league = JSON.stringify(leagueForCloud());
   return data;
 }
 
@@ -210,7 +212,9 @@ function processParentInbox() {
       if (!pet) { keep.push(d); return; }
       pet.stars += d.stars;
       savePet();
-      messages.push(`⭐ ${d.from} sent you ${d.stars} star${d.stars === 1 ? '' : 's'}!` + (d.note ? ` "${d.note}"` : ''));
+      messages.push(d.kindness
+        ? `💛 ${d.from} sent you a kindness star!` + (d.note ? ` "${d.note}"` : '')
+        : `⭐ ${d.from} sent you ${d.stars} star${d.stars === 1 ? '' : 's'}!` + (d.note ? ` "${d.note}"` : ''));
     } else if (d.type === 'reward') {
       const request = rewardRequests.find(r => r.id === d.target);
       if (request && request.status === 'waiting') {

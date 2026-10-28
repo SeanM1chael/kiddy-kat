@@ -159,7 +159,7 @@ function requestReward(reward) {
   saveRewards();
   showPet();
   showRewards();
-  celebrate(`🎁 You earned "${reward.name}"! Show ${parentName()}!`, reward.emoji, false);
+  celebrate(`⏳ Asked ${parentName()} for "${reward.name}"! You'll find out soon.`, reward.emoji, false);
 }
 
 // Goal line on the pet card

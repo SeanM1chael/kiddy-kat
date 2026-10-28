@@ -266,6 +266,7 @@ function endRound() {
   const treat = givePetTreat();
   addStars(round.correct);                       // 1 star for each right answer
   const pay = earnMoney('round');                // practice pays into the wallet
+  if (typeof leagueRecord === 'function') leagueRecord('practice', round.correct);   // 1 league point per right answer
   clearGame();
   document.getElementById('gameTitle').textContent = '🎉 Round done!';
   document.getElementById('gameQuestion').textContent =

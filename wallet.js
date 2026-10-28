@@ -392,6 +392,7 @@ function payJob(r) {
   wallet.earnedThisPeriod += r.cents;
   logMoney(r.name, r.cents);
   saveWallet();
+  if (r.catchUp && typeof leagueRecord === 'function') leagueRecord('catchup');    // 5 league points
   if (typeof showCatchUp === 'function') showCatchUp();
 }
 

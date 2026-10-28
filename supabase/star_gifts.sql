@@ -1,7 +1,7 @@
 -- Star gifts: parents gift from the dashboard; Fans (grandparents, aunts, uncles)
 -- get their own login that can ONLY send stars and a cheer, with a weekly limit.
 
-create table fans (
+create table if not exists fans (
   id uuid primary key default gen_random_uuid(),
   family_id uuid not null references families(id) on delete cascade,
   name text not null,                    -- like "Grandma"
@@ -11,16 +11,16 @@ create table fans (
   locked_until timestamptz,
   created_at timestamptz default now()
 );
-create unique index fans_name on fans (family_id, lower(name));
+create unique index if not exists fans_name on fans (family_id, lower(name));
 
 -- Fans get their own wristbands, separate from parents and kids
-create table fan_sessions (
+create table if not exists fan_sessions (
   token uuid primary key default gen_random_uuid(),
   fan_id uuid not null references fans(id) on delete cascade,
   expires_at timestamptz default now() + interval '90 days'
 );
 
-create table star_gifts (
+create table if not exists star_gifts (
   id bigint generated always as identity primary key,
   family_id uuid not null references families(id) on delete cascade,
   kid_id uuid not null references kids(id) on delete cascade,

@@ -307,6 +307,7 @@ function winChallenge() {
   if (firstWinToday) {
     localStorage.setItem('kiddyKatChallenge', JSON.stringify({ date: new Date().toDateString(), done: true }));
     localStorage.setItem('kiddyKatTrophies', trophies() + 1);
+    if (typeof leagueRecord === 'function') leagueRecord('challenge');                 // 3 league points
     addStars(5);
     const pay = earnMoney('challenge');
 
