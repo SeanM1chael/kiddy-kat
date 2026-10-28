@@ -19,11 +19,11 @@ const PET_TYPES = {
 
 // When each pet type can be picked. Starter pets are always available.
 const UNLOCKS = {
-  hamster: { need: () => grownCount() >= 1, hint: 'Raise 1 grown-up pet' },
-  turtle:  { need: () => grownCount() >= 1, hint: 'Raise 1 grown-up pet' },
-  parrot:  { need: () => grownCount() >= 1, hint: 'Raise 1 grown-up pet' },
+  hamster: { need: () => grownCount() >= 1, hint: 'Get 1 pet to Level 4' },
+  turtle:  { need: () => grownCount() >= 1, hint: 'Get 1 pet to Level 4' },
+  parrot:  { need: () => grownCount() >= 1, hint: 'Get 1 pet to Level 4' },
   unicorn: { need: () => (typeof trophies === 'function' ? trophies() : 0) >= 10, hint: 'Win 10 challenges' },
-  dragon:  { need: () => grownCount() >= 3, hint: 'Raise 3 grown-up pets' }
+  dragon:  { need: () => grownCount() >= 3, hint: 'Get 3 pets to Level 4' }
 };
 
 const STAGE_NAMES  = ['egg', 'baby', 'big kid', 'grown-up'];
@@ -141,8 +141,8 @@ function showPet() {
     const lists = `${toGo} more checklist${toGo === 1 ? '' : 's'}`;
     if (stage === 0) nextLine.textContent = toGo === 1 ? `🥚💥 ${pet.name} is almost out! Finish 1 more checklist to hatch!`
                                                        : `🥚 ${pet.name} is inside the egg! Finish ${lists} to hatch.`;
-    else if (next) nextLine.textContent = `Finish ${lists} to grow into a ${stageName(stage + 1)}.`;
-    else nextLine.textContent = `🌟 ${pet.name} is all grown up!`;
+    else if (next) nextLine.textContent = `⭐ Level ${stage + 1} of 4 · ${lists} until ${pet.name} levels up!`;
+    else nextLine.textContent = `🌟 Level 4 of 4 · ${pet.name} is at the top level!`;
   }
 
   showPetExtras();
@@ -233,7 +233,7 @@ function carePet(listName) {
   maybePoop();
   savePet();
   showPet();
-  if (petStage() > before) return `🎉 ${pet.name} grew into a ${stageName(petStage())}! +3 ⭐${grownUpNote()}`;
+  if (petStage() > before) return `${petStage() === 1 ? '🐣 ' + pet.name + ' hatched!' : '⬆️ ' + pet.name + ' leveled up to Level ' + (petStage() + 1) + '!'} +3 ⭐${grownUpNote()}`;
   return `${pet.name} got ${CARE[listName]}! +3 ⭐`;
 }
 
@@ -249,7 +249,7 @@ function givePetTreat() {
   maybePoop();
   savePet();
   showPet();
-  if (petStage() > before) return `🎉 ${pet.name} grew into a ${stageName(petStage())}!${grownUpNote()}`;
+  if (petStage() > before) return `${petStage() === 1 ? '🐣 ' + pet.name + ' hatched!' : '⬆️ ' + pet.name + ' leveled up to Level ' + (petStage() + 1) + '!'}${grownUpNote()}`;
   return `${pet.name} loved the treat! 🍪`;
 }
 
@@ -474,7 +474,7 @@ function showPetHouse() {
     look.className = 'shopEmoji';
     look.textContent = PET_TYPES[p.type].stages[petStage(p)] + (p.wearing ? shopItem(p.wearing).emoji : '');
     const name = document.createElement('div');
-    name.textContent = `${p.name} the ${stageName(petStage(p), p)}`;
+    name.textContent = petStage(p) === 0 ? `${p.name} (egg)` : `${p.name} · Level ${petStage(p) + 1}`;
     const status = document.createElement('button');
     if (p === pet) {
       status.textContent = '🎾 Playing now';
@@ -503,7 +503,7 @@ function showPetHouse() {
   } else {
     const hint = document.createElement('p');
     const growing = petHouse.find(p => petStage(p) < 3);
-    hint.textContent = `🥚 Raise ${growing.name} to a grown-up to find a new egg!`;
+    hint.textContent = `🥚 Get ${growing.name} to Level 4 to find a new egg!`;
     box.appendChild(hint);
   }
 }
