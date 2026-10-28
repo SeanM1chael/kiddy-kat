@@ -52,6 +52,9 @@
     <button onclick="renameKid()">Rename</button>
   </div>
 
+  <!-- Family login: Claude in the cloud + sending to phones -->
+  <div class="panel" id="cloudPanel"></div>
+
   <!-- 1. Upload a photo -->
   <div class="panel">
     <h2>📷 Upload a photo</h2>
@@ -165,8 +168,20 @@
       <tbody id="specialRows"></tbody>
     </table>
     <button onclick="saveSpecials()">Save schedule</button>
+    <span class="kidBar" id="specialsSend" style="display:inline-flex"></span>
     <div id="specialStatus"></div>
   </div>
+  <!-- Moving to another computer or web address -->
+  <div class="panel">
+    <h2>📦 Move grades to another computer</h2>
+    <p>Grades are saved in this browser only. To move them (for example from the PC's app.py page to the
+       online page), copy them here, then paste them on the other page.</p>
+    <button onclick="copyAllGrades()">📋 Copy all grades data</button>
+    <textarea id="moveBox" style="width:100%;height:80px;margin-top:12px" placeholder="Paste copied grades data here"></textarea>
+    <button onclick="pasteAllGrades()">📥 Load pasted grades data</button>
+    <div id="moveStatus"></div>
+  </div>
+
   <!-- 5. All grades -->
   <div class="panel">
     <h2>📝 All grades</h2>
@@ -178,6 +193,7 @@
     </table>
   </div>
 
+  <script src="config.js"></script>
   <script>
     // ---------- Which kid ----------
     // The first kid keeps the original storage names, so nothing already saved is lost.
@@ -245,12 +261,18 @@
 
       const kind = document.querySelector('input[name="kind"]:checked').value;
       localStorage.setItem('kiddyKatLastUpload2', kind);     // remember the choice for next time
-      const form = new FormData();
-      form.append('photo', file);
       status.textContent = '⏳ Claude is reading the photo... (about 10 seconds)';
 
       try {
-        const response = await fetch('/read-' + kind, { method: 'POST', body: form });
+        let response;
+        if (cloudToken()) {                 // Claude in the cloud (no PC needed)
+          const image = await shrinkPhoto(file);
+          response = await claudeCloud({ action: 'read', kind: kind, media_type: 'image/jpeg', image: image });
+        } else {                            // app.py on this PC
+          const form = new FormData();
+          form.append('photo', file);
+          response = await fetch('/read-' + kind, { method: 'POST', body: form });
+        }
         let result = await response.json();
         if (!response.ok) {
           status.textContent = '⚠️ ' + result.error;
@@ -269,7 +291,9 @@
           saveReportCard(result);
         }
       } catch (err) {
-        status.textContent = '⚠️ Something went wrong. Is "py app.py" still running? (' + err.message + ')';
+        status.textContent = cloudToken()
+          ? '⚠️ Something went wrong reaching Claude. (' + err.message + ')'
+          : '⚠️ Not logged in to the family, and app.py isn\'t answering. Log in at the top of the page. (' + err.message + ')';
       }
     }
 
@@ -354,6 +378,28 @@
         add('p', `${missing.length} to catch up on. At ${perDay} a day, oldest first, that's about ${days} school day${days === 1 ? '' : 's'}.`);
         const copy = add('button', '📋 Copy catch-up list');
         const note = add('div', '');
+        if (cloudToken()) {
+          const bar = add('div', '', 'kidBar');
+          const pick = kidSelect();
+          const go = document.createElement('button');
+          go.textContent = '📲 Send catch-up list to phone';
+          bar.append('Send to', pick, go);
+          go.addEventListener('click', async () => {
+            const kid = cloudKids.find(k => k.nickname === pick.value);
+            if (!kid) return;
+            // Keep what they already turned in and their settings; replace the to-do part
+            let old = { items: [], perDay: 3, pay: 50 };
+            try { old = JSON.parse(kid.data.kiddyKatCatchUp) || old; } catch (err) {}
+            const done = old.items.filter(i => i.done);
+            const doneText = new Set(done.map(i => i.text));
+            const fresh = missing.map(a => `${a.name}${a.class ? ' (' + a.class + ')' : ''}`)
+              .filter(t => !doneText.has(t))
+              .map((t, i) => ({ id: Date.now() + i, text: t, done: false }));
+            const result = await sendToKid(pick.value, 'kiddyKatCatchUp',
+                                           { items: done.concat(fresh), perDay: old.perDay || 3, pay: old.pay || 50 });
+            note.textContent = result.ok ? `✅ Sent ${fresh.length} to ${pick.value}'s phone.` : '⚠️ ' + result.error;
+          });
+        }
         copy.addEventListener('click', async () => {
           const text = missing.map(a => `${a.name}${a.class ? ' (' + a.class + ')' : ''}`).join('\n');
           try {
@@ -667,6 +713,174 @@
 
     showSpecials();
 
+    // ---------- Family login: Claude in the cloud ----------
+    // Logging in lets this page use Claude in Supabase (no PC needed, $5/month cap)
+    // and send packs, catch-up lists and schedules straight to a kid's phone.
+    let cloudKids = [];
+
+    function cloudToken() { return sessionStorage.getItem('kiddyKatGradesToken'); }
+
+    function cleanFamilyCode(text) {
+      let code = String(text || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (code.startsWith('KAT') && code.length > 6) code = code.slice(3);
+      return 'KAT-' + code;
+    }
+
+    async function cloudRpc(name, args) {
+      try {
+        const response = await fetch(`${KIDDY_KAT_CLOUD.url}/rest/v1/rpc/${name}`, {
+          method: 'POST', headers: { apikey: KIDDY_KAT_CLOUD.key, 'Content-Type': 'application/json' },
+          body: JSON.stringify(args)
+        });
+        const body = await response.json().catch(() => ({}));
+        return response.ok ? body : { ok: false, error: body.message || `Server error ${response.status}` };
+      } catch (err) {
+        return { ok: false, error: 'No internet right now' };
+      }
+    }
+
+    // Calls the kiddy-claude function in Supabase. Gives back a normal fetch response.
+    async function claudeCloud(payload) {
+      const response = await fetch(`${KIDDY_KAT_CLOUD.url}/functions/v1/kiddy-claude`, {
+        method: 'POST', headers: { apikey: KIDDY_KAT_CLOUD.key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: cloudToken(), ...payload })
+      });
+      setTimeout(showCloudPanel, 500);      // update the "this month" meter
+      return response;
+    }
+
+    // Phone photos are big. Shrink to at most 2000 pixels on the long side, as a JPG.
+    // (This also turns iPhone HEIC photos into JPG when the browser can open them.)
+    async function shrinkPhoto(file) {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      await new Promise((ok, fail) => { img.onload = ok; img.onerror = () => fail(new Error('This browser can\'t open that photo type. Try a JPG or PNG.')); img.src = url; });
+      const scale = Math.min(1, 2000 / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      return canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+    }
+
+    function kidSelect() {
+      const pick = document.createElement('select');
+      pick.style.width = 'auto';
+      cloudKids.forEach(k => pick.add(new Option(`${{ kitten: '🐱', tiger: '🐯', lion: '🦁' }[k.animal] || ''} ${k.nickname}`, k.nickname)));
+      const remembered = localStorage.getItem(keyFor('kiddyKatCloudKid'));
+      if (remembered && cloudKids.some(k => k.nickname === remembered)) pick.value = remembered;
+      pick.addEventListener('change', () => localStorage.setItem(keyFor('kiddyKatCloudKid'), pick.value));
+      return pick;
+    }
+
+    async function sendToKid(nickname, key, value) {
+      localStorage.setItem(keyFor('kiddyKatCloudKid'), nickname);
+      const result = await cloudRpc('parent_send_to_kid', { p_token: cloudToken(), p_nickname: nickname,
+                                                            p_key: key, p_value: JSON.stringify(value) });
+      if (result.ok) loadCloudKids();
+      return result;
+    }
+
+    async function loadCloudKids() {
+      const result = await cloudRpc('family_overview', { p_token: cloudToken() });
+      if (!result.ok) return result;
+      cloudKids = result.kids;
+      return result;
+    }
+
+    async function showCloudPanel() {
+      const panel = document.getElementById('cloudPanel');
+      panel.textContent = '';
+      const add = (tag, text) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; panel.appendChild(el); return el; };
+      add('h2', '☁️ Family login');
+
+      if (cloudToken()) {
+        const meter = await cloudRpc('ai_start', { p_token: cloudToken() });
+        if (meter.ok || /limit/.test(meter.error || '')) {
+          if (!cloudKids.length) {
+            // First time after logging in: add the "Send to phone" buttons
+            await loadCloudKids();
+            showCampus();
+            showSpecialsSend();
+            const saved = JSON.parse(localStorage.getItem(keyFor('kiddyKatPackMade')) || 'null');
+            if (saved) showPackPreview(saved);
+          }
+          add('p', `✅ Logged in. Claude runs online, so the PC doesn't need app.py. Kids: ${cloudKids.map(k => k.nickname).join(', ')}`);
+          add('p', meter.ok
+            ? `🤖 Claude this month: $${(meter.spent_micro / 1e6).toFixed(2)} of $${(meter.cap_micro / 1e6).toFixed(2)}`
+            : '🛑 ' + meter.error);
+          const out = add('button', 'Log out');
+          out.style.background = '#eee'; out.style.color = '#333';
+          out.addEventListener('click', () => { sessionStorage.removeItem('kiddyKatGradesToken'); cloudKids = []; location.reload(); });
+          return;
+        }
+        sessionStorage.removeItem('kiddyKatGradesToken');      // login ran out
+      }
+
+      add('p', 'Log in to use Claude online and send things to the kids\' phones.');
+      add('label', 'Family code');
+      const code = add('input');
+      add('label', 'Online parent PIN');
+      const pin = add('input');
+      pin.type = 'password';
+      const go = add('button', 'Log in');
+      const note = add('div');
+      const logIn = async () => {
+        note.textContent = '⏳ Checking...';
+        const result = await cloudRpc('parent_login', { p_code: cleanFamilyCode(code.value), p_pin: pin.value });
+        if (!result.ok) { note.textContent = '⚠️ ' + result.error; return; }
+        sessionStorage.setItem('kiddyKatGradesToken', result.token);
+        location.reload();
+      };
+      go.addEventListener('click', logIn);
+      pin.addEventListener('keydown', e => { if (e.key === 'Enter') logIn(); });
+    }
+
+    // Specials are per kid (each school has its own days), so they go to one phone at a time
+    function showSpecialsSend() {
+      const box = document.getElementById('specialsSend');
+      box.textContent = '';
+      if (!cloudToken() || !cloudKids.length) return;
+      const pick = kidSelect();
+      const go = document.createElement('button');
+      go.textContent = '📲 Send schedule to phone';
+      go.addEventListener('click', async () => {
+        saveSpecials();
+        const result = await sendToKid(pick.value, 'kiddyKatSpecials', specials);
+        document.getElementById('specialStatus').textContent = result.ok
+          ? `✅ Sent to ${pick.value}'s phone. Their morning card will use it.` : '⚠️ ' + result.error;
+      });
+      box.append(pick, go);
+    }
+
+    // ---------- Moving grades to another computer ----------
+    async function copyAllGrades() {
+      const data = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('kiddyKat')) data[key] = localStorage.getItem(key);
+      }
+      const text = 'KKGRADES1:' + JSON.stringify(data);
+      try {
+        await navigator.clipboard.writeText(text);
+        document.getElementById('moveStatus').textContent = `✅ Copied ${Object.keys(data).length} saved items. Paste them on the other page.`;
+      } catch (err) {
+        document.getElementById('moveBox').value = text;
+        document.getElementById('moveStatus').textContent = 'Copy everything in the box above.';
+      }
+    }
+
+    function pasteAllGrades() {
+      const text = document.getElementById('moveBox').value.trim();
+      if (!text.startsWith('KKGRADES1:')) { document.getElementById('moveStatus').textContent = '⚠️ That isn\'t copied grades data.'; return; }
+      let data;
+      try { data = JSON.parse(text.slice(10)); } catch (err) { document.getElementById('moveStatus').textContent = '⚠️ The pasted data is cut off. Copy it again.'; return; }
+      if (!confirm(`Load ${Object.keys(data).length} saved items? This replaces the grades on this page.`)) return;
+      Object.keys(data).filter(k => k.startsWith('kiddyKat')).forEach(k => localStorage.setItem(k, data[k]));
+      location.reload();
+    }
+
     // ---------- Practice packs ----------
     // Topics to practice: missed worksheet topics, low classes, and missing work
     function packTopicList() {
@@ -715,19 +929,18 @@
       localStorage.setItem(keyFor('kiddyKatPackLevel'), level);
       status.textContent = '⏳ Claude is writing questions... (about 30 seconds)';
       try {
-        const response = await fetch('/make-pack', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topics: topics, level: level,
-                                 count: Number(document.getElementById('packCount').value) })
-        });
+        const ask = { topics: topics, level: level, count: Number(document.getElementById('packCount').value) };
+        const response = cloudToken()
+          ? await claudeCloud({ action: 'pack', ...ask })
+          : await fetch('/make-pack', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(ask) });
         const pack = await response.json();
         if (!response.ok || pack.error) { status.textContent = '⚠️ ' + (pack.error || 'Something went wrong.'); return; }
         localStorage.setItem(keyFor('kiddyKatPackMade'), JSON.stringify(pack));
-        status.textContent = `✅ "${pack.title}": ${pack.questions.length} questions. Check them below, then copy the code.`;
+        status.textContent = `✅ "${pack.title}": ${pack.questions.length} questions. Check them below, then send it.`;
         showPackPreview(pack);
       } catch (err) {
-        status.textContent = '⚠️ Could not reach the server. Is app.py running?';
+        status.textContent = '⚠️ Could not reach Claude. Log in to the family at the top of the page.';
       }
     }
 
@@ -760,6 +973,25 @@
         }
       });
       box.append(copy, note);
+      if (cloudToken()) {
+        const send = document.createElement('div');
+        send.className = 'kidBar';
+        const pick = kidSelect();
+        const go = document.createElement('button');
+        go.textContent = '📲 Send to phone';
+        const sent = document.createElement('div');
+        go.addEventListener('click', async () => {
+          if (!pick.value) return;
+          const forPhone = { title: pack.title, topics: pack.topics || [], questions: pack.questions,
+                             queue: pack.questions.map((q, i) => i).sort(() => Math.random() - 0.5),
+                             stats: {}, added: new Date().toLocaleDateString() };
+          const result = await sendToKid(pick.value, 'kiddyKatPack', forPhone);
+          sent.textContent = result.ok ? `✅ Sent! It shows up in ${pick.value}'s 🎮 Practice within a minute or two.`
+                                       : '⚠️ ' + result.error;
+        });
+        send.append('Send to', pick, go);
+        box.append(send, sent);
+      }
 
       pack.questions.forEach((q, i) => {
         const card = document.createElement('div');
@@ -803,6 +1035,7 @@
     showCampus();
     showGrades();
     showPackMaker();
+    showCloudPanel();
   </script>
 </body>
 </html>
