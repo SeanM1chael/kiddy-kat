@@ -204,8 +204,14 @@ function processParentInbox() {
   if (!inbox.length) return;
   const done = JSON.parse(localStorage.getItem('kiddyKatInboxDone') || '[]');
   const messages = [];
+  const keep = [];                       // star gifts wait here until there's a pet to give them to
   inbox.filter(d => !done.includes(d.id)).forEach(d => {
-    if (d.type === 'reward') {
+    if (d.type === 'stars') {
+      if (!pet) { keep.push(d); return; }
+      pet.stars += d.stars;
+      savePet();
+      messages.push(`⭐ ${d.from} sent you ${d.stars} star${d.stars === 1 ? '' : 's'}!` + (d.note ? ` "${d.note}"` : ''));
+    } else if (d.type === 'reward') {
       const request = rewardRequests.find(r => r.id === d.target);
       if (request && request.status === 'waiting') {
         decideReward(request, d.approved);
@@ -223,8 +229,9 @@ function processParentInbox() {
     done.push(d.id);
   });
   localStorage.setItem('kiddyKatInboxDone', JSON.stringify(done.slice(-100)));
-  localStorage.setItem('kiddyKatParentInbox', '[]');
+  localStorage.setItem('kiddyKatParentInbox', JSON.stringify(keep));
   if (typeof showPet === 'function') showPet();
+  if (keep.length) messages.push(`🥚 ${keep.reduce((n, d) => n + d.stars, 0)} gift stars are waiting. Hatch a pet to get them!`);
   if (messages.length && typeof celebrate === 'function') celebrate(messages.join(' '), '🎉', false);
 }
 

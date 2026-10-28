@@ -203,6 +203,8 @@ function hatchPet() {
   closePetHouse();
   showPet();
   celebrate(`🎉 Welcome, ${name}!`, PET_TYPES[pet.type].stages[0]);
+  // Gift stars that were waiting for a pet (sync.js)
+  if (typeof processParentInbox === 'function') setTimeout(processParentInbox, 3500);
 }
 
 // ---------- Caring for the pet ----------

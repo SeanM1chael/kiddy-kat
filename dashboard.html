@@ -41,6 +41,18 @@
     .waiting.sent { background: #e7f5ff; }
     .row { display: flex; justify-content: space-between; padding: 2px 0; }
     .empty { color: var(--muted); }
+    .gift { margin-top: 12px; }
+    .gift .amounts { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+    .gift .amounts button { background: #fff3bf; color: #333; padding: 6px 12px; }
+    .gift .amounts button.picked { background: var(--main); color: white; }
+    .gift input, #fans input { width: 100%; font-size: 15px; padding: 8px; border: 2px solid #ffd8a8; border-radius: 10px; margin: 4px 0; }
+    .giftList { font-size: 14px; color: #495057; padding: 2px 0; }
+    #fans { background: white; border-radius: 20px; padding: 16px; margin-bottom: 14px; }
+    #fans h3 { margin: 0 0 8px; }
+    .fanRow { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+    .fanRow button, #fans .small { font-size: 14px; padding: 6px 12px; }
+    .fanForm { display: none; margin-top: 8px; }
+    .fanLink { font-size: 14px; color: var(--muted); margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -62,6 +74,7 @@
       <button onclick="loadBoard()">🔄 Refresh</button>
       <button class="plain" onclick="logOut()">Log out</button>
     </div>
+    <div id="fans"></div>
     <div class="kids" id="kids"></div>
   </div>
 
@@ -143,6 +156,44 @@
       box.textContent = '';
       if (!result.kids.length) box.textContent = 'No kids yet. Add them in ⚙️ Grown-ups → ☁️ Online family on their phones.';
       result.kids.forEach(kid => box.appendChild(kidCard(kid)));
+      showFans();
+    }
+
+    // ---------- Fans (grandparents, aunts, uncles) ----------
+    async function showFans() {
+      const box = document.getElementById('fans');
+      const result = await cloudCall('list_fans', { p_token: sessionStorage.getItem('kiddyKatDashToken') });
+      box.textContent = '';
+      const add = (parent, tag, text, cls) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (cls) el.className = cls; parent.appendChild(el); return el; };
+      add(box, 'h3', '👵 Fans: family who can send stars');
+      if (!result.ok) { add(box, 'div', '⚠️ ' + result.error, 'empty'); return; }
+      if (!result.fans.length) add(box, 'div', 'No fans yet. Add Grandma, Grandpa, an aunt or uncle.', 'empty');
+      result.fans.forEach(f => {
+        const row = add(box, 'div', undefined, 'fanRow');
+        add(row, 'span', `${f.name}: up to ${f.weekly_limit} ⭐ per kid each week (${f.given_this_week} sent this week)`);
+        const remove = add(row, 'button', 'Remove', 'plain');
+        remove.addEventListener('click', async () => {
+          if (!confirm(`Remove ${f.name}? They won't be able to send stars anymore.`)) return;
+          await cloudCall('remove_fan', { p_token: sessionStorage.getItem('kiddyKatDashToken'), p_name: f.name });
+          showFans();
+        });
+      });
+      const open = add(box, 'button', '➕ Add a fan', 'small');
+      const form = add(box, 'div', undefined, 'fanForm');
+      open.addEventListener('click', () => { form.style.display = 'block'; open.style.display = 'none'; });
+      const name = add(form, 'input'); name.placeholder = 'Name the kids call them, like Grandma';
+      const pin = add(form, 'input'); pin.placeholder = 'Their own 4 to 6 digit PIN'; pin.inputMode = 'numeric';
+      const limit = add(form, 'input'); limit.placeholder = 'Stars per kid each week (10 is a good start)'; limit.inputMode = 'numeric';
+      const save = add(form, 'button', 'Add fan', 'small');
+      const note = add(form, 'div');
+      save.addEventListener('click', async () => {
+        const r = await cloudCall('add_fan', { p_token: sessionStorage.getItem('kiddyKatDashToken'), p_name: name.value,
+                                               p_pin: pin.value, p_weekly_limit: Number(limit.value) || 10 });
+        if (!r.ok) { note.textContent = '⚠️ ' + r.error; return; }
+        showFans();
+      });
+      const link = location.href.replace(/dashboard\.html.*$/, 'fan.html');
+      add(box, 'div', `Send fans this link plus the family code, their name and their PIN: ${link}`, 'fanLink');
     }
 
     // Reads one saved value safely ("null" if it's missing or broken)
@@ -294,6 +345,42 @@
         if (catchUp && catchUp.items.length) row(school, 'Catch-up left', String(catchLeft), catchLeft ? 'partial' : 'done');
         if (pack) row(school, `🧠 ${pack.title}`, `${pack.questions.length - pack.queue.length} of ${pack.questions.length} learned`);
       }
+
+      // Star gifts: recent ones, and a button to send some
+      const gifts = section('⭐ Gifts');
+      if ((kid.gifts || []).length) {
+        kid.gifts.slice(0, 5).forEach(g => add(gifts, 'div',
+          `${g.from} sent ${g.stars} ⭐ ${new Date(g.at).toLocaleDateString([], { weekday: 'short' })}` + (g.note ? `: "${g.note}"` : ''), 'giftList'));
+      } else {
+        add(gifts, 'div', 'No gifts this week.', 'giftList');
+      }
+      const giftBox = add(gifts, 'div', undefined, 'gift');
+      const amounts = add(giftBox, 'div', undefined, 'amounts');
+      let picked = 0;
+      [1, 3, 5, 10].forEach(n => {
+        const b = add(amounts, 'button', `${n} ⭐`);
+        b.addEventListener('click', () => {
+          picked = n;
+          amounts.querySelectorAll('button').forEach(x => x.classList.toggle('picked', x === b));
+        });
+      });
+      const giftNote = add(giftBox, 'input');
+      giftNote.placeholder = `Note for ${kid.nickname} (optional), like "For helping with groceries!"`;
+      giftNote.maxLength = 80;
+      const from = add(giftBox, 'input');
+      from.placeholder = 'From (Dad, Mom...)';
+      from.value = localStorage.getItem('kiddyKatDashFrom') || 'Dad';
+      from.maxLength = 20;
+      const send = add(giftBox, 'button', '⭐ Gift stars');
+      const sentNote = add(giftBox, 'div', undefined, 'giftList');
+      send.addEventListener('click', async () => {
+        if (!picked) { sentNote.textContent = 'Pick how many stars first.'; return; }
+        localStorage.setItem('kiddyKatDashFrom', from.value.trim() || 'Dad');
+        const r = await cloudCall('parent_gift_stars', { p_token: sessionStorage.getItem('kiddyKatDashToken'),
+          p_nickname: kid.nickname, p_stars: picked, p_note: giftNote.value, p_from: from.value });
+        if (!r.ok) { sentNote.textContent = '⚠️ ' + r.error; return; }
+        loadBoard();
+      });
       return card;
     }
 
