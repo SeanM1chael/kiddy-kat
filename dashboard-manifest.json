@@ -1,0 +1,10 @@
+{
+  "name": "Kiddy Kat Dashboard",
+  "short_name": "KK Dashboard",
+  "start_url": "./dashboard.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fff4e6",
+  "theme_color": "#ff7a00",
+  "icons": [{ "src": "icon.png", "sizes": "180x180", "type": "image/png" }]
+}

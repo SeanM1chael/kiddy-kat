@@ -53,6 +53,11 @@ function cleanFamilyCode(text) {
 }
 
 function cloudGet(key) { return localStorage.getItem(key); }
+
+// Ask for an alert to be sent (push.js). Only when this device is linked to the family.
+function kidAlert(kind, detail, kid) {
+  if (typeof pushSend === 'function' && localStorage.getItem('kiddyKatCloudToken')) pushSend(localStorage.getItem('kiddyKatCloudToken'), kind, detail, kid);
+}
 function cloudSet(key, value) { rawSetItem.call(localStorage, key, value); }
 function cloudRemove(key) { rawRemoveItem.call(localStorage, key); }
 function cloudLinked() { return !!cloudGet(CLOUD.token); }
@@ -282,6 +287,7 @@ function showCloud() {
              : `✅ Last saved ${cloudGet(CLOUD.savedAt) || 'when it was linked'}`));
     const save = add('button', '☁️ Save now');
     save.addEventListener('click', () => { cloudSet(CLOUD.dirty, '1'); cloudPush(); });
+    if (typeof pushSwitch === 'function') pushSwitch(add('div'), () => cloudGet(CLOUD.token), 'this device');
     const unlink = add('button', 'Unlink this device');
     unlink.addEventListener('click', () => {
       if (!confirm('Stop saving online on this device? Progress already saved online stays there.')) return;

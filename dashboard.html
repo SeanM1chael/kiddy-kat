@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kiddy Kat Dashboard</title>
   <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="dashboard-manifest.json">
   <style>
     :root { --main: #ff7a00; --bg: #fff4e6; --ok: #2b8a3e; --warn: #e8590c; --muted: #868e96; }
     * { box-sizing: border-box; }
@@ -41,6 +42,9 @@
     .waiting.sent { background: #e7f5ff; }
     .row { display: flex; justify-content: space-between; padding: 2px 0; }
     .empty { color: var(--muted); }
+    #pushBox { background: white; border-radius: 16px; padding: 10px 14px; margin-bottom: 12px; font-size: 15px; }
+    #pushBox button { font-size: 14px; padding: 6px 12px; margin-top: 6px; }
+    .pushNote { color: var(--muted); font-size: 13px; margin-top: 4px; }
     .gift { margin-top: 12px; }
     .gift .amounts { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
     .gift .amounts button { background: #fff3bf; color: #333; padding: 6px 12px; }
@@ -80,12 +84,14 @@
       <button onclick="loadBoard()">🔄 Refresh</button>
       <button class="plain" onclick="logOut()">Log out</button>
     </div>
+    <div id="pushBox"></div>
     <div id="leaguePanel"></div>
     <div id="fans"></div>
     <div class="kids" id="kids"></div>
   </div>
 
   <script src="config.js"></script>
+  <script src="push.js"></script>
   <script>
     // =================================================================
     // Parent dashboard: every kid's day at a glance (read-only).
@@ -166,6 +172,8 @@
       uploadCounts = {};
       (uploads.uploads || []).forEach(u => uploadCounts[u.nickname] = (uploadCounts[u.nickname] || 0) + 1);
       result.kids.forEach(kid => box.appendChild(kidCard(kid)));
+      if (!document.getElementById('pushBox').childElementCount)
+        pushSwitch(document.getElementById('pushBox'), () => sessionStorage.getItem('kiddyKatDashToken'), 'this device (grown-up alerts)');
       showFans();
       showLeaguePanel();
     }
@@ -368,7 +376,7 @@
           const go = add(add(box, 'div', undefined, 'buttons'), 'button', 'Open the grades page');
           go.addEventListener('click', () => window.open(location.href.replace(/dashboard\.html.*$/, 'grades.html'), '_blank'));
         }
-        const item = (text, type, target, yesLabel, noLabel, extra = {}) => {
+        const item = (text, type, target, yesLabel, noLabel, extra = {}, alertName = '') => {
           const box = add(wait, 'div', undefined, 'waiting');
           add(box, 'div', text);
           const sent = sentFor(type, target);
@@ -383,6 +391,11 @@
             const result = await cloudCall('parent_decide', { p_token: sessionStorage.getItem('kiddyKatDashToken'),
               p_nickname: kid.nickname, p_decision: { type: type, target: target, approved: approved, ...extra } });
             if (!result.ok) { buttons.textContent = '⚠️ ' + result.error; return; }
+            // Alert the kid's phone (push.js)
+            const token = sessionStorage.getItem('kiddyKatDashToken');
+            if (type === 'reward') pushSend(token, approved ? 'yes' : 'no', alertName, kid.nickname);
+            if (type === 'job' && approved) pushSend(token, 'paid', alertName, kid.nickname);
+            if (type === 'payout') pushSend(token, 'paid', 'payday', kid.nickname);
             loadBoard();
           };
           add(buttons, 'button', yesLabel).addEventListener('click', () => decide(true));
@@ -391,8 +404,8 @@
             no.addEventListener('click', () => decide(false));
           }
         };
-        rewards.forEach(r => item(`🎁 ${r.emoji || ''} ${r.name} (${r.price} ⭐)`, 'reward', r.id, '✅ Yes', '❌ Not this time'));
-        jobs.forEach(j => item(`💵 ${j.emoji || ''} ${j.name} (${money(j.cents)})`, 'job', j.id, '✅ Pay it', '↩️ Not done yet'));
+        rewards.forEach(r => item(`🎁 ${r.emoji || ''} ${r.name} (${r.price} ⭐)`, 'reward', r.id, '✅ Yes', '❌ Not this time', {}, r.name));
+        jobs.forEach(j => item(`💵 ${j.emoji || ''} ${j.name} (${money(j.cents)})`, 'job', j.id, '✅ Pay it', '↩️ Not done yet', {}, j.name));
         if (wallet && wallet.payoutDue) {
           item(`💸 Payday: hand over ${money(wallet.payoutDue)} (cash or Apple Cash)`, 'payout', undefined,
                '✅ I paid it', null, { cents: wallet.payoutDue });
@@ -468,6 +481,7 @@
         const r = await cloudCall('parent_gift_stars', { p_token: sessionStorage.getItem('kiddyKatDashToken'),
           p_nickname: kid.nickname, p_stars: picked, p_note: giftNote.value, p_from: from.value });
         if (!r.ok) { sentNote.textContent = '⚠️ ' + r.error; return; }
+        pushSend(sessionStorage.getItem('kiddyKatDashToken'), 'stars', String(picked), kid.nickname);
         loadBoard();
       });
       return card;

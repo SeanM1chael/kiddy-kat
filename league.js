@@ -157,7 +157,7 @@ async function showLeague() {
     send.addEventListener('click', async () => {
       const r = await cloudCall('kid_give_kindness', { p_token: token, p_to: pick.value, p_note: note.value });
       sent.textContent = r.ok ? `💛 Sent to ${pick.value}! They'll see it next time they open Kiddy Kat.` : '⚠️ ' + r.error;
-      if (r.ok) { send.disabled = true; note.value = ''; }
+      if (r.ok) { send.disabled = true; note.value = ''; kidAlert('kindness', '', pick.value); }
     });
   }
 

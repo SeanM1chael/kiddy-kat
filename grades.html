@@ -201,6 +201,7 @@
   </div>
 
   <script src="config.js"></script>
+  <script src="push.js"></script>
   <script>
     // ---------- Which kid ----------
     // The first kid keeps the original storage names, so nothing already saved is lost.
@@ -1052,6 +1053,7 @@
                              queue: pack.questions.map((q, i) => i).sort(() => Math.random() - 0.5),
                              stats: {}, added: new Date().toLocaleDateString() };
           const result = await sendToKid(pick.value, 'kiddyKatPack', forPhone);
+          if (result.ok) pushSend(cloudToken(), 'pack', pack.title, pick.value);
           sent.textContent = result.ok ? `✅ Sent! It shows up in ${pick.value}'s 🎮 Practice within a minute or two.`
                                        : '⚠️ ' + result.error;
         });

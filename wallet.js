@@ -257,6 +257,7 @@ function showWallet() {
     b.addEventListener('click', () => {
       wallet.jobRequests.push({ id: Date.now(), emoji, name, cents, date: new Date().toLocaleDateString(), status: 'waiting' });
       saveWallet();
+      if (typeof kidAlert === 'function') kidAlert('job', name);              // alert the grown-ups
       showWallet();
     });
   });

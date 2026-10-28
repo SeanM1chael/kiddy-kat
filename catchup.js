@@ -53,6 +53,7 @@ function turnedIn(item) {
   wallet.jobRequests.push({ id: Date.now(), emoji: '📚', name: `Turned in: ${item.text}`, cents: catchUp.pay,
                             date: item.doneDate, status: 'waiting', catchUp: true });
   saveWallet();
+  if (typeof kidAlert === 'function') kidAlert('catchup', item.text);         // alert the grown-ups
 
   const left = catchUp.items.filter(i => !i.done).length;
   showCatchUp();

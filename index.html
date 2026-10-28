@@ -5,6 +5,7 @@
   <title>Kiddy Kat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link id="appIcon" rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
   <script>
     // A link ending in ?icon=tiger or ?icon=lion uses that animal's home screen icon
     const iconChoice = new URLSearchParams(location.search).get('icon');
@@ -100,6 +101,7 @@
     #clockCard.clockLate { background: #ffe3e3; animation: blink 1s infinite; }
     #clockCard.clockDone { background: #d3f9d8; }
     .weatherPlace { margin-top: 6px; }
+    .pushNote { font-size: 14px; color: #868e96; margin-top: 4px; }
     .placeLink { background: none; border: none; color: #1971c2; font-size: 16px; text-decoration: underline; cursor: pointer; }
     #petMood { margin: 4px; }
     #petBar { background: #eee; border-radius: 10px; height: 14px; width: 70%; margin: 8px auto; overflow: hidden; }
@@ -552,6 +554,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
   </div>
 
   <script src="config.js"></script>
+  <script src="push.js"></script>
   <script src="sync.js"></script>
   <script src="daily.js"></script>
   <script src="pet.js"></script>

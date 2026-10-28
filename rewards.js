@@ -157,6 +157,7 @@ function requestReward(reward) {
                         date: new Date().toDateString(), status: 'waiting' });
   if (localStorage.getItem('kiddyKatGoal') === reward.rawName) localStorage.removeItem('kiddyKatGoal');
   saveRewards();
+  if (typeof kidAlert === 'function') kidAlert('reward', reward.name);        // alert the grown-ups
   showPet();
   showRewards();
   celebrate(`⏳ Asked ${parentName()} for "${reward.name}"! You'll find out soon.`, reward.emoji, false);

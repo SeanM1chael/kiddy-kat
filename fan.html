@@ -44,6 +44,7 @@
   <button class="plain" id="logout" style="display:none" onclick="logOut()">Log out</button>
 
   <script src="config.js"></script>
+  <script src="push.js"></script>
   <script>
     // =================================================================
     // A Fan (like a grandparent) can ONLY send stars and a short cheer,
@@ -135,6 +136,7 @@
         const r = await cloudCall('fan_gift_stars', { p_token: t, p_nickname: kid.nickname, p_stars: picked, p_note: cheer.value });
         send.disabled = false;
         if (!r.ok) { note.textContent = '⚠️ ' + r.error; return; }
+        pushSend(t, 'stars', String(picked), kid.nickname);
         note.textContent = `🎉 Sent! ${kid.nickname} will see it the next time they open Kiddy Kat.`;
         setTimeout(() => showKids(t), 2500);
       });

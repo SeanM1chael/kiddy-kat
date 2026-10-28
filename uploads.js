@@ -75,6 +75,7 @@ function showUploadCard() {
     preview.style.display = note.style.display = send.style.display = 'none';
     snap.textContent = '📷 Send another';
     status.textContent = `✅ Sent! ${parentName()} will check it. (${result.waiting} waiting)`;
+    if (typeof kidAlert === 'function') kidAlert('photo', note.value);         // alert the grown-ups
   });
 
   card.append(title, snap, pick, preview, note, send, status);
