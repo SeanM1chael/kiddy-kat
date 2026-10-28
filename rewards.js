@@ -90,7 +90,7 @@ function showRewards() {
   rewardRequests.filter(r => r.status === 'waiting').forEach(r => {
     const card = document.createElement('div');
     card.className = 'waitingCard';
-    card.textContent = `⏳ ${r.emoji} ${r.name}: show ${parentName()} to get it approved!`;
+    card.textContent = `⏳ ${r.emoji} ${r.name}: waiting for ${parentName()} to say yes. You get a message when ${parentName()} decides!`;
     const text = document.createElement('a');
     text.className = 'textParent';
     text.textContent = `📲 Text ${parentName()}`;

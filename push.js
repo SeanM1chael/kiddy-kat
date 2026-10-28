@@ -53,7 +53,7 @@ async function pushTurnOn(token) {
     let sub = await reg.pushManager.getSubscription();
     if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: pushKeyBytes(KIDDY_KAT_CLOUD.pushKey) });
     const saved = await pushRpc('save_push', { p_token: token, p_sub: sub.toJSON() });
-    return saved.ok ? { ok: true } : saved;
+    return saved.ok ? { ok: true } : { ok: false, error: 'The server couldn\'t save this device: ' + saved.error };
   } catch (err) {
     return { ok: false, error: "Couldn't turn on alerts: " + err.message };
   }
@@ -90,6 +90,16 @@ async function pushSwitch(box, getToken, label) {
   const draw = async () => {
     const on = await pushIsOn();
     line.textContent = on ? `🔔 Alerts are ON for ${label}.` : `🔕 Alerts are off for ${label}.`;
+    // Each time, make sure the server still knows this device (and show any problem)
+    if (on) {
+      const reg = await navigator.serviceWorker.getRegistration('./');
+      const sub = reg && await reg.pushManager.getSubscription();
+      const saved = sub ? await pushRpc('save_push', { p_token: getToken(), p_sub: sub.toJSON() }) : { ok: true };
+      if (!saved.ok) {
+        line.textContent = `⚠️ Alerts are on here, but the server couldn't save this device.`;
+        note.textContent = 'Problem: ' + saved.error;
+      }
+    }
     button.textContent = on ? 'Turn off alerts' : '🔔 Turn on alerts';
     button.onclick = async () => {
       note.textContent = '⏳ ...';
