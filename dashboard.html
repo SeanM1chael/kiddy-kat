@@ -34,7 +34,11 @@
     .partial { color: var(--warn); font-weight: bold; }
     .none { color: var(--muted); }
     .left { color: var(--muted); font-size: 14px; padding: 0 0 4px 12px; }
-    .waiting { background: #fff3bf; border-radius: 10px; padding: 6px 10px; margin: 4px 0; font-size: 15px; }
+    .waiting { background: #fff3bf; border-radius: 10px; padding: 8px 10px; margin: 6px 0; font-size: 15px; }
+    .waiting .buttons { display: flex; gap: 6px; margin-top: 6px; }
+    .waiting button { font-size: 14px; padding: 6px 12px; border-radius: 10px; }
+    .waiting button.no { background: #eee; color: #333; }
+    .waiting.sent { background: #e7f5ff; }
     .row { display: flex; justify-content: space-between; padding: 2px 0; }
     .empty { color: var(--muted); }
   </style>
@@ -217,14 +221,42 @@
         }
       });
 
-      // Waiting for a grown-up
+      // Waiting for a grown-up: decide right here. The kid's phone carries it out when it syncs.
       const rewards = read(data, 'kiddyKatRewardRequests', []).filter(r => r.status === 'waiting');
       const jobs = wallet ? wallet.jobRequests.filter(j => j.status === 'waiting') : [];
+      const inbox = read(data, 'kiddyKatParentInbox', []);
+      const sentFor = (type, target) => inbox.find(d => d.type === type && (target === undefined || d.target === target));
       if (rewards.length || jobs.length || (wallet && wallet.payoutDue)) {
-        const wait = section('🔔 Waiting for you (on their phone)');
-        rewards.forEach(r => add(wait, 'div', `🎁 ${r.emoji || ''} ${r.name} (${r.price} ⭐)`, 'waiting'));
-        jobs.forEach(j => add(wait, 'div', `💵 ${j.emoji || ''} ${j.name} (${money(j.cents)})`, 'waiting'));
-        if (wallet && wallet.payoutDue) add(wait, 'div', `💸 Payday payout to hand over: ${money(wallet.payoutDue)}`, 'waiting');
+        const wait = section('🔔 Waiting for you');
+        const item = (text, type, target, yesLabel, noLabel, extra = {}) => {
+          const box = add(wait, 'div', undefined, 'waiting');
+          add(box, 'div', text);
+          const sent = sentFor(type, target);
+          if (sent) {
+            box.classList.add('sent');
+            add(box, 'div', `⏳ You said ${sent.approved === false ? 'no' : 'yes'}. It updates when ${kid.nickname}'s phone opens Kiddy Kat.`);
+            return;
+          }
+          const buttons = add(box, 'div', undefined, 'buttons');
+          const decide = async approved => {
+            buttons.textContent = '⏳ Sending...';
+            const result = await cloudCall('parent_decide', { p_token: sessionStorage.getItem('kiddyKatDashToken'),
+              p_nickname: kid.nickname, p_decision: { type: type, target: target, approved: approved, ...extra } });
+            if (!result.ok) { buttons.textContent = '⚠️ ' + result.error; return; }
+            loadBoard();
+          };
+          add(buttons, 'button', yesLabel).addEventListener('click', () => decide(true));
+          if (noLabel) {
+            const no = add(buttons, 'button', noLabel, 'no');
+            no.addEventListener('click', () => decide(false));
+          }
+        };
+        rewards.forEach(r => item(`🎁 ${r.emoji || ''} ${r.name} (${r.price} ⭐)`, 'reward', r.id, '✅ Yes', '❌ Not this time'));
+        jobs.forEach(j => item(`💵 ${j.emoji || ''} ${j.name} (${money(j.cents)})`, 'job', j.id, '✅ Pay it', '↩️ Not done yet'));
+        if (wallet && wallet.payoutDue) {
+          item(`💸 Payday: hand over ${money(wallet.payoutDue)} (cash or Apple Cash)`, 'payout', undefined,
+               '✅ I paid it', null, { cents: wallet.payoutDue });
+        }
       }
 
       // Pet

@@ -195,10 +195,44 @@ async function cloudLinkWith(login) {
   location.reload();
 }
 
+// ---------- Grown-up decisions from the online dashboard ----------
+// The dashboard leaves decisions in this kid's inbox. The phone carries them out
+// with the same code as the Grown-ups buttons, then empties the inbox.
+function processParentInbox() {
+  let inbox = [];
+  try { inbox = JSON.parse(localStorage.getItem('kiddyKatParentInbox') || '[]'); } catch (err) {}
+  if (!inbox.length) return;
+  const done = JSON.parse(localStorage.getItem('kiddyKatInboxDone') || '[]');
+  const messages = [];
+  inbox.filter(d => !done.includes(d.id)).forEach(d => {
+    if (d.type === 'reward') {
+      const request = rewardRequests.find(r => r.id === d.target);
+      if (request && request.status === 'waiting') {
+        decideReward(request, d.approved);
+        messages.push(d.approved ? `🎁 ${parentName()} said YES to ${request.name}!` : `🎁 ${request.name}: not this time. Your stars are back.`);
+      }
+    } else if (d.type === 'job' && wallet) {
+      const job = wallet.jobRequests.find(r => r.id === d.target);
+      if (job && job.status === 'waiting') {
+        if (d.approved) { payJob(job); messages.push(`💵 ${parentName()} paid you ${dollars(job.cents)} for ${job.name}!`); }
+        else declineJob(job);
+      }
+    } else if (d.type === 'payout' && wallet) {
+      markPaidOut(d.cents);
+    }
+    done.push(d.id);
+  });
+  localStorage.setItem('kiddyKatInboxDone', JSON.stringify(done.slice(-100)));
+  localStorage.setItem('kiddyKatParentInbox', '[]');
+  if (typeof showPet === 'function') showPet();
+  if (messages.length && typeof celebrate === 'function') celebrate(messages.join(' '), '🎉', false);
+}
+
 // ---------- When to sync ----------
 function cloudStart() {
   sessionStorage.removeItem('kiddyKatCloudReloads');
   if (!cloudLinked()) return;
+  processParentInbox();
   if (cloudGet(CLOUD.dirty)) cloudPush(); else cloudPull();
   setInterval(() => {
     if (document.visibilityState === 'visible' && !cloudGet(CLOUD.dirty)) cloudPull();

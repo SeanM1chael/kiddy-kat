@@ -310,12 +310,7 @@ function showParentWallet() {
     const row = add('div', `🎉 Take-home pay to give: ${dollars(wallet.payoutDue)} `);
     const paid = document.createElement('button');
     paid.textContent = '✅ I paid it (cash or Apple Cash)';
-    paid.addEventListener('click', () => {
-      logMoney(`${parentName()} paid out ${dollars(wallet.payoutDue)}`, 0);
-      wallet.payoutDue = 0;
-      saveWallet();
-      showParentWallet();
-    });
+    paid.addEventListener('click', () => { markPaidOut(wallet.payoutDue); showParentWallet(); });
     row.appendChild(paid);
   } else {
     add('p', '✅ Nothing to pay out right now.');
@@ -326,18 +321,10 @@ function showParentWallet() {
     const row = add('div', `${r.emoji} ${r.name} (${dollars(r.cents)}, ${r.date}) `);
     const yes = document.createElement('button');
     yes.textContent = '✅ Pay it';
-    yes.addEventListener('click', () => {
-      r.status = 'paid';
-      wallet.spend += r.cents;
-      wallet.earnedThisPeriod += r.cents;
-      logMoney(r.name, r.cents);
-      saveWallet();
-      showParentWallet();
-      if (typeof showCatchUp === 'function') showCatchUp();
-    });
+    yes.addEventListener('click', () => { payJob(r); showParentWallet(); });
     const no = document.createElement('button');
     no.textContent = '↩️ Not done yet';
-    no.addEventListener('click', () => { r.status = 'declined'; saveWallet(); showParentWallet(); });
+    no.addEventListener('click', () => { declineJob(r); showParentWallet(); });
     row.append(yes, no);
   });
 
@@ -389,6 +376,31 @@ function showParentWallet() {
 }
 
 // "📱 Cell phone | 3.00"  ->  ['📱', 'Cell phone', 300]
+// ---------- Grown-up decisions (used by Grown-ups here AND by the online dashboard) ----------
+function markPaidOut(cents) {
+  if (!wallet || wallet.payoutDue <= 0) return;
+  const amount = Math.min(cents, wallet.payoutDue);       // a newer payday may have added more since
+  logMoney(`${parentName()} paid out ${dollars(amount)}`, 0);
+  wallet.payoutDue -= amount;
+  saveWallet();
+}
+
+function payJob(r) {
+  if (!r || r.status !== 'waiting') return;
+  r.status = 'paid';
+  wallet.spend += r.cents;
+  wallet.earnedThisPeriod += r.cents;
+  logMoney(r.name, r.cents);
+  saveWallet();
+  if (typeof showCatchUp === 'function') showCatchUp();
+}
+
+function declineJob(r) {
+  if (!r || r.status !== 'waiting') return;
+  r.status = 'declined';
+  saveWallet();
+}
+
 function parseMoneyLines(text) {
   return text.split('\n').map(line => {
     const [left, right] = line.split('|');

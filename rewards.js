@@ -302,6 +302,7 @@ function parseRewardLines(text) {
 }
 
 function decideReward(request, approved) {
+  if (!request || request.status !== 'waiting') return;     // already decided
   request.status = approved ? 'approved' : 'returned';
   request.decided = new Date().toISOString();
   if (!approved && pet) {               // give the stars back
