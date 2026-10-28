@@ -45,6 +45,13 @@ Storage.prototype.removeItem = function (key) {
   if (this === localStorage && isSynced(key) && old !== null) cloudChanged();
 };
 
+// Family codes forgive phone typing: "kat 7qm4xz", "KAT–7QM4XZ " and "7QM4XZ" all become "KAT-7QM4XZ"
+function cleanFamilyCode(text) {
+  let code = String(text || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (code.startsWith('KAT') && code.length > 6) code = code.slice(3);
+  return 'KAT-' + code;
+}
+
 function cloudGet(key) { return localStorage.getItem(key); }
 function cloudSet(key, value) { rawSetItem.call(localStorage, key, value); }
 function cloudRemove(key) { rawRemoveItem.call(localStorage, key); }
@@ -251,9 +258,9 @@ function showCloud() {
     const note = add('div');
     go.addEventListener('click', async () => {
       note.textContent = '⏳ Checking...';
-      const result = await cloudCall('parent_login', { p_code: code.value, p_pin: pin.value });
+      const result = await cloudCall('parent_login', { p_code: cleanFamilyCode(code.value), p_pin: pin.value });
       if (!result.ok) { note.textContent = '⚠️ ' + result.error; return; }
-      cloudParent = { token: result.token, family: result.family, code: code.value.trim().toUpperCase() };
+      cloudParent = { token: result.token, family: result.family, code: cleanFamilyCode(code.value) };
       await cloudLoadKids();
       showCloud();
     });
@@ -351,12 +358,12 @@ function cloudLoginStep(state) {
     code.autocapitalize = 'characters';
     const next = add('button', 'Next');
     next.addEventListener('click', async () => {
-      const kids = await cloudCall('list_kids', { p_code: code.value });
+      const kids = await cloudCall('list_kids', { p_code: cleanFamilyCode(code.value) });
       if (!Array.isArray(kids) || kids.length === 0) {
         note().textContent = kids.offline ? '⚠️ No internet right now.' : '⚠️ That family code didn\'t work.';
         return;
       }
-      cloudLoginStep({ code: code.value, kids: kids });
+      cloudLoginStep({ code: cleanFamilyCode(code.value), kids: kids });
     });
   } else if (!state.kid) {
     add('h2', 'Who are you?');
