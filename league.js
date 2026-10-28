@@ -81,6 +81,9 @@ function showLeagueCard() {
   const fill = document.createElement('div');
   fill.style.width = Math.min(100, points / LEAGUE_GOAL * 100) + '%';
   bar.appendChild(fill);
+  title.appendChild(infoButton('🏆 League points show how hard you worked this week:\n' +
+    '✅ Finished checklist: 2 · 🎮 Right practice answer: 1 · 🔴 Challenge win: 3 · 📚 Catch-up turned in: 5\n' +
+    'Reach 60 for a ⭐ goal badge. Points start over every Monday. Tap the card to see your team and league.'));
   card.append(title, bar);
   card.onclick = openLeague;
 }

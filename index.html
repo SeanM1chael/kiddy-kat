@@ -70,7 +70,37 @@
     .petEmoji.stage3 { font-size: 106px; }
     .bounce { animation: bounce 0.5s; }
     @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-25px); } }
-    #petName { font-weight: bold; margin: 4px; }
+    #petName { font-weight: bold; margin: 4px; display: inline; }
+    #petNext { font-size: 16px; color: #666; margin: 4px 8px; }
+    #petGoal { padding-right: 70px; }
+    /* Egg cracks as it gets close to hatching */
+    .petEmoji { position: relative; }
+    .petEmoji.cracks1::after, .petEmoji.cracks2::after {
+      content: ''; position: absolute; inset: 18% 22%; pointer-events: none;
+      background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 50'%3E%3Cpolyline points='8,22 14,18 18,24 24,17 30,23' fill='none' stroke='%23704214' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+    .petEmoji.cracks2::after {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 50'%3E%3Cpolyline points='6,22 12,17 17,24 23,16 29,23 34,19' fill='none' stroke='%23704214' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpolyline points='12,34 17,30 21,36 27,31' fill='none' stroke='%23704214' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+    .petEmoji.cracks1 { animation: wobble 2.5s ease-in-out infinite; }
+    .petEmoji.cracks2 { animation: wobble 1.2s ease-in-out infinite; }
+    @keyframes wobble { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(-8deg); } 86% { transform: rotate(8deg); } 94% { transform: rotate(-4deg); } }
+    /* ⓘ info buttons */
+    button.info, #petCard button.info, #settings button.info, .tabs button.info { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #868e96; background: white; color: #495057;
+                  font: bold 13px Georgia, serif; font-style: italic; padding: 0; margin: 0 4px; vertical-align: middle;
+                  cursor: pointer; line-height: 18px; min-width: 0; box-shadow: none; }
+    #infoPop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 50;
+               align-items: center; justify-content: center; padding: 20px; }
+    .infoBox { background: white; border-radius: 18px; padding: 16px 18px; max-width: 360px; font-size: 18px; text-align: left; }
+    .infoBox p { margin: 6px 0; }
+    .infoBox button { display: block; margin: 10px auto 0; font-size: 18px; padding: 8px 22px; border: none;
+                      border-radius: 12px; background: var(--main); color: white; }
+    /* School clock */
+    #clockCard { font-size: 22px; border-radius: 20px; padding: 10px 14px; margin: 10px auto; width: 80%; background: white; }
+    #clockCard .clockNote { font-size: 18px; margin-top: 4px; }
+    #clockCard.clockSoon { background: #fff3bf; }
+    #clockCard.clockLate { background: #ffe3e3; animation: blink 1s infinite; }
+    #clockCard.clockDone { background: #d3f9d8; }
+    .weatherPlace { margin-top: 6px; }
+    .placeLink { background: none; border: none; color: #1971c2; font-size: 16px; text-decoration: underline; cursor: pointer; }
     #petMood { margin: 4px; }
     #petBar { background: #eee; border-radius: 10px; height: 14px; width: 70%; margin: 8px auto; overflow: hidden; }
     #petBarFill { background: var(--main); height: 100%; width: 0; }
@@ -282,9 +312,13 @@
     </div>
     <div id="petRoom"></div>
     <div id="petPoops"></div>
-    <div id="petName"></div>
+    <div id="petName"></div><button class="info" data-info="Your pet grows when you finish checklists.
+Each finished list (Morning, After School or Bedtime) is 1 care point, once a day each.
+🥚 The egg hatches at 3 points, grows into a big kid at 15, and is all grown up at 40.
+Grown-up pets unlock new eggs in the 🏠 Pet House!">i</button>
     <div id="petMood"></div>
     <div id="petBar"><div id="petBarFill"></div></div>
+    <div id="petNext"></div>
     <button id="petChooseButton" onclick="openPetChooser()">Choose your pet</button>
     <button onclick="openPractice()">🎮 Practice</button>
     <button id="shopButton" onclick="openShop()">🛍️ Shop</button>
@@ -349,10 +383,14 @@
     <div id="shopItems"></div>
   </div>
 
+  <div id="clockCard"></div>
+
   <div class="tabs">
-    <button onclick="show('morning')">☀️ Morning</button>
-    <button onclick="show('afternoon')">🎒 After School</button>
-    <button onclick="show('bedtime')">🌙 Bedtime</button>
+    <button onclick="pickList('morning')">☀️ Morning</button>
+    <button onclick="pickList('afternoon')">🎒 After School</button>
+    <button onclick="pickList('bedtime')">🌙 Bedtime</button>
+    <button class="info" data-info="Tap a list to see it. Tap each task when it's done.
+Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet and earn 2 🏆 League points.">i</button>
   </div>
 
   <div id="today"></div>
@@ -397,6 +435,10 @@
 
   <div id="settings">
     <div id="pinBanner">🔓 Grown-ups isn't locked yet. Set a parent PIN in the 🎁 Rewards section below to lock it.</div>
+
+    <h2>⏰ School mornings</h2>
+    <div id="parentClock"></div>
+    <hr>
 
     <h2>✅ Task lists</h2>
     <button onclick="openTaskEditor()">Edit task lists</button>
@@ -501,6 +543,7 @@
 
   <script src="config.js"></script>
   <script src="sync.js"></script>
+  <script src="daily.js"></script>
   <script src="pet.js"></script>
   <script src="stickers.js"></script>
   <script src="games.js"></script>
@@ -725,6 +768,7 @@
       showParentWallet();
       showParentCatchUp();
       showParentPack();
+      showParentClock();
       showProofPhotos();
       showCloud();
       const box = document.getElementById('settings');
@@ -790,8 +834,10 @@
 
     async function showWeather() {
       const box = document.getElementById('weather');
+      const place = getPlace();                 // this phone's place (daily.js), or the default
+      const spot = place || DEFAULT_PLACE;
       try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${spot.lat}&longitude=${spot.lon}` +
           '&current=temperature_2m' +
           '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
           '&temperature_unit=fahrenheit&timezone=auto&forecast_days=1';
@@ -813,6 +859,7 @@
       } catch (err) {
         box.textContent = '🌤️ The weather is taking a nap. Look outside!';
       }
+      weatherFooter(box, place);
     }
 
     // ---------- Celebration ----------
@@ -876,6 +923,7 @@
     checkPayday();          // runs payday if it's due
     showCatchUp();
     showLeagueCard();
+    showClock();
   </script>
 </body>
 </html>

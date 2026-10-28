@@ -101,6 +101,7 @@ function showPet() {
     emoji.textContent = '🥚';
     emoji.className = 'petEmoji';
     document.getElementById('petName').textContent = 'Someone is waiting to meet you!';
+    if (document.getElementById('petNext')) document.getElementById('petNext').textContent = '';
     document.getElementById('petMood').textContent = '';
     document.getElementById('petBar').style.display = 'none';
     button.style.display = 'inline-block';
@@ -111,7 +112,9 @@ function showPet() {
   const stage = petStage();
   emoji.textContent = PET_TYPES[pet.type].stages[stage];
   emoji.className = 'petEmoji stage' + stage;
-  document.getElementById('petName').textContent = `${pet.name} the ${stageName(stage)}`;
+  // An egg gets cracks as it gets close to hatching
+  if (stage === 0 && pet.points > 0) emoji.className += ' cracks' + Math.min(pet.points, 2);
+  document.getElementById('petName').textContent = pet.name;
   button.style.display = 'none';
 
   // Mood is always kind: happy, or waiting for them
@@ -130,6 +133,17 @@ function showPet() {
     ? (pet.points - STAGE_POINTS[stage]) / (next - STAGE_POINTS[stage]) * 100
     : 100;
   document.getElementById('petBarFill').style.width = fill + '%';
+
+  // What happens next, in plain words
+  const nextLine = document.getElementById('petNext');
+  if (nextLine) {
+    const toGo = next ? next - pet.points : 0;
+    const lists = `${toGo} more checklist${toGo === 1 ? '' : 's'}`;
+    if (stage === 0) nextLine.textContent = toGo === 1 ? `🥚💥 ${pet.name} is almost out! Finish 1 more checklist to hatch!`
+                                                       : `🥚 ${pet.name} is inside the egg! Finish ${lists} to hatch.`;
+    else if (next) nextLine.textContent = `Finish ${lists} to grow into a ${stageName(stage + 1)}.`;
+    else nextLine.textContent = `🌟 ${pet.name} is all grown up!`;
+  }
 
   showPetExtras();
 }
@@ -330,7 +344,10 @@ function showPetExtras() {
   const houseButton = document.getElementById('houseButton');
   houseButton.style.display = (petHouse.length > 1 || canHatchNewPet()) ? 'inline-block' : 'none';
   houseButton.textContent = canHatchNewPet() ? '🏠 Pet House 🥚 NEW!' : '🏠 Pet House';
-  stars.textContent = `⭐ ${pet.stars}`;
+  stars.textContent = `⭐ ${pet.stars} `;
+  if (typeof infoButton === 'function') stars.appendChild(infoButton(
+    'Stars ⭐ are what you spend in the 🛍️ Shop and on 🎁 Rewards.\n' +
+    'Earn them by finishing checklists (+3 each), practice (+1 for each right answer), challenges (+5), scooping poop, and gifts from family.'));
   wear.textContent = pet.wearing ? shopItem(pet.wearing).emoji : '';
   room.textContent = pet.owned
     .map(shopItem)
