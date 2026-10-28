@@ -162,6 +162,9 @@
       const box = document.getElementById('kids');
       box.textContent = '';
       if (!result.kids.length) box.textContent = 'No kids yet. Add them in ⚙️ Grown-ups → ☁️ Online family on their phones.';
+      const uploads = await cloudCall('list_uploads', { p_token: token });
+      uploadCounts = {};
+      (uploads.uploads || []).forEach(u => uploadCounts[u.nickname] = (uploadCounts[u.nickname] || 0) + 1);
       result.kids.forEach(kid => box.appendChild(kidCard(kid)));
       showFans();
       showLeaguePanel();
@@ -260,6 +263,8 @@
       add(box, 'div', `Send fans this link plus the family code, their name and their PIN: ${link}`, 'fanLink');
     }
 
+    let uploadCounts = {};      // schoolwork photos waiting, by nickname
+
     // Reads one saved value safely ("null" if it's missing or broken)
     function read(data, key, fallback) {
       try { return data[key] ? JSON.parse(data[key]) : fallback; } catch (err) { return fallback; }
@@ -354,8 +359,15 @@
       const jobs = wallet ? wallet.jobRequests.filter(j => j.status === 'waiting') : [];
       const inbox = read(data, 'kiddyKatParentInbox', []);
       const sentFor = (type, target) => inbox.find(d => d.type === type && (target === undefined || d.target === target));
-      if (rewards.length || jobs.length || (wallet && wallet.payoutDue)) {
+      const photos = uploadCounts[kid.nickname] || 0;
+      if (rewards.length || jobs.length || (wallet && wallet.payoutDue) || photos) {
         const wait = section('🔔 Waiting for you');
+        if (photos) {
+          const box = add(wait, 'div', undefined, 'waiting');
+          add(box, 'div', `📸 ${photos} schoolwork photo${photos === 1 ? '' : 's'} to check`);
+          const go = add(add(box, 'div', undefined, 'buttons'), 'button', 'Open the grades page');
+          go.addEventListener('click', () => window.open(location.href.replace(/dashboard\.html.*$/, 'grades.html'), '_blank'));
+        }
         const item = (text, type, target, yesLabel, noLabel, extra = {}) => {
           const box = add(wait, 'div', undefined, 'waiting');
           add(box, 'div', text);

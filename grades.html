@@ -34,6 +34,10 @@
     .comment { background: #f8f9fa; border-left: 4px solid #74c0fc; padding: 8px 12px; margin: 8px 0; }
     #campus .row { padding: 6px 0; border-bottom: 1px solid #eee; }
     #campus .row input { width: auto; margin-right: 8px; }
+    .photoRow { border-top: 1px solid #eee; padding: 10px 0; }
+    .photoWho { font-weight: bold; }
+    .photoRow .kidBar button { margin-top: 8px; }
+    .photoBig { max-width: 100%; max-height: 500px; border-radius: 10px; margin-top: 8px; }
     #packTopics label { font-weight: normal; margin-top: 6px; }
     #packTopics input { width: auto; margin-right: 8px; }
     .packQ { background: #f8f9fa; border-radius: 10px; padding: 10px 14px; margin: 8px 0; }
@@ -54,6 +58,9 @@
 
   <!-- Family login: Claude in the cloud + sending to phones -->
   <div class="panel" id="cloudPanel"></div>
+
+  <!-- Photos the kids sent from their phones -->
+  <div class="panel" id="kidPhotos" style="display:none"></div>
 
   <!-- 1. Upload a photo -->
   <div class="panel">
@@ -278,23 +285,25 @@
           status.textContent = '⚠️ ' + result.error;
           return;
         }
-        let readAs = kind;
-        if (kind === 'auto') {             // the server tells us what it decided the picture was
-          readAs = result.kind;
-          result = result.result;
-        }
-        if (readAs === 'worksheet') {
-          fillForm(result);
-        } else if (readAs === 'campus') {
-          saveCampus(result);
-        } else {
-          saveReportCard(result);
-        }
+        useReadResult(kind, result);
       } catch (err) {
         status.textContent = cloudToken()
           ? '⚠️ Something went wrong reaching Claude. (' + err.message + ')'
           : '⚠️ Not logged in to the family, and app.py isn\'t answering. Log in at the top of the page. (' + err.message + ')';
       }
+    }
+
+    // Puts what Claude read into the right place (shared by uploads and kids' photos)
+    function useReadResult(kind, result) {
+      let readAs = kind;
+      if (kind === 'auto') {             // the server tells us what it decided the picture was
+        readAs = result.kind;
+        result = result.result;
+      }
+      if (readAs === 'worksheet') fillForm(result);
+      else if (readAs === 'campus') saveCampus(result);
+      else saveReportCard(result);
+      return readAs;
     }
 
     function fillForm(r) {
@@ -803,6 +812,7 @@
             await loadCloudKids();
             showCampus();
             showSpecialsSend();
+            showKidPhotos();
             const saved = JSON.parse(localStorage.getItem(keyFor('kiddyKatPackMade')) || 'null');
             if (saved) showPackPreview(saved);
           }
@@ -852,6 +862,62 @@
           ? `✅ Sent to ${pick.value}'s phone. Their morning card will use it.` : '⚠️ ' + result.error;
       });
       box.append(pick, go);
+    }
+
+    // ---------- Photos the kids sent (tigers and lions) ----------
+    async function showKidPhotos() {
+      const panel = document.getElementById('kidPhotos');
+      const list = await cloudRpc('list_uploads', { p_token: cloudToken() });
+      if (!list.ok || !list.uploads.length) { panel.style.display = 'none'; return; }
+      panel.style.display = 'block';
+      panel.textContent = '';
+      const add = (parent, tag, text, cls) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (cls) el.className = cls; parent.appendChild(el); return el; };
+      add(panel, 'h2', `📸 Sent by the kids (${list.uploads.length})`);
+      const current = kids.find(k => k.id === kidId);
+      add(panel, 'p', `Reading a photo adds it to the kid picked at the top of this page (now: ${current ? current.name : '?'}). ` +
+                      'Pick the right kid first. Each photo is deleted after you read or delete it.');
+      list.uploads.forEach(u => {
+        const row = add(panel, 'div', undefined, 'photoRow');
+        add(row, 'div', `${u.nickname}: ${u.note || 'no note'} · sent ${new Date(u.at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`, 'photoWho');
+        const bar = add(row, 'div', undefined, 'kidBar');
+        const look = add(bar, 'button', '👁️ Look');
+        const read = add(bar, 'button', '🤖 Read it');
+        const drop = add(bar, 'button', '🗑️ Delete');
+        const note = add(row, 'div');
+        const img = add(row, 'img', undefined, 'photoBig');
+        img.style.display = 'none';
+        const getImage = async () => {
+          const r = await cloudRpc('get_upload', { p_token: cloudToken(), p_id: u.id });
+          if (!r.ok) throw new Error(r.error);
+          return r.image;
+        };
+        look.addEventListener('click', async () => {
+          try { img.src = 'data:image/jpeg;base64,' + await getImage(); img.style.display = 'block'; }
+          catch (err) { note.textContent = '⚠️ ' + err.message; }
+        });
+        read.addEventListener('click', async () => {
+          note.textContent = '⏳ Claude is reading it... (about 10 seconds)';
+          try {
+            const response = await claudeCloud({ action: 'read', kind: 'auto', media_type: 'image/jpeg', image: await getImage() });
+            const result = await response.json();
+            if (!response.ok) { note.textContent = '⚠️ ' + result.error; return; }
+            const readAs = useReadResult('auto', result);
+            await cloudRpc('delete_upload', { p_token: cloudToken(), p_id: u.id });
+            note.textContent = readAs === 'worksheet'
+              ? '✅ Read! Check the form under "Check and save", then click Save.'
+              : '✅ Read and saved below.';
+            read.disabled = drop.disabled = true;
+            setTimeout(showKidPhotos, 4000);
+          } catch (err) {
+            note.textContent = '⚠️ ' + err.message;
+          }
+        });
+        drop.addEventListener('click', async () => {
+          if (!confirm('Delete this photo without reading it?')) return;
+          await cloudRpc('delete_upload', { p_token: cloudToken(), p_id: u.id });
+          showKidPhotos();
+        });
+      });
     }
 
     // ---------- Moving grades to another computer ----------

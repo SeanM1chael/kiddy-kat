@@ -239,6 +239,15 @@
     #parentWallet textarea { height: 110px; }
 
     /* Catch-up card */
+    /* Send schoolwork */
+    #uploadCard { display: none; background: #e7f5ff; border-radius: 20px; padding: 12px 14px; margin: 12px auto; width: 80%; }
+    .uploadTitle { font-size: 18px; font-weight: bold; }
+    #uploadCard button:not(.info) { font-size: 17px; padding: 10px 16px; border: none; border-radius: 12px;
+                                    background: var(--main); color: white; margin: 8px auto 0; display: block; }
+    #uploadCard input { display: block; width: 100%; font-size: 17px; padding: 8px; margin: 8px 0 0;
+                        border: 2px solid var(--soft); border-radius: 10px; box-sizing: border-box; }
+    .uploadPreview { max-width: 100%; max-height: 260px; border-radius: 10px; margin: 8px auto 0; }
+    .uploadStatus { font-size: 15px; color: #495057; margin-top: 6px; }
     /* League */
     #leagueCard { display: none; background: #fff9db; border-radius: 20px; padding: 12px 14px; margin: 12px auto; width: 80%; cursor: pointer; }
     .leagueTitle { font-size: 18px; font-weight: bold; }
@@ -397,6 +406,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
   <div id="weather">🌤️ Checking the weather...</div>
   <div id="catchupCard"></div>
   <div id="leagueCard"></div>
+  <div id="uploadCard"></div>
 
   <!-- The tasks are filled in by JavaScript from each kid's own lists -->
   <div id="morning" class="list"></div>
@@ -553,6 +563,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
   <script src="catchup.js"></script>
   <script src="packs.js"></script>
   <script src="league.js"></script>
+  <script src="uploads.js"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -923,6 +934,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     checkPayday();          // runs payday if it's due
     showCatchUp();
     showLeagueCard();
+    showUploadCard();
     showClock();
   </script>
 </body>
