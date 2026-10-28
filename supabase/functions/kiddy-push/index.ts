@@ -61,8 +61,12 @@ Deno.serve(async (req) => {
   };
 
   const plan = await db("push_prepare", { p_token: body.token, p_to: to });
-  if (!plan || !plan.ok) return reply({ error: plan?.error ?? plan?.message ?? "Not allowed" }, 403);
-  if (plan.quiet) return reply({ ok: true, sent: 0, note: "Quiet hours" });
+  if (!plan || !plan.ok) {
+    console.log(`alert ${body.kind} to ${to}: NOT ALLOWED (${plan?.error ?? plan?.message ?? "no answer"})`);
+    return reply({ error: plan?.error ?? plan?.message ?? "Not allowed" }, 403);
+  }
+  if (plan.quiet) { console.log(`alert ${body.kind} to ${to}: quiet hours`); return reply({ ok: true, sent: 0, note: "Quiet hours" }); }
+  if (!Deno.env.get("VAPID_PRIVATE_KEY") || !Deno.env.get("VAPID_PUBLIC_KEY")) console.log("MISSING a VAPID key secret");
 
   webpush.setVapidDetails(Deno.env.get("VAPID_SUBJECT") ?? "mailto:kiddykat@example.com",
                           Deno.env.get("VAPID_PUBLIC_KEY") ?? "", Deno.env.get("VAPID_PRIVATE_KEY") ?? "");
@@ -87,5 +91,6 @@ Deno.serve(async (req) => {
     }
   }));
   if (dead.length) await db("push_forget", { p_ids: dead });
-  return reply({ ok: true, sent: sent });
+  console.log(`alert ${body.kind} from ${plan.from} to ${to}: ${plan.targets.length} device(s) found, ${sent} sent, ${dead.length} gone`);
+  return reply({ ok: true, sent: sent, devices: plan.targets.length });
 });
