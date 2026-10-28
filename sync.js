@@ -71,11 +71,14 @@ function cloudChanged() {
 // ---------- Talking to Supabase ----------
 async function cloudCall(name, args) {
   try {
+    const sending = JSON.stringify(args);
     const response = await fetch(`${KIDDY_KAT_CLOUD.url}/rest/v1/rpc/${name}`, {
       method: 'POST',
       headers: { apikey: KIDDY_KAT_CLOUD.key, 'Content-Type': 'application/json' },
-      body: JSON.stringify(args),
-      keepalive: true                                  // finishes even if the app is closing
+      body: sending,
+      // "keepalive" lets a save finish even if the app is closing, but phones only
+      // allow it for small requests (under 64 KB). Photos and big saves go without it.
+      keepalive: sending.length < 60000
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) return { ok: false, error: body.message || `Server error ${response.status}` };
