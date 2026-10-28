@@ -97,6 +97,8 @@ function cloudCollect() {
     delete profile.name;
     data.kiddyKatProfile = JSON.stringify(profile);
   }
+  // For the parent dashboard: the task lists this kid sees right now (including the starting lists)
+  if (typeof tasks !== 'undefined' && tasks) data._tasks = JSON.stringify(tasks);
   return data;
 }
 

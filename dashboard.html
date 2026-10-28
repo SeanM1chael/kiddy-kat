@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiddy Kat Dashboard</title>
+  <link rel="apple-touch-icon" href="icon.png">
+  <style>
+    :root { --main: #ff7a00; --bg: #fff4e6; --ok: #2b8a3e; --warn: #e8590c; --muted: #868e96; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0;
+           padding: 16px; color: #212529; }
+    h1 { color: var(--main); margin: 4px 0 2px; font-size: 28px; }
+    .sub { color: var(--muted); margin-bottom: 14px; font-size: 14px; }
+    button { font-size: 16px; padding: 10px 18px; border: none; border-radius: 12px;
+             background: var(--main); color: white; cursor: pointer; }
+    button.plain { background: #eee; color: #333; }
+    #login { max-width: 360px; margin: 10vh auto; background: white; padding: 24px; border-radius: 20px; text-align: center; }
+    #login input { display: block; width: 100%; font-size: 20px; padding: 12px; margin: 10px 0;
+                   border: 2px solid #ffd8a8; border-radius: 12px; text-align: center; }
+    #loginNote { margin-top: 10px; color: var(--warn); }
+    #board { display: none; }
+    .bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .kids { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
+    .kid { background: white; border-radius: 20px; padding: 16px; }
+    .kidHead { display: flex; align-items: center; gap: 10px; }
+    .kidHead .face { font-size: 40px; }
+    .kidHead .name { font-size: 22px; font-weight: bold; }
+    .kidHead .seen { color: var(--muted); font-size: 13px; }
+    .section { margin-top: 12px; padding-top: 10px; border-top: 1px solid #f1f3f5; }
+    .section h3 { margin: 0 0 6px; font-size: 15px; color: #495057; }
+    .list { display: flex; justify-content: space-between; padding: 4px 0; }
+    .done { color: var(--ok); font-weight: bold; }
+    .partial { color: var(--warn); font-weight: bold; }
+    .none { color: var(--muted); }
+    .left { color: var(--muted); font-size: 14px; padding: 0 0 4px 12px; }
+    .waiting { background: #fff3bf; border-radius: 10px; padding: 6px 10px; margin: 4px 0; font-size: 15px; }
+    .row { display: flex; justify-content: space-between; padding: 2px 0; }
+    .empty { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <!-- Grown-up login -->
+  <div id="login">
+    <h1>🐱 Kiddy Kat</h1>
+    <div class="sub">Grown-ups dashboard</div>
+    <input id="code" placeholder="Family code" autocapitalize="characters">
+    <input id="pin" type="password" inputmode="numeric" placeholder="Online parent PIN">
+    <button onclick="logIn()">Log in</button>
+    <div id="loginNote"></div>
+  </div>
+
+  <!-- The dashboard -->
+  <div id="board">
+    <h1 id="familyName">🐱 Kiddy Kat</h1>
+    <div class="sub" id="updated"></div>
+    <div class="bar">
+      <button onclick="loadBoard()">🔄 Refresh</button>
+      <button class="plain" onclick="logOut()">Log out</button>
+    </div>
+    <div class="kids" id="kids"></div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    // =================================================================
+    // Parent dashboard: every kid's day at a glance (read-only).
+    // Approvals still happen in ⚙️ Grown-ups on each kid's phone.
+    // The grown-up login lasts until this browser tab is closed.
+    // =================================================================
+
+    const ANIMALS = { kitten: '🐱', tiger: '🐯', lion: '🦁' };
+    const PET_STAGES = {
+      kitten: ['🥚', '🐱', '😺', '🐈'], puppy: ['🥚', '🐶', '🐕', '🦮'], bunny: ['🥚', '🐰', '🐇', '🐇'],
+      flower: ['🌰', '🌱', '🌷', '🌻'], hamster: ['🥚', '🐭', '🐹', '🐹'], turtle: ['🥚', '🐢', '🐢', '🐢'],
+      parrot: ['🥚', '🐣', '🐥', '🦜'], unicorn: ['🥚', '🦄', '🦄', '🦄'], dragon: ['🥚', '🦎', '🐲', '🐉']
+    };
+    const STAGE_POINTS = [0, 3, 15, 40];
+    const LISTS = [['morning', '☀️ Morning'], ['afternoon', '🎒 After School'], ['bedtime', '🌙 Bedtime']];
+
+    // Same forgiving family code as the kid app
+    function cleanFamilyCode(text) {
+      let code = String(text || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (code.startsWith('KAT') && code.length > 6) code = code.slice(3);
+      return 'KAT-' + code;
+    }
+
+    async function cloudCall(name, args) {
+      try {
+        const response = await fetch(`${KIDDY_KAT_CLOUD.url}/rest/v1/rpc/${name}`, {
+          method: 'POST',
+          headers: { apikey: KIDDY_KAT_CLOUD.key, 'Content-Type': 'application/json' },
+          body: JSON.stringify(args)
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) return { ok: false, error: body.message || `Server error ${response.status}` };
+        return body;
+      } catch (err) {
+        return { ok: false, error: 'No internet right now' };
+      }
+    }
+
+    // ---------- Logging in and out ----------
+    async function logIn() {
+      const note = document.getElementById('loginNote');
+      note.textContent = '⏳ Checking...';
+      const result = await cloudCall('parent_login', {
+        p_code: cleanFamilyCode(document.getElementById('code').value),
+        p_pin: document.getElementById('pin').value
+      });
+      if (!result.ok) { note.textContent = '⚠️ ' + result.error; return; }
+      sessionStorage.setItem('kiddyKatDashToken', result.token);    // forgotten when the tab closes
+      document.getElementById('pin').value = '';
+      note.textContent = '';
+      loadBoard();
+    }
+
+    function logOut() {
+      sessionStorage.removeItem('kiddyKatDashToken');
+      document.getElementById('board').style.display = 'none';
+      document.getElementById('login').style.display = 'block';
+    }
+
+    // ---------- Loading everyone ----------
+    async function loadBoard() {
+      const token = sessionStorage.getItem('kiddyKatDashToken');
+      if (!token) { logOut(); return; }
+      const result = await cloudCall('family_overview', { p_token: token });
+      if (!result.ok) {
+        logOut();
+        document.getElementById('loginNote').textContent = '⚠️ ' + result.error;
+        return;
+      }
+      document.getElementById('login').style.display = 'none';
+      document.getElementById('board').style.display = 'block';
+      document.getElementById('familyName').textContent = `🐱 ${result.family}`;
+      document.getElementById('updated').textContent = `Updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+      const box = document.getElementById('kids');
+      box.textContent = '';
+      if (!result.kids.length) box.textContent = 'No kids yet. Add them in ⚙️ Grown-ups → ☁️ Online family on their phones.';
+      result.kids.forEach(kid => box.appendChild(kidCard(kid)));
+    }
+
+    // Reads one saved value safely ("null" if it's missing or broken)
+    function read(data, key, fallback) {
+      try { return data[key] ? JSON.parse(data[key]) : fallback; } catch (err) { return fallback; }
+    }
+
+    function money(cents) {
+      return '$' + ((cents || 0) / 100).toFixed(2);
+    }
+
+    function ago(when) {
+      const minutes = Math.round((Date.now() - new Date(when)) / 60000);
+      if (minutes < 2) return 'just now';
+      if (minutes < 60) return `${minutes} min ago`;
+      const hours = Math.round(minutes / 60);
+      if (hours < 24) return `${hours} hr ago`;
+      const days = Math.round(hours / 24);
+      return `${days} day${days === 1 ? '' : 's'} ago`;
+    }
+
+    // ---------- One kid's card ----------
+    function kidCard(kid) {
+      const data = kid.data || {};
+      const today = new Date().toDateString();
+      const card = document.createElement('div');
+      card.className = 'kid';
+      const add = (parent, tag, text, cls) => {
+        const el = document.createElement(tag);
+        if (text !== undefined) el.textContent = text;
+        if (cls) el.className = cls;
+        parent.appendChild(el);
+        return el;
+      };
+      const section = title => { const s = add(card, 'div', undefined, 'section'); add(s, 'h3', title); return s; };
+      const row = (parent, left, right, cls) => {
+        const r = add(parent, 'div', undefined, 'row');
+        add(r, 'span', left);
+        add(r, 'span', right, cls);
+      };
+
+      // Header
+      const head = add(card, 'div', undefined, 'kidHead');
+      add(head, 'span', ANIMALS[kid.animal] || '🐱', 'face');
+      const who = add(head, 'div');
+      add(who, 'div', kid.nickname, 'name');
+      add(who, 'div', Object.keys(data).length ? `Last active ${ago(kid.updated_at)}` : 'Not linked yet', 'seen');
+      if (!Object.keys(data).length) return card;
+
+      // Today's checklists
+      const pets = read(data, 'kiddyKatPets', []);
+      const pet = pets[Number(read(data, 'kiddyKatActivePet', 0))] || pets[0] || null;
+      const wallet = read(data, 'kiddyKatWallet', null);
+      const tasks = read(data, '_tasks', null);
+      const checklist = read(data, 'kiddyKatChecklist', null);
+      const checked = checklist && checklist.date === today ? checklist.done : [];
+      const listsPaid = wallet && wallet.paidToday && wallet.paidToday.date === today ? wallet.paidToday.lists : [];
+
+      const todayBox = section('✅ Today');
+      let offset = 0;
+      LISTS.forEach(([key, label]) => {
+        const items = tasks ? tasks[key] || [] : [];
+        const doneHere = items.map((t, i) => checked.includes(offset + i));
+        offset += items.length;
+        const finished = (pet && pet.cared && pet.cared[key] === today) || listsPaid.includes(key) ||
+                         (items.length && doneHere.every(d => d));
+        const count = doneHere.filter(d => d).length;
+        const r = add(todayBox, 'div', undefined, 'list');
+        add(r, 'span', label);
+        if (finished) add(r, 'span', '✅ Done', 'done');
+        else if (count) add(r, 'span', `${count} of ${items.length}`, 'partial');
+        else add(r, 'span', 'Not started', 'none');
+        if (!finished && count) {
+          const left = items.filter((t, i) => !doneHere[i]);
+          add(todayBox, 'div', 'Still to do: ' + left.join(', '), 'left');
+        }
+      });
+
+      // Waiting for a grown-up
+      const rewards = read(data, 'kiddyKatRewardRequests', []).filter(r => r.status === 'waiting');
+      const jobs = wallet ? wallet.jobRequests.filter(j => j.status === 'waiting') : [];
+      if (rewards.length || jobs.length || (wallet && wallet.payoutDue)) {
+        const wait = section('🔔 Waiting for you (on their phone)');
+        rewards.forEach(r => add(wait, 'div', `🎁 ${r.emoji || ''} ${r.name} (${r.price} ⭐)`, 'waiting'));
+        jobs.forEach(j => add(wait, 'div', `💵 ${j.emoji || ''} ${j.name} (${money(j.cents)})`, 'waiting'));
+        if (wallet && wallet.payoutDue) add(wait, 'div', `💸 Payday payout to hand over: ${money(wallet.payoutDue)}`, 'waiting');
+      }
+
+      // Pet
+      if (pet) {
+        const petBox = section('🐾 Pet');
+        let stage = 0;
+        STAGE_POINTS.forEach((points, i) => { if ((pet.points || 0) >= points) stage = i; });
+        const face = (PET_STAGES[pet.type] || PET_STAGES.kitten)[stage];
+        row(petBox, `${face} ${pet.name}`, `${pet.stars || 0} ⭐`);
+        if (pets.length > 1) row(petBox, 'Pet House', `${pets.length} pets`);
+      }
+
+      // Wallet
+      if (wallet) {
+        const walletBox = section('💵 Wallet');
+        row(walletBox, 'Spend', money(wallet.spend));
+        row(walletBox, 'Save', money(wallet.save));
+        if (wallet.give) row(walletBox, 'Give', money(wallet.give));
+        if (wallet.pastDue && wallet.pastDue.length) row(walletBox, '⚠️ Past-due bills', String(wallet.pastDue.length), 'partial');
+      }
+
+      // School
+      const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      const practice = read(data, 'kiddyKatPractice', []).filter(p => new Date(p.date).getTime() >= weekAgo);
+      const catchUp = read(data, 'kiddyKatCatchUp', null);
+      const pack = read(data, 'kiddyKatPack', null);
+      const catchLeft = catchUp ? catchUp.items.filter(i => !i.done).length : 0;
+      if (practice.length || catchLeft || pack) {
+        const school = section('📚 School');
+        if (practice.length) {
+          const right = practice.reduce((s, p) => s + p.correct, 0);
+          const total = practice.reduce((s, p) => s + p.total, 0);
+          row(school, 'Practice (7 days)', `${practice.length} rounds, ${Math.round(right / total * 100)}%`);
+        }
+        if (catchUp && catchUp.items.length) row(school, 'Catch-up left', String(catchLeft), catchLeft ? 'partial' : 'done');
+        if (pack) row(school, `🧠 ${pack.title}`, `${pack.questions.length - pack.queue.length} of ${pack.questions.length} learned`);
+      }
+      return card;
+    }
+
+    // Start: show the board if already logged in this tab; refresh every 2 minutes
+    if (sessionStorage.getItem('kiddyKatDashToken')) loadBoard();
+    setInterval(() => { if (sessionStorage.getItem('kiddyKatDashToken')) loadBoard(); }, 120000);
+    document.getElementById('pin').addEventListener('keydown', e => { if (e.key === 'Enter') logIn(); });
+  </script>
+</body>
+</html>
