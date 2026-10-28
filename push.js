@@ -74,9 +74,12 @@ async function pushTurnOff() {
 // Never waits and never shows an error: an alert is a nice extra, not a must.
 function pushSend(token, kind, detail, kid) {
   if (!token || !KIDDY_KAT_CLOUD.pushKey) return;
+  // What the kids call the grown-up (set in the dashboard's "From" box); only used for grown-up alerts
+  let fromName = 'Dad';
+  try { fromName = localStorage.getItem('kiddyKatDashFrom') || 'Dad'; } catch (err) {}
   fetch(`${KIDDY_KAT_CLOUD.url}/functions/v1/kiddy-push`, {
     method: 'POST', headers: { apikey: KIDDY_KAT_CLOUD.key, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: token, kind: kind, detail: detail || '', kid: kid || '' })
+    body: JSON.stringify({ token: token, kind: kind, detail: detail || '', kid: kid || '', fromName: fromName })
   }).catch(() => {});
 }
 

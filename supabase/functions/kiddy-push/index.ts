@@ -14,18 +14,20 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Who an alert of each kind goes to, and its words. d = the short detail, f = who it's from.
-const KINDS: Record<string, { to: "parents" | "kid"; words: (f: string, d: string) => string }> = {
-  reward:    { to: "parents", words: (f, d) => `🎁 ${f} asked for ${d || "a reward"}` },
-  job:       { to: "parents", words: (f, d) => `💵 ${f} did a job: ${d || "extra job"}. Check and pay?` },
-  catchup:   { to: "parents", words: (f, d) => `📚 ${f} turned in ${d || "a catch-up assignment"}` },
-  photo:     { to: "parents", words: (f) => `📸 ${f} sent schoolwork to check` },
-  yes:       { to: "kid", words: (f, d) => `🎉 ${f === "grown-up" ? "Your grown-up" : f} said YES to ${d || "your reward"}!` },
-  no:        { to: "kid", words: (_f, d) => `🎁 ${d || "Your reward"}: not this time. Your stars are back.` },
-  paid:      { to: "kid", words: (_f, d) => `💵 You got paid${d ? " for " + d : ""}!` },
-  stars:     { to: "kid", words: (f, d) => `⭐ ${f === "grown-up" ? "Your grown-up" : f} sent you ${d || "some"} stars!` },
-  kindness:  { to: "kid", words: (f) => `💛 ${f} sent you a kindness star!` },
-  pack:      { to: "kid", words: (_f, d) => `🧠 New practice pack${d ? ": " + d : ""}! Find it in 🎮 Practice.` },
+// Who an alert of each kind goes to, its title (what kind of alert) and its words.
+// d = the short detail, f = who it's from.
+const stars = (d: string) => (d === "1" ? "1 star" : `${d || "some"} stars`);
+const KINDS: Record<string, { to: "parents" | "kid"; title: string; words: (f: string, d: string) => string }> = {
+  reward:   { to: "parents", title: "🎁 Reward request", words: (f, d) => `${f} asked for ${d || "a reward"}` },
+  job:      { to: "parents", title: "💵 Job to check", words: (f, d) => `${f} did a job: ${d || "extra job"}. Check and pay?` },
+  catchup:  { to: "parents", title: "📚 Catch-up turned in", words: (f, d) => `${f} turned in ${d || "a catch-up assignment"}` },
+  photo:    { to: "parents", title: "📸 Schoolwork to check", words: (f) => `${f} sent schoolwork to check` },
+  yes:      { to: "kid", title: "🎉 It's a YES!", words: (f, d) => `${f} said YES to ${d || "your reward"}!` },
+  no:       { to: "kid", title: "🎁 Reward", words: (_f, d) => `${d || "Your reward"}: not this time. Your stars are back.` },
+  paid:     { to: "kid", title: "💵 You got paid!", words: (f, d) => `${f} paid you${d ? " for " + d : ""}!` },
+  stars:    { to: "kid", title: "⭐ Star gift", words: (f, d) => `${f} sent you ${stars(d)}!` },
+  kindness: { to: "kid", title: "💛 Kindness star", words: (f) => `${f} sent you a kindness star!` },
+  pack:     { to: "kid", title: "🧠 New practice pack", words: (_f, d) => `${d || "A new pack"} is ready in 🎮 Practice!` },
 };
 
 function reply(body: unknown, status = 200) {
@@ -70,9 +72,11 @@ Deno.serve(async (req) => {
 
   webpush.setVapidDetails(Deno.env.get("VAPID_SUBJECT") ?? "mailto:kiddykat@example.com",
                           Deno.env.get("VAPID_PUBLIC_KEY") ?? "", Deno.env.get("VAPID_PRIVATE_KEY") ?? "");
+  // A grown-up's alert uses the name the kids call them (like "Dad"); kids and fans use their own names
+  const from = plan.sender === "adult" ? (clean(body.fromName, 20) || "Your grown-up") : clean(plan.from, 30);
   const message = JSON.stringify({
-    title: "Kiddy Kat",
-    body: kind.words(clean(plan.from, 30), clean(body.detail)),
+    title: kind.title,
+    body: kind.words(from, clean(body.detail)),
     url: kind.to === "parents" ? "dashboard.html" : "./",
     tag: body.kind,
   });
