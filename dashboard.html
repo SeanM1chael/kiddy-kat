@@ -57,6 +57,14 @@
     #leaguePanel button { font-size: 14px; padding: 6px 12px; margin: 4px 4px 0 0; }
     .leagueCols { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 8px; }
     .leagueCols > div { background: #fff9db; border-radius: 12px; padding: 8px 10px; font-size: 14px; }
+    #sendPanel { background: white; border-radius: 20px; padding: 16px; margin-bottom: 14px; }
+    #sendPanel h3 { margin: 0 0 4px; }
+    #sendPanel h4 { margin: 10px 0 4px; }
+    #sendPanel input:not([type=checkbox]) { width: 100%; font-size: 15px; padding: 8px; border: 2px solid #ffd8a8; border-radius: 10px; margin: 4px 0; box-sizing: border-box; }
+    #sendPanel button { font-size: 14px; padding: 6px 12px; margin: 6px 4px 0 0; }
+    #sendPanel label { margin-right: 12px; white-space: nowrap; }
+    .eventRow { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid #f1f3f5; font-size: 14px; }
+    .eventRow .who { color: var(--muted); }
     #fans { background: white; border-radius: 20px; padding: 16px; margin-bottom: 14px; }
     #fans h3 { margin: 0 0 8px; }
     .fanRow { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
@@ -85,6 +93,7 @@
       <button class="plain" onclick="logOut()">Log out</button>
     </div>
     <div id="pushBox"></div>
+    <div id="sendPanel"></div>
     <div id="leaguePanel"></div>
     <div id="fans"></div>
     <div class="kids" id="kids"></div>
@@ -174,6 +183,7 @@
       result.kids.forEach(kid => box.appendChild(kidCard(kid)));
       if (!document.getElementById('pushBox').childElementCount)
         pushSwitch(document.getElementById('pushBox'), () => sessionStorage.getItem('kiddyKatDashToken'), 'this device (grown-up alerts)');
+      showSendPanel(result.kids);
       showFans();
       showLeaguePanel();
     }
@@ -235,6 +245,93 @@
     }
 
     // ---------- Fans (grandparents, aunts, uncles) ----------
+    // ---------- 📣 Send to the kids: special days for everyone at once ----------
+    function localDateKey(d) {
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    // Upcoming special days for each kid: what's on their phone, plus what's waiting in their inbox
+    function upcomingEvents(kids) {
+      const today = localDateKey(new Date());
+      const byDay = new Map();
+      kids.forEach(kid => {
+        const data = kid.data || {};
+        const mine = new Map();
+        (read(data, 'kiddyKatEvents', []) || []).forEach(e => mine.set(e.date + '|' + e.tip, e));
+        (read(data, 'kiddyKatParentInbox', []) || []).filter(d => d.type === 'event').forEach(d => {
+          if (d.remove) mine.delete(d.date + '|' + d.tip); else mine.set(d.date + '|' + d.tip, { date: d.date, tip: d.tip });
+        });
+        mine.forEach((e, key) => {
+          if (e.date < today) return;
+          if (!byDay.has(key)) byDay.set(key, { date: e.date, tip: e.tip, kids: [] });
+          byDay.get(key).kids.push(kid.nickname);
+        });
+      });
+      return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    function showSendPanel(kids) {
+      const box = document.getElementById('sendPanel');
+      box.textContent = '';
+      const add = (parent, tag, text, cls) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (cls) el.className = cls; parent.appendChild(el); return el; };
+      add(box, 'h3', '📣 Send to the kids');
+      add(box, 'h4', '📅 Special day');
+      add(box, 'div', 'Dress-up day, picture day, a field trip. It shows on their blue card that day, with a heads-up the afternoon before.', 'pushNote');
+      const date = add(box, 'input'); date.type = 'date'; date.min = localDateKey(new Date());
+      const tip = add(box, 'input'); tip.placeholder = '🎃 Halloween dress-up day! Wear your costume'; tip.maxLength = 120;
+      const who = add(box, 'div');
+      const checks = kids.map(kid => {
+        const label = add(who, 'label');
+        const c = add(label, 'input'); c.type = 'checkbox'; c.checked = true; c.value = kid.nickname;
+        label.append(' ' + kid.nickname);
+        return c;
+      });
+      const send = add(box, 'button', '📣 Send special day');
+      const note = add(box, 'div', '', 'pushNote');
+
+      const sendEvent = async (day, text, nicknames, remove) => {
+        const token = sessionStorage.getItem('kiddyKatDashToken');
+        const r = await cloudCall('parent_add_event', { p_token: token, p_nicknames: nicknames, p_date: day, p_tip: text, p_remove: remove });
+        if (!r.ok) return r;
+        if (!remove) {
+          const when = new Date(day + 'T12:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+          nicknames.forEach(n => pushSend(token, 'event', `${when}: ${text}`, n));      // alert each kid's phone
+        }
+        return r;
+      };
+
+      send.addEventListener('click', async () => {
+        const picked = checks.filter(c => c.checked).map(c => c.value);
+        if (!date.value || !tip.value.trim()) { note.textContent = 'Pick a date and type what the day is.'; return; }
+        if (!picked.length) { note.textContent = 'Pick at least one kid.'; return; }
+        note.textContent = '⏳ Sending...';
+        const r = await sendEvent(date.value, tip.value.trim(), picked, false);
+        if (!r.ok) { note.textContent = '⚠️ ' + r.error; return; }
+        note.textContent = `✅ Sent to ${picked.join(', ')}. It shows up when their app opens.`;
+        tip.value = '';
+        loadBoard();
+      });
+
+      const coming = upcomingEvents(kids);
+      if (coming.length) {
+        add(box, 'h4', 'Coming up');
+        coming.forEach(e => {
+          const row = add(box, 'div', undefined, 'eventRow');
+          const when = new Date(e.date + 'T12:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+          const text = add(row, 'span', `${when}: ${e.tip} `);
+          add(text, 'span', `(${e.kids.join(', ')})`, 'who');
+          const remove = add(row, 'button', 'Remove', 'plain');
+          remove.addEventListener('click', async () => {
+            if (!confirm(`Remove "${e.tip}" for ${e.kids.join(', ')}?`)) return;
+            const r = await sendEvent(e.date, e.tip, e.kids, true);
+            if (!r.ok) { note.textContent = '⚠️ ' + r.error; return; }
+            loadBoard();
+          });
+        });
+      }
+    }
+
     async function showFans() {
       const box = document.getElementById('fans');
       const result = await cloudCall('list_fans', { p_token: sessionStorage.getItem('kiddyKatDashToken') });

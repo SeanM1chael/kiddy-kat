@@ -226,6 +226,7 @@ function processParentInbox() {
   const done = JSON.parse(localStorage.getItem('kiddyKatInboxDone') || '[]');
   const messages = [];
   const keep = [];                       // star gifts wait here until there's a pet to give them to
+  const newDays = new Map();             // special days to announce (a later "remove" cancels one)
   inbox.filter(d => !done.includes(d.id)).forEach(d => {
     if (d.type === 'stars') {
       if (!pet) { keep.push(d); return; }
@@ -243,14 +244,32 @@ function processParentInbox() {
     } else if (d.type === 'job' && wallet) {
       const job = wallet.jobRequests.find(r => r.id === d.target);
       if (job && job.status === 'waiting') {
-        if (d.approved) { payJob(job); messages.push(`💵 ${parentName()} paid you ${dollars(job.cents)} for ${job.name}!`); }
+        if (d.approved) {
+          payJob(job);
+          const what = [job.cents ? dollars(job.cents) : '', job.stars ? `${job.stars} ⭐` : ''].filter(Boolean).join(' + ');
+          messages.push(`💵 ${parentName()} paid you ${what} for ${job.name}!`);
+        }
         else declineJob(job);
       }
     } else if (d.type === 'payout' && wallet) {
       markPaidOut(d.cents);
+    } else if (d.type === 'event' && typeof loadEvents === 'function') {
+      // A special day from the dashboard (index.html → Special days)
+      const events = loadEvents().filter(e => !(e.date === d.date && e.tip === d.tip));
+      const key = d.date + '|' + d.tip;
+      newDays.delete(key);
+      if (!d.remove && d.date >= dateKey(new Date())) {
+        events.push({ date: d.date, tip: String(d.tip || '').slice(0, 120) });
+        const when = new Date(d.date + 'T12:00').toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+        newDays.set(key, `📅 ${when}: ${d.tip}`);
+      }
+      localStorage.setItem('kiddyKatEvents', JSON.stringify(events));
+      if (typeof showToday === 'function') showToday();
+      if (typeof showEvents === 'function') showEvents();
     }
     done.push(d.id);
   });
+  newDays.forEach(text => messages.push(text));
   localStorage.setItem('kiddyKatInboxDone', JSON.stringify(done.slice(-100)));
   localStorage.setItem('kiddyKatParentInbox', JSON.stringify(keep));
   if (typeof showPet === 'function') showPet();
