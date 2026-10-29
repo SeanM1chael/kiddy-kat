@@ -30,6 +30,10 @@ const KINDS: Record<string, { to: "parents" | "kid"; title: string; words: (f: s
   pack:     { to: "kid", title: "🧠 New practice pack", words: (_f, d) => `${d || "A new pack"} is ready in 🎮 Practice!` },
   event:    { to: "kid", title: "📅 Special day", words: (_f, d) => d || "A special day is coming up!" },
   streak:   { to: "parents", title: "🔥 Streak milestone", words: (f, d) => `${f} finished the morning list ${d || "several"} days in a row!` },
+  note:     { to: "kid", title: "💬 Message", words: (f, d) => `${f}: ${d || "Have a great day!"}` },
+  thanks:   { to: "parents", title: "❤️ Message loved", words: (f) => `${f} loved your message!` },
+  supply:   { to: "parents", title: "🧴 Running low", words: (f, d) => `${f} is running low on ${d || "something"}` },
+  bought:   { to: "kid", title: "🛒 Got it!", words: (f, d) => `${f} got your ${d || "supplies"}!` },
   gaming:   { to: "parents", title: "🎮 Gaming hour", words: (f, d) => `${f} started a gaming hour${d ? " (" + d + ")" : ""}` },
 };
 
@@ -79,7 +83,7 @@ Deno.serve(async (req) => {
   const from = plan.sender === "adult" ? (clean(body.fromName, 20) || "Your grown-up") : clean(plan.from, 30);
   const message = JSON.stringify({
     title: kind.title,
-    body: kind.words(from, clean(body.detail, body.kind === "event" ? 100 : 40)),
+    body: kind.words(from, clean(body.detail, body.kind === "event" || body.kind === "note" ? 140 : 40)),
     url: kind.to === "parents" ? "dashboard.html" : "./",
     tag: body.kind,
   });
