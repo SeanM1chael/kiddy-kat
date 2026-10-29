@@ -254,6 +254,11 @@ function processParentInbox() {
       }
     } else if (d.type === 'payout' && wallet) {
       markPaidOut(d.cents);
+    } else if (d.type === 'note' && typeof receiveNote === 'function') {
+      receiveNote(d);                                            // 💬 message from a grown-up (supplies.js)
+      messages.push(`💬 ${d.from || parentName()}: ${d.text}`);
+    } else if (d.type === 'bought' && typeof receiveBought === 'function') {
+      messages.push(receiveBought(d));                           // 🛒 a supply item was bought
     } else if (d.type === 'event' && typeof loadEvents === 'function') {
       // A special day from the dashboard (index.html → Special days)
       const events = loadEvents().filter(e => !(e.date === d.date && e.tip === d.tip));

@@ -145,14 +145,15 @@
     #challenge .closeGame { margin-left: auto; font-size: 24px; background: none; border: none; color: white; }
     #chTitle { font-size: 30px; font-weight: bold; margin: 5vh 0 10px; }
     #chTimer { font-size: 64px; font-weight: bold; min-height: 76px; }
-    #chArea { margin: 10px 0; }
+    #chArea { margin: 10px 0; position: relative; z-index: 2; }      /* answers always above the chat */
     .chButton { font-size: 24px; padding: 14px 22px; margin: 6px; border: none; border-radius: 16px;
                 background: #ffd43b; color: #2b1055; font-weight: bold; }
     .chButton.chChoice { width: 42%; background: white; }
     .chProgress { font-size: 20px; }
     .chQuestion { font-size: 44px; font-weight: bold; margin: 8px; }
-    #chChat { position: absolute; left: 12px; right: 70px; bottom: 16px; text-align: left; font-size: 16px;
-              background: rgba(0,0,0,0.25); border-radius: 12px; padding: 8px; }
+    #chChat { position: absolute; left: 12px; right: 70px; bottom: 16px; text-align: left; font-size: 14px;
+              background: rgba(0,0,0,0.25); border-radius: 12px; padding: 6px 8px; z-index: 1;
+              max-height: 18vh; overflow: hidden; pointer-events: none; }      /* taps go through to the answers */
     #heartButton { position: absolute; right: 12px; bottom: 20px; font-size: 34px; background: rgba(255,255,255,0.2);
                    border: none; border-radius: 50%; width: 56px; height: 56px; }
     .floatHeart { position: absolute; bottom: 60px; font-size: 32px; animation: floatUp 2.4s ease-out forwards; pointer-events: none; }
@@ -251,6 +252,33 @@
     .uploadPreview { max-width: 100%; max-height: 260px; border-radius: 10px; margin: 8px auto 0; }
     .uploadStatus { font-size: 15px; color: #495057; margin-top: 6px; }
     .listNote { font-size: 14px; color: #868e96; margin: 4px 0 2px; }
+    /* 💬 Message from a grown-up */
+    #noteCard { display: none; align-items: center; gap: 10px; background: #e6fcf5; border-radius: 20px; padding: 12px 14px; margin: 12px auto; width: 80%; text-align: left; }
+    .noteWords { flex: 1; min-width: 0; }
+    .noteFrom { font-size: 14px; color: #0ca678; font-weight: bold; }
+    .noteText { font-size: 20px; font-weight: bold; margin-top: 2px; overflow-wrap: anywhere; }
+    .noteLove { flex: none; font-size: 22px; background: white; border: none; border-radius: 50%; width: 44px; height: 44px; }
+    .noteLove:disabled { width: auto; height: auto; border-radius: 12px; font-size: 13px; padding: 6px 8px; color: #0ca678; }
+    /* 🧴 Supplies */
+    #suppliesCard { display: none; background: #f8f0fc; border-radius: 20px; padding: 12px 14px; margin: 12px auto; width: 80%; cursor: pointer; }
+    .suppliesTitle { font-size: 18px; font-weight: bold; }
+    .suppliesLine { font-size: 15px; color: #495057; margin-top: 2px; }
+    #supplies { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 15; overflow-y: auto; padding: 16px 16px 40px; text-align: left; }
+    #supplies .closeGame { position: absolute; right: 16px; top: 12px; font-size: 28px; background: none; border: none; }
+    .suppliesHelp { color: #495057; }
+    .supplyRow { background: white; border-radius: 14px; padding: 10px 12px; margin: 8px 0; border-left: 6px solid #51cf66; }
+    .supplyRow.low { border-left-color: #fcc419; }
+    .supplyRow.out { border-left-color: #fa5252; }
+    .supplyName { font-size: 17px; font-weight: bold; }
+    .supplyButtons { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .supplyButtons button { font-size: 14px; padding: 6px 10px; border: 2px solid #dee2e6; border-radius: 10px; background: white; color: #212529; }
+    .supplyButtons button.picked { border-color: var(--main); background: #fff4e6; font-weight: bold; }
+    .supplyButtons .supplyRemove { margin-left: auto; color: #adb5bd; border-color: transparent; }
+    .supplyAdd { display: flex; gap: 6px; margin: 12px 0; }
+    .supplyAdd input { flex: 1; font-size: 16px; padding: 8px; border: 2px solid var(--soft); border-radius: 10px; }
+    .supplyAdd button, .supplyCheck { font-size: 16px; padding: 10px 14px; border: none; border-radius: 12px; background: var(--main); color: white; }
+    .supplyCheck { width: 100%; }
+    .supplyCheck:disabled { background: #b2f2bb; color: #2b8a3e; }
     /* 🔥 Streak */
     #streakCard { display: none; align-items: center; gap: 12px; background: #fff4e6; border-radius: 20px; padding: 10px 14px; margin: 12px auto; width: 80%; }
     .streakBig { text-align: center; min-width: 70px; }
@@ -352,6 +380,7 @@
 <body>
   <h1 id="title">🐱 Kiddy Kat</h1>
   <p id="hello"></p>
+  <div id="noteCard"></div>
 
   <!-- Virtual pet -->
   <div id="petCard">
@@ -426,6 +455,13 @@ Level 4 pets unlock new eggs in the 🏠 Pet House!">i</button>
     <button id="heartButton" onclick="spawnHearts(3)">❤️</button>
   </div>
 
+  <!-- 🧴 My supplies (filled in by supplies.js) -->
+  <div id="supplies">
+    <button class="closeGame" onclick="closeSupplies()">✖</button>
+    <h2>🧴 My supplies</h2>
+    <div id="suppliesBody"></div>
+  </div>
+
   <!-- Pet shop (filled in by pet.js) -->
   <div id="shop">
     <button class="closeGame" onclick="closeShop()">✖</button>
@@ -451,6 +487,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
   <div id="weekendCard"></div>
   <div id="leagueCard"></div>
   <div id="uploadCard"></div>
+  <div id="suppliesCard"></div>
 
   <!-- The tasks are filled in by JavaScript from each kid's own lists -->
   <div id="morning" class="list"></div>
@@ -636,6 +673,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
   <script src="uploads.js"></script>
   <script src="weekend.js"></script>
   <script src="streak.js"></script>
+  <script src="supplies.js"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -1134,6 +1172,8 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     showUploadCard();
     showWeekendCard();
     showStreakCard();
+    showNoteCard();
+    showSuppliesCard();
     showClock();
   </script>
 </body>

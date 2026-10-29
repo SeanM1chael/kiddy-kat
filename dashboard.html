@@ -71,6 +71,10 @@
     #familyPanel button { font-size: 14px; padding: 6px 12px; margin: 6px 6px 0 0; }
     #familyPanel button.danger { background: #c92a2a; }
     .dangerBox { border: 2px solid #ffc9c9; border-radius: 12px; padding: 10px 12px; margin-top: 8px; }
+    #shopPanel { background: white; border-radius: 20px; padding: 16px; margin-bottom: 14px; }
+    #shopPanel h3 { margin: 0 0 6px; }
+    #shopPanel button { font-size: 14px; padding: 6px 12px; }
+    #sendPanel select { font-size: 15px; padding: 6px; border: 2px solid #ffd8a8; border-radius: 10px; margin: 4px 0; }
     #fans { background: white; border-radius: 20px; padding: 16px; margin-bottom: 14px; }
     #fans h3 { margin: 0 0 8px; }
     .fanRow { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
@@ -101,6 +105,7 @@
     </div>
     <div id="pushBox"></div>
     <div id="sendPanel"></div>
+    <div id="shopPanel"></div>
     <div id="leaguePanel"></div>
     <div id="fans"></div>
     <div class="kids" id="kids"></div>
@@ -192,6 +197,7 @@
       if (!document.getElementById('pushBox').childElementCount)
         pushSwitch(document.getElementById('pushBox'), () => sessionStorage.getItem('kiddyKatDashToken'), 'this device (grown-up alerts)');
       showSendPanel(result.kids);
+      showShoppingList(result.kids);
       showFamilyPanel(result.family);
       showFans();
       showLeaguePanel();
@@ -280,11 +286,78 @@
       return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date));
     }
 
+    // 💬 A short message for the kids' home screen ("Be great today, son!")
+    function addMessageBox(box, kids, add) {
+      add(box, 'h4', '💬 Message');
+      const text = add(box, 'input'); text.placeholder = 'Be great today! Love, Dad'; text.maxLength = 140;
+      const who = add(box, 'div');
+      const checks = kids.map(kid => {
+        const label = add(who, 'label');
+        const c = add(label, 'input'); c.type = 'checkbox'; c.checked = true; c.value = kid.nickname;
+        label.append(' ' + kid.nickname);
+        return c;
+      });
+      const days = add(box, 'select');
+      [['1', 'Show today'], ['3', 'Show for 3 days'], ['7', 'Show for a week']].forEach(([v, l]) => days.add(new Option(l, v)));
+      const send = add(box, 'button', '💬 Send message');
+      const note = add(box, 'div', '', 'pushNote');
+      send.addEventListener('click', async () => {
+        const picked = checks.filter(c => c.checked).map(c => c.value);
+        if (!text.value.trim()) { note.textContent = 'Type a message.'; return; }
+        if (!picked.length) { note.textContent = 'Pick at least one kid.'; return; }
+        const token = sessionStorage.getItem('kiddyKatDashToken');
+        let from = 'Dad';
+        try { from = localStorage.getItem('kiddyKatDashFrom') || 'Dad'; } catch (err) {}
+        note.textContent = '⏳ Sending...';
+        const r = await cloudCall('parent_send', { p_token: token, p_nicknames: picked, p_kind: 'note',
+                                                   p_text: text.value.trim(), p_from: from, p_days: Number(days.value) });
+        if (!r.ok) { note.textContent = '⚠️ ' + r.error; return; }
+        picked.forEach(n => pushSend(token, 'note', text.value.trim(), n));
+        note.textContent = `✅ Sent to ${picked.join(', ')}. It shows at the top of their app.`;
+        text.value = '';
+      });
+    }
+
+    // 🛒 Shopping list: every kid's supplies that are running low or out
+    function showShoppingList(kids) {
+      const box = document.getElementById('shopPanel');
+      box.textContent = '';
+      const add = (parent, tag, text, cls) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (cls) el.className = cls; parent.appendChild(el); return el; };
+      add(box, 'h3', '🛒 Shopping list');
+      let count = 0;
+      kids.forEach(kid => {
+        const data = kid.data || {};
+        const supplies = read(data, 'kiddyKatSupplies', []) || [];
+        const inbox = read(data, 'kiddyKatParentInbox', []) || [];
+        supplies.filter(i => i.status === 'low' || i.status === 'out').forEach(item => {
+          count += 1;
+          const row = add(box, 'div', undefined, 'eventRow');
+          add(row, 'span', `${item.emoji || '🧴'} ${item.name} for ${kid.nickname} ${item.status === 'out' ? '🔴 all out' : '🟡 running low'}`);
+          const already = inbox.some(d => d.type === 'bought' && d.text.toLowerCase() === item.name.toLowerCase());
+          if (already) { add(row, 'span', '⏳ Bought, updates when their app opens', 'who'); return; }
+          const bought = add(row, 'button', '✅ Bought it');
+          bought.addEventListener('click', async () => {
+            const token = sessionStorage.getItem('kiddyKatDashToken');
+            let from = 'Dad';
+            try { from = localStorage.getItem('kiddyKatDashFrom') || 'Dad'; } catch (err) {}
+            bought.textContent = '⏳';
+            const r = await cloudCall('parent_send', { p_token: token, p_nicknames: [kid.nickname], p_kind: 'bought',
+                                                       p_text: item.name, p_from: from, p_days: 1 });
+            if (!r.ok) { bought.textContent = '⚠️ ' + r.error; return; }
+            pushSend(token, 'bought', item.name, kid.nickname);
+            loadBoard();
+          });
+        });
+      });
+      if (!count) add(box, 'div', '✅ Nothing needed. Kids mark supplies as low in 🧴 My supplies, and they show up here.', 'empty');
+    }
+
     function showSendPanel(kids) {
       const box = document.getElementById('sendPanel');
       box.textContent = '';
       const add = (parent, tag, text, cls) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (cls) el.className = cls; parent.appendChild(el); return el; };
       add(box, 'h3', '📣 Send to the kids');
+      addMessageBox(box, kids, add);
       add(box, 'h4', '📅 Special day');
       add(box, 'div', 'Dress-up day, picture day, a field trip. It shows on their blue card that day, with a heads-up the afternoon before.', 'pushNote');
       const date = add(box, 'input'); date.type = 'date'; date.min = localDateKey(new Date());

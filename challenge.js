@@ -336,7 +336,7 @@ function addChat(name, message) {
   who.textContent = name + ': ';
   line.append(who, message);
   chat.appendChild(line);
-  while (chat.children.length > 6) chat.removeChild(chat.firstChild);   // keep the last 6 lines
+  while (chat.children.length > 3) chat.removeChild(chat.firstChild);   // keep the last 3 lines (so it never covers the answers)
 }
 
 function updateViewers() {
