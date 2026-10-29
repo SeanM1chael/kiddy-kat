@@ -34,10 +34,15 @@ async function pushRpc(name, args) {
 }
 
 // Is this device getting alerts right now?
+// Never throws: if the phone's push service is broken, it just says "off"
 async function pushIsOn() {
-  if (!pushSupported() || Notification.permission !== 'granted') return false;
-  const reg = await navigator.serviceWorker.getRegistration('./');
-  return !!(reg && await reg.pushManager.getSubscription());
+  try {
+    if (!pushSupported() || Notification.permission !== 'granted') return false;
+    const reg = await navigator.serviceWorker.getRegistration('./');
+    return !!(reg && await reg.pushManager.getSubscription());
+  } catch (err) {
+    return false;
+  }
 }
 
 // Must be called from a tap (phones only ask permission after a tap)
@@ -55,18 +60,25 @@ async function pushTurnOn(token) {
     const saved = await pushRpc('save_push', { p_token: token, p_sub: sub.toJSON() });
     return saved.ok ? { ok: true } : { ok: false, error: 'The server couldn\'t save this device: ' + saved.error };
   } catch (err) {
-    return { ok: false, error: "Couldn't turn on alerts: " + err.message };
+    const tip = /push service/i.test(err.message)
+      ? '. This phone couldn\'t reach Apple/Google push. Restart the phone, check Wi-Fi and that Date & Time is set automatically, then try again.'
+      : '';
+    return { ok: false, error: "Couldn't turn on alerts: " + err.message + tip };
   }
 }
 
 async function pushTurnOff() {
-  const reg = pushSupported() ? await navigator.serviceWorker.getRegistration('./') : null;
-  const sub = reg && await reg.pushManager.getSubscription();
-  if (sub) {
-    await pushRpc('remove_push', { p_endpoint: sub.endpoint });
-    await sub.unsubscribe();
+  try {
+    const reg = pushSupported() ? await navigator.serviceWorker.getRegistration('./') : null;
+    const sub = reg && await reg.pushManager.getSubscription();
+    if (sub) {
+      await pushRpc('remove_push', { p_endpoint: sub.endpoint });
+      await sub.unsubscribe();
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: "Couldn't turn off alerts: " + err.message };
   }
-  return { ok: true };
 }
 
 // Ask the server to send an alert. kind = what happened ("reward", "yes", ...),
@@ -95,12 +107,16 @@ async function pushSwitch(box, getToken, label) {
     line.textContent = on ? `🔔 Alerts are ON for ${label}.` : `🔕 Alerts are off for ${label}.`;
     // Each time, make sure the server still knows this device (and show any problem)
     if (on) {
-      const reg = await navigator.serviceWorker.getRegistration('./');
-      const sub = reg && await reg.pushManager.getSubscription();
-      const saved = sub ? await pushRpc('save_push', { p_token: getToken(), p_sub: sub.toJSON() }) : { ok: true };
-      if (!saved.ok) {
-        line.textContent = `⚠️ Alerts are on here, but the server couldn't save this device.`;
-        note.textContent = 'Problem: ' + saved.error;
+      try {
+        const reg = await navigator.serviceWorker.getRegistration('./');
+        const sub = reg && await reg.pushManager.getSubscription();
+        const saved = sub ? await pushRpc('save_push', { p_token: getToken(), p_sub: sub.toJSON() }) : { ok: true };
+        if (!saved.ok) {
+          line.textContent = `⚠️ Alerts are on here, but the server couldn't save this device.`;
+          note.textContent = 'Problem: ' + saved.error;
+        }
+      } catch (err) {
+        note.textContent = '⚠️ ' + err.message;
       }
     }
     button.textContent = on ? 'Turn off alerts' : '🔔 Turn on alerts';
