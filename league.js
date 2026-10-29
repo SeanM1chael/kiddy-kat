@@ -11,7 +11,7 @@
 
 const LEAGUE_GOAL = 60;
 const TEAM_BONUS = 10;            // stars for everyone when the siblings reach the team goal
-const ANIMAL_FACES = { kitten: '🐱', tiger: '🐯', lion: '🦁' };
+const ANIMAL_FACES = { kitten: '🐱', tiger: '🐯', lion: '🦁', eagle: '🦅' };
 
 // Monday of this week, like "2026-10-26" (same week the server uses)
 function leagueWeek(date = new Date()) {
@@ -39,6 +39,7 @@ function saveLeague(league) {
 function leagueRecord(kind, detail) {
   const league = loadLeague();
   const day = league.days[leagueDay()] || (league.days[leagueDay()] = { lists: [], practice: 0, challenge: 0, catchup: 0 });
+  if (kind === 'career') day.career = (day.career || 0) + 1;     // grown-ups: a career goal step (career.js)
   if (kind === 'list' && !day.lists.includes(detail)) day.lists.push(detail);
   if (kind === 'practice') day.practice += Number(detail) || 0;
   if (kind === 'challenge') day.challenge = 1;
@@ -49,14 +50,15 @@ function leagueRecord(kind, detail) {
 
 // This week's points, with the daily limits applied
 function leaguePoints(league = loadLeague()) {
-  const parts = { lists: 0, practice: 0, challenge: 0, catchup: 0 };
+  const parts = { lists: 0, practice: 0, challenge: 0, catchup: 0, career: 0 };
   Object.values(league.days).forEach(day => {
     parts.lists += Math.min(day.lists.length, 3) * 2;
     parts.practice += Math.min(day.practice, 15);
     parts.challenge += Math.min(day.challenge, 1) * 3;
     parts.catchup += Math.min(day.catchup, 5) * 5;
+    parts.career += Math.min(day.career || 0, 5);                // up to 5 points a day
   });
-  return { total: parts.lists + parts.practice + parts.challenge + parts.catchup, parts: parts };
+  return { total: parts.lists + parts.practice + parts.challenge + parts.catchup + parts.career, parts: parts };
 }
 
 // What goes online with the kid's progress (sync.js)
@@ -116,6 +118,7 @@ async function showLeague() {
   add(box, 'div', total >= LEAGUE_GOAL ? `${total} points. ⭐ You reached the goal!` : `${total} of ${LEAGUE_GOAL} points`, 'leagueBig');
   const mine = section('How I got them');
   [['✅ Checklists', parts.lists], ['🎮 Practice', parts.practice], ['🔴 Challenges', parts.challenge], ['📚 Catch-up', parts.catchup]]
+    .concat(animal.theme === 'eagle' || parts.career ? [['🦅 Career goals', parts.career]] : [])
     .forEach(([label, n]) => { const r = add(mine, 'div', undefined, 'leagueRow'); add(r, 'span', label); add(r, 'span', `${n}`); });
   add(mine, 'div', 'Points start over every Monday.', 'leagueHint');
 

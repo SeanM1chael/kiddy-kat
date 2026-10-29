@@ -12,7 +12,7 @@
 // Real names, photos and the parent phone number stay on this device only.
 // =====================================================================
 
-const CLOUD_ANIMALS = { kitten: '🐱', tiger: '🐯', lion: '🦁' };
+const CLOUD_ANIMALS = { kitten: '🐱', tiger: '🐯', lion: '🦁', eagle: '🦅' };
 const LOCAL_ONLY = ['kiddyKatProofPhotos', 'kiddyKatParentPhone', 'kiddyKatPlace', 'kiddyKatSpoken'];   // never sent online
 
 // Cloud bookkeeping (these stay on this device)
@@ -121,6 +121,8 @@ function cloudCollect() {
   if (typeof leagueForCloud === 'function') data._league = JSON.stringify(leagueForCloud());
   // For the dashboard: today's gaming hours (weekend.js)
   if (typeof weekendForCloud === 'function') data._weekend = JSON.stringify(weekendForCloud());
+  // For the dashboard: this week's career goal numbers (career.js, grown-ups only)
+  if (typeof careerForCloud === 'function' && typeof isEagle === 'function' && isEagle()) data._career = JSON.stringify(careerForCloud());
   return data;
 }
 

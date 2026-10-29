@@ -47,6 +47,16 @@ const CHALLENGES = {
     { kind: 'kind',  text: 'Help someone in your family without being asked!' },
     { kind: 'math',  text: 'Get 10 math problems right!', goal: 10, seconds: 60 },
     { kind: 'spell', text: 'Spell 5 hard words right!', goal: 5, seconds: 60 }
+  ],
+  // Grown-ups (career mode): quick resets the kids can watch you do
+  eagle: [
+    { kind: 'move',  text: 'Do 20 push-ups!', seconds: 60 },
+    { kind: 'hold',  text: 'Hold a plank!', seconds: 60 },
+    { kind: 'move',  text: 'Take a 10-minute walk, no phone!', seconds: 600 },
+    { kind: 'kind',  text: 'Send a thank-you note to someone you worked with!' },
+    { kind: 'kind',  text: 'Ask one of the kids what they learned today!' },
+    { kind: 'math',  text: 'Get 10 math problems right!', goal: 10, seconds: 60 },
+    { kind: 'spell', text: 'Spell 5 hard words right!', goal: 5, seconds: 60 }
   ]
 };
 
@@ -260,7 +270,7 @@ function nextBlitzQuestion() {
     answer = q.answer;
     options = q.choices;
   } else {
-    const words = SPELLING[animal.theme];
+    const words = SPELLING[animal.theme] || SPELLING.lion;
     const pick = words[Math.floor(Math.random() * words.length)];
     answer = pick[0];
     options = shuffle(pick);

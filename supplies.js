@@ -95,7 +95,7 @@ function supplyCheckDue() {
 function showSuppliesCard() {
   const card = document.getElementById('suppliesCard');
   if (!card) return;
-  if (typeof profile === 'undefined' || !profile) { card.style.display = 'none'; return; }
+  if (typeof profile === 'undefined' || !profile || animal.theme === 'eagle') { card.style.display = 'none'; return; }
   card.style.display = 'block';
   const list = loadSupplies();
   if (!localStorage.getItem('kiddyKatSupplies')) saveSupplies(list);     // so the dashboard sees the list
