@@ -171,6 +171,13 @@ function openPractice() {
     `${left} ${left === 1 ? 'round' : 'rounds'} left today. Each one gives ${pet ? pet.name : 'your pet'} a treat!`;
 
   const menu = document.getElementById('gameChoices');
+  if (animal.theme === 'eagle') {                  // grown-ups: interview prep
+    addMenuButton(menu, '💻 Tech quiz', () => startQuiz('tech'));
+    addMenuButton(menu, '🤝 Leadership', () => startQuiz('leadership'));
+    addMenuButton(menu, '🔊 Hard words', startSpelling);
+    addMenuButton(menu, '➕ Math', startMath);
+    return;
+  }
   addMenuButton(menu, '➕ Math', startMath);
   addMenuButton(menu, '✏️ Fix the sentence', startGrammar);
   addMenuButton(menu, '🔊 Spelling', startSpelling);
@@ -287,6 +294,7 @@ function endRound() {
   if (roundsToday() < maxRoundsToday()) addMenuButton(box, '▶️ Play again', openPractice);
   addMenuButton(box, '🏠 Done', closeGame);
   if (round.game === 'pack') afterPackRound();
+  if (round.game === 'quiz' && typeof careerStep === 'function') careerStep('prep', 1);     // counts as an interview prep session
   round = null;
 }
 
@@ -306,7 +314,7 @@ function showPracticeStats() {
     byGame[p.game].total += p.total;
     byGame[p.game].rounds += 1;
   });
-  const names = { math: 'Math', grammar: 'Fix the sentence', spelling: 'Spelling', pack: 'Practice pack' };
+  const names = { math: 'Math', grammar: 'Fix the sentence', spelling: 'Spelling', pack: 'Practice pack', quiz: 'Interview prep' };
   const lines = Object.keys(byGame).map(g =>
     `${names[g] || g}: ${byGame[g].rounds} round${byGame[g].rounds === 1 ? "" : "s"}, ${Math.round(byGame[g].correct / byGame[g].total * 100)}% right`);
   lines.unshift(`Last 7 days: ${week.length} rounds, ${Math.round(correct / total * 100)}% right`);
@@ -411,6 +419,56 @@ const SPELLING = {
     ['mischievous', 'mischievious', 'mischevious', 'mischivous'], ['perseverance', 'perseverence', 'persaverance', 'perserverance']
   ]
 };
+
+// ---------- 🦅 Interview prep for grown-ups (career mode) ----------
+// s = question, c = choices, a = the right one (choices get shuffled), why = the explanation
+const CAREER_QUIZ = {
+  tech: [
+    { s: 'What does HTTP status 404 mean?', c: ['Not found', 'Server error', 'Not logged in', 'Redirect'], a: 0, why: '404 = the server can\'t find that page or resource. 500 is a server error, 401 means not logged in.' },
+    { s: 'Which SQL keyword removes duplicate rows from results?', c: ['DISTINCT', 'UNIQUE', 'GROUP', 'ONLY'], a: 0, why: 'SELECT DISTINCT returns each unique row once.' },
+    { s: 'What does git pull do?', c: ['Fetches remote changes and merges them in', 'Uploads your commits', 'Creates a new branch', 'Throws away local changes'], a: 0, why: 'pull = fetch + merge. git push is the one that uploads.' },
+    { s: 'What is row-level security (RLS) in Postgres?', c: ['Rules that decide which rows each user can see or change', 'Encrypting rows on disk', 'A backup of every row', 'Locking a row while it\'s edited'], a: 0, why: 'RLS is how Kiddy Kat keeps each family\'s rows private, even on one shared database.' },
+    { s: 'Safest way to store user passwords or PINs?', c: ['A slow one-way hash like bcrypt', 'Plain text in a private table', 'Reversible encryption', 'Base64 encoding'], a: 0, why: 'A slow one-way hash can\'t be turned back into the password, and it makes guessing expensive. Base64 isn\'t security at all.' },
+    { s: 'What does a database index mainly speed up?', c: ['Finding rows by that column', 'Inserting new rows', 'Backups', 'Deleting tables'], a: 0, why: 'Indexes make lookups fast. The trade-off: inserts and updates get a little slower.' },
+    { s: 'In JavaScript, what does await do?', c: ['Pauses an async function until a promise settles', 'Runs code on a new thread', 'Waits exactly one second', 'Retries a failed call'], a: 0, why: 'await waits for the promise without freezing the page.' },
+    { s: 'Main job of a CDN?', c: ['Serve files from servers close to the user', 'Store passwords', 'Run database queries', 'Compile code'], a: 0, why: 'A content delivery network caches files around the world, so pages load faster. GitHub Pages uses one.' },
+    { s: 'Which HTTP method is meant for creating something new?', c: ['POST', 'GET', 'HEAD', 'OPTIONS'], a: 0, why: 'POST creates; GET reads; PUT or PATCH update; DELETE removes.' },
+    { s: 'What does "idempotent" mean for an API call?', c: ['Doing it twice has the same effect as once', 'It\'s very fast', 'It needs no login', 'It can never fail'], a: 0, why: 'Idempotent calls are safe to retry. The timed alerts use this: each alert can only be marked sent once.' },
+    { s: 'What is a race condition?', c: ['A bug where the result depends on the timing of events', 'A speed test', 'A loop that never ends', 'A memory leak'], a: 0, why: 'Two things happen at once and the order changes the result. Locks and conflict checks prevent it.' },
+    { s: 'Horizontal scaling means...', c: ['Adding more machines', 'Adding more CPU and memory to one machine', 'Deleting old data', 'Caching in the browser'], a: 0, why: 'Horizontal = more machines. Vertical = a bigger machine.' },
+    { s: 'What does CORS control?', c: ['Which websites can call your API from a browser', 'How fast pages load', 'Database permissions', 'Password rules'], a: 0, why: 'CORS headers tell the browser which other sites may call your server.' },
+    { s: '99.9% uptime allows about how much downtime a month?', c: ['43 minutes', '4 minutes', '7 hours', '3 days'], a: 0, why: '0.1% of a 30-day month is about 43 minutes. 99.99% is about 4 minutes.' },
+    { s: 'In a CI pipeline, what usually runs on every push?', c: ['Automated tests', 'A manual QA sign-off', 'A database restore', 'Invoices'], a: 0, why: 'Continuous integration runs the tests automatically, so broken code is caught before it ships.' }
+  ],
+  leadership: [
+    { s: 'A senior engineer keeps missing deadlines. Best first step?', c: ['A private 1:1 to understand what\'s getting in the way', 'Quietly reassign their work', 'Raise it in the team standup', 'Wait for the performance review'], a: 0, why: 'Start with curiosity, in private. There may be a blocker, a personal issue or unclear priorities.' },
+    { s: 'Two engineers disagree on an architecture choice. You should...', c: ['Have them write up the trade-offs and decide against clear criteria', 'Pick the more senior engineer\'s idea', 'Let them argue it out', 'Pick a third option so nobody wins'], a: 0, why: 'A short design doc makes the decision about criteria, not people, and records why.' },
+    { s: 'In a STAR interview answer, what does the R stand for?', c: ['Result', 'Reason', 'Role', 'Risk'], a: 0, why: 'Situation, Task, Action, Result. Put a number on the result whenever you can.' },
+    { s: 'A production outage just ended. Best next step?', c: ['A blameless postmortem with action items', 'Find out who caused it', 'Say it\'s fixed and move on', 'Freeze all releases for a month'], a: 0, why: 'Blameless postmortems fix the system, and people keep reporting problems honestly.' },
+    { s: 'Your team gets a new project but has no capacity. Best response?', c: ['Show current commitments and ask what to deprioritize', 'Say yes and plan on overtime', 'Say no with no explanation', 'Quietly drop another project'], a: 0, why: 'Make the trade-off visible and let the stakeholders choose.' },
+    { s: 'Best way to give critical feedback?', c: ['Soon, in private, specific about the behavior and its impact', 'Save it for the annual review', 'In front of the team so everyone learns', 'Keep it vague so it doesn\'t sting'], a: 0, why: 'Timely, private and specific. The SBI model is Situation, Behavior, Impact.' },
+    { s: 'Which metrics best show a delivery team\'s health?', c: ['Lead time and change failure rate (DORA metrics)', 'Lines of code written', 'Hours logged', 'Number of meetings'], a: 0, why: 'The four DORA metrics: deployment frequency, lead time, change failure rate and time to restore.' },
+    { s: 'A new hire is struggling in week 3. You should...', c: ['Pair them with a buddy and set small, clear 30-day goals', 'Wait for their 90-day review', 'Give them harder work to test them', 'Start the paperwork to let them go'], a: 0, why: 'Most early struggles come from onboarding gaps. Support and clear goals come first.' },
+    { s: '"Tell me about a failure." The strongest answer...', c: ['Owns the mistake and shows what you changed afterward', 'Explains why it was a teammate\'s fault', 'Picks a fake weakness like perfectionism', 'Says you\'ve never really failed'], a: 0, why: 'Interviewers want ownership and learning. The "what I changed" part matters most.' },
+    { s: 'A stakeholder wants a date for a fuzzy project. Best answer?', c: ['A range with your assumptions, and when you\'ll firm it up', 'The date they want', 'Refuse to estimate', 'Triple it and say nothing'], a: 0, why: 'A range plus assumptions sets honest expectations, and you narrow it as you learn more.' },
+    { s: 'Freelance: a client keeps adding features mid-project. Best move?', c: ['Point to the agreed scope, then quote the new work as a change order', 'Do it free to keep them happy', 'Stop answering their emails', 'Rush it and skip testing'], a: 0, why: 'Change orders protect your time and keep the relationship professional.' },
+    { s: 'Freelance: before starting work for a new client, you should have...', c: ['A written agreement with scope, price, timeline and payment terms', 'A verbal OK', 'The full payment in cash', 'Their passwords'], a: 0, why: 'A simple written agreement prevents most freelance disputes. Many freelancers also take a deposit up front.' }
+  ]
+};
+
+function startQuiz(bank) {
+  round = { game: 'quiz', bank: bank, number: 0, correct: 0, items: pickFive(CAREER_QUIZ[bank]) };
+  nextWordQuestion();
+}
+
+function showQuizQuestion(item) {
+  document.getElementById('gameTitle').textContent =
+    `${round.bank === 'tech' ? '💻 Tech quiz' : '🤝 Leadership'}  (${round.number} of ${QUESTIONS_PER_ROUND})`;
+  const question = document.getElementById('gameQuestion');
+  question.style.fontSize = '24px';
+  question.textContent = item.s;
+  showWordChoices(shuffle(item.c.slice()), item.c[item.a], item.why);
+}
 
 // What each spelling word means: [part of speech, meaning, example sentence]
 // Shown after every spelling answer, so kids learn the word, not just the letters.
@@ -547,6 +605,7 @@ function nextWordQuestion() {
   round.number += 1;
   document.getElementById('gameFeedback').textContent = '';
   if (round.game === 'pack') showPackQuestion(item);
+  else if (round.game === 'quiz') showQuizQuestion(item);
   else if (round.game === 'grammar') showGrammarQuestion(item);
   else showSpellingQuestion(item);
 }
@@ -568,7 +627,7 @@ function showGrammarQuestion(item) {
 
 // ---------- Spelling ----------
 function startSpelling() {
-  round = { game: 'spelling', number: 0, correct: 0, items: pickFive(SPELLING[animal.theme]) };
+  round = { game: 'spelling', number: 0, correct: 0, items: pickFive(SPELLING[animal.theme] || SPELLING.lion) };
   nextWordQuestion();
 }
 

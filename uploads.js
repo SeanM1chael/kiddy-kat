@@ -8,7 +8,7 @@
 function showUploadCard() {
   const card = document.getElementById('uploadCard');
   if (!card) return;
-  const canSend = typeof animal !== 'undefined' && animal.theme !== 'kitten' &&
+  const canSend = typeof animal !== 'undefined' && (animal.theme === 'tiger' || animal.theme === 'lion') &&
                   typeof cloudLinked === 'function' && cloudLinked();
   card.style.display = canSend ? 'block' : 'none';
   if (!canSend) return;

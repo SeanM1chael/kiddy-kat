@@ -27,7 +27,7 @@ const DEFAULT_WEEKEND_JOBS = [
 function weekendSettings() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem('kiddyKatWeekendSettings') || 'null'); } catch (err) {}
-  const kitten = typeof animal !== 'undefined' && animal.theme === 'kitten';
+  const kitten = typeof animal !== 'undefined' && (animal.theme === 'kitten' || animal.theme === 'eagle');
   return Object.assign({ on: !kitten, capHours: 5, starsPerHour: 25, jobs: DEFAULT_WEEKEND_JOBS }, s || {});
 }
 

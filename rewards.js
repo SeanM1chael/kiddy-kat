@@ -27,6 +27,14 @@ const DEFAULT_REWARDS = {
     ['🤝', 'One-on-one outing with {parent}', 300],
     ['🏎️', 'Go-karts or arcade outing', 400]
   ],
+  // Grown-ups (career mode): treats you earn for yourself
+  eagle: [
+    ['☕', 'Fancy coffee out', 40],
+    ['🎧', 'A new album, book or audiobook', 80],
+    ['🎮', 'Guilt-free gaming night', 100],
+    ['🛠️', 'A new dev tool or course', 200],
+    ['🍽️', 'Dinner out', 250]
+  ],
   lion: [
     ['☕', 'Starbucks or favorite food run', 100],
     ['🚗', 'Extra time out with friends', 150],

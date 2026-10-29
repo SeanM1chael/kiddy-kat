@@ -18,6 +18,7 @@
     body        { --main: #ff7a00; --soft: #ffd8a8; --bg: #fff4e6; }   /* kitten */
     body.tiger  { --main: #e8590c; --soft: #ffc078; --bg: #fff0e0; }
     body.lion   { --main: #b8860b; --soft: #ffe066; --bg: #fffbe6; }
+    body.eagle  { --main: #1c7ed6; --soft: #a5d8ff; --bg: #f1f8ff; }   /* grown-ups: career mode */
 
     body { font-family: sans-serif; background: var(--bg); text-align: center; }
     h1 { font-size: 48px; color: var(--main); margin-bottom: 0; }
@@ -259,6 +260,37 @@
     .noteText { font-size: 20px; font-weight: bold; margin-top: 2px; overflow-wrap: anywhere; }
     .noteLove { flex: none; font-size: 22px; background: white; border: none; border-radius: 50%; width: 44px; height: 44px; }
     .noteLove:disabled { width: auto; height: auto; border-radius: 12px; font-size: 13px; padding: 6px 8px; color: #0ca678; }
+    /* 🦅 Career mode */
+    #careerCard { display: none; background: white; border-radius: 20px; padding: 12px 14px; margin: 12px auto; width: 80%; text-align: left; }
+    .careerTitle { font-size: 18px; font-weight: bold; margin-bottom: 6px; }
+    .careerGoal { padding: 6px 0; border-top: 1px solid #f1f3f5; display: grid; grid-template-columns: 1fr auto; column-gap: 8px; align-items: center; }
+    .careerGoalLabel { display: flex; justify-content: space-between; font-size: 15px; }
+    .careerCount { color: #868e96; }
+    .careerGoal.met .careerCount { color: #2b8a3e; font-weight: bold; }
+    .careerBar { grid-column: 1; background: #e7f5ff; border-radius: 6px; height: 8px; overflow: hidden; margin-top: 4px; }
+    .careerBar div { background: var(--main); height: 100%; }
+    .careerButtons { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 4px; }
+    .careerButtons button { font-size: 15px; padding: 6px 10px; border: none; border-radius: 10px; background: var(--main); color: white; }
+    .careerButtons .careerMinus { background: #e9ecef; color: #495057; }
+    .careerOpen { width: 100%; margin-top: 10px; font-size: 16px; padding: 10px; border: none; border-radius: 12px; background: #e7f5ff; color: #1864ab; }
+    #career { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 15; overflow-y: auto; padding: 16px 16px 40px; text-align: left; }
+    #career .closeGame { position: absolute; right: 16px; top: 12px; font-size: 28px; background: none; border: none; }
+    #career input, #career select, #career textarea { display: block; width: 100%; box-sizing: border-box; font-size: 16px; padding: 8px; margin: 6px 0 0;
+                                                     border: 2px solid var(--soft); border-radius: 10px; font-family: inherit; }
+    .careerSection { background: white; border-radius: 14px; padding: 10px 12px; margin: 10px 0; }
+    .careerSection h3 { margin: 0 0 6px; font-size: 16px; }
+    .careerNext { font-size: 15px; padding: 3px 0; }
+    .careerNext.late { color: #c92a2a; font-weight: bold; }
+    .careerTabs { display: flex; gap: 6px; margin: 10px 0; }
+    .careerTabs button { flex: 1; font-size: 15px; padding: 10px 6px; border: 2px solid var(--soft); border-radius: 12px; background: white; }
+    .careerTabs button.picked { border-color: var(--main); background: #e7f5ff; font-weight: bold; }
+    .careerItem { border-top: 1px solid #f1f3f5; padding: 8px 0; }
+    .careerItemName { font-weight: bold; font-size: 16px; }
+    .careerItemRole { color: #868e96; font-size: 14px; }
+    .careerItemButtons { display: flex; gap: 6px; margin-top: 6px; }
+    .careerSave { font-size: 15px; padding: 8px 14px; border: none; border-radius: 10px; background: var(--main); color: white; margin-top: 6px; }
+    .careerDelete { font-size: 15px; padding: 8px 12px; border: none; border-radius: 10px; background: #f1f3f5; margin-top: 6px; }
+    .careerNote { font-size: 14px; color: #868e96; margin-top: 4px; }
     /* 🧴 Supplies */
     #suppliesCard { display: none; background: #f8f0fc; border-radius: 20px; padding: 12px 14px; margin: 12px auto; width: 80%; cursor: pointer; }
     .suppliesTitle { font-size: 18px; font-weight: bold; }
@@ -388,6 +420,7 @@
   <h1 id="title">🐱 Kiddy Kat</h1>
   <p id="hello"></p>
   <div id="noteCard"></div>
+  <div id="careerCard"></div>
 
   <!-- Virtual pet -->
   <div id="petCard">
@@ -413,7 +446,7 @@ Level 4 pets unlock new eggs in the 🏠 Pet House!">i</button>
     <button onclick="openAlbum()">📒 Stickers</button>
     <button id="houseButton" onclick="openPetHouse()">🏠 Pet House</button>
     <button onclick="openRewards()">🎁 Rewards</button>
-    <button onclick="openWallet()">💵 Wallet</button>
+    <button id="walletButton" onclick="openWallet()">💵 Wallet</button>
   </div>
 
   <!-- Wallet: real money lessons (filled in by wallet.js) -->
@@ -460,6 +493,13 @@ Level 4 pets unlock new eggs in the 🏠 Pet House!">i</button>
     <div id="chArea"></div>
     <div id="chChat"></div>
     <button id="heartButton" onclick="spawnHearts(3)">❤️</button>
+  </div>
+
+  <!-- 🦅 Career tracker for grown-ups (filled in by career.js) -->
+  <div id="career">
+    <button class="closeGame" onclick="closeCareer()">✖</button>
+    <h2>📋 My career tracker</h2>
+    <div id="careerBody"></div>
   </div>
 
   <!-- 🧴 My supplies (filled in by supplies.js) -->
@@ -681,6 +721,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
   <script src="weekend.js"></script>
   <script src="streak.js"></script>
   <script src="supplies.js"></script>
+  <script src="career.js"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -698,6 +739,12 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
         morning:   ['🪥 Brush teeth', '🍳 Eat breakfast', '💻 Laptop and charger packed'],
         afternoon: ['📅 Check grades and assignments', '📚 Homework', '🧹 Chores'],
         bedtime:   ['🔌 Charge phone and laptop', '🎒 Pack for tomorrow', '😴 Screens off on time']
+      },
+      // Grown-ups (career mode)
+      eagle: {
+        morning:   ['📅 Calendar and top 3 priorities', '💪 Move for 20 minutes', '📚 Learning block (30 minutes)'],
+        afternoon: ['📨 Job search or client outreach', '💻 Focused build time (1 hour)', '📋 Update the career tracker'],
+        bedtime:   ['🗒️ Plan tomorrow\'s top 3', '📖 Read 20 minutes', '📵 Screens off on time']
       }
     };
 
@@ -717,6 +764,11 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
         morning:   ['🪥 Brush teeth', '🍳 Eat breakfast', '🛏️ Make your bed'],
         afternoon: ['🧹 Clean your room', '📅 Plan homework for the week', '🧺 Laundry'],
         bedtime:   ['🔌 Charge your phone', '🧹 Quick room tidy', '😴 Screens off on time']
+      },
+      eagle: {
+        morning:   ['☕ Slow morning, no email', '💪 Move', '👨‍👧‍👦 Family time'],
+        afternoon: ['💻 Side-project hour', '🧹 House reset', '🌳 Get outside'],
+        bedtime:   ['🗒️ Plan the week ahead', '📖 Read 20 minutes']
       }
     };
 
@@ -743,7 +795,8 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     function animalFor(age) {
       if (age <= 9)  return { emoji: '🐱', name: 'kitten', theme: 'kitten' };
       if (age <= 13) return { emoji: '🐯', name: 'tiger',  theme: 'tiger' };
-      return                { emoji: '🦁', name: 'lion',   theme: 'lion' };
+      if (age <= 21) return { emoji: '🦁', name: 'lion',   theme: 'lion' };
+      return                { emoji: '🦅', name: 'eagle',  theme: 'eagle' };      // grown-ups: career mode
     }
 
     // Saved as a birth year, so the animal grows up with the kid
@@ -760,12 +813,16 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       animal = animalFor(age);
       document.body.className = animal.theme;
       document.getElementById('title').textContent = `${animal.emoji} Kiddy Kat`;
-      document.getElementById('hello').textContent = `Hi, ${callName()}! You're a ${animal.name}!`;
+      document.getElementById('hello').textContent = animal.theme === 'eagle'
+        ? `Hi, ${callName()}! You're an eagle. 🦅 Career mode`
+        : `Hi, ${callName()}! You're a ${animal.name}!`;
       document.getElementById('editName').value = profile.name;
       document.getElementById('editNicknames').value = (profile.nicknames || []).join(', ');
       document.getElementById('partyAnimal').textContent = animal.emoji;
-      document.getElementById('myTasksButton').style.display = animal.theme === 'lion' ? 'inline-block' : 'none';
-      if (!iconChoice && animal.theme !== 'kitten') {
+      document.getElementById('myTasksButton').style.display = animal.theme === 'lion' || animal.theme === 'eagle' ? 'inline-block' : 'none';
+      // Kid-only things grown-ups don't need: the pretend wallet
+      document.getElementById('walletButton').style.display = animal.theme === 'eagle' ? 'none' : '';
+      if (!iconChoice && (animal.theme === 'tiger' || animal.theme === 'lion')) {
         document.getElementById('appIcon').href = animal.theme + '.png';
       }
       document.getElementById('setup').style.display = 'none';
@@ -859,7 +916,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       loadProgress();
       // On weekends the after-school list is just the afternoon
       const tab = document.getElementById('tabAfternoon');
-      if (tab) tab.textContent = noSchoolList('afternoon') ? '🌤️ Afternoon' : '🎒 After School';
+      if (tab) tab.textContent = noSchoolList('afternoon') ? '🌤️ Afternoon' : animal.theme === 'eagle' ? '💼 Work' : '🎒 After School';
     }
 
     function show(name) {
@@ -1181,6 +1238,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     showStreakCard();
     showNoteCard();
     showSuppliesCard();
+    showCareerCard();
     showClock();
   </script>
 </body>

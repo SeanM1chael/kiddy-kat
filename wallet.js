@@ -13,11 +13,12 @@ const DEFAULT_MONEY = {
   payEveryDays: 14,                                  // payday every 2 weeks
   wages: { list: 10, round: 10, challenge: 25 },    // cents
   interestPercent: 2,                                // on savings, each payday
-  taxPercent: { kitten: 0, tiger: 0, lion: 10 },     // "paycheck tax" for teens
+  taxPercent: { kitten: 0, tiger: 0, lion: 10, eagle: 0 },     // "paycheck tax" for teens
   bills: {
     kitten: [['🗑️', 'Trash Valet', 100], ['📺', 'Kids streaming', 100]],
     tiger:  [['🗑️', 'Trash Valet', 100], ['📱', 'Cell phone', 300], ['🎮', 'Gaming subscription', 200], ['📶', 'Wi-Fi share', 100]],
-    lion:   [['🗑️', 'Trash Valet', 100], ['📱', 'Cell phone', 500], ['📶', 'Wi-Fi share', 100], ['📺', 'Streaming', 100], ['🏠', 'Room rent', 200]]
+    lion:   [['🗑️', 'Trash Valet', 100], ['📱', 'Cell phone', 500], ['📶', 'Wi-Fi share', 100], ['📺', 'Streaming', 100], ['🏠', 'Room rent', 200]],
+    eagle:  []
   },
   jobs: [['🚗', 'Wash the car', 300], ['🧺', 'Fold a load of laundry', 100], ['🍽️', 'Empty the dishwasher', 50]]
 };
@@ -74,7 +75,7 @@ function logMoney(text, cents) {
 // Called by the app when real work is done. Each list pays once a day;
 // game rounds are already limited to 3 a day; the challenge pays on the first win.
 function earnMoney(kind, listName) {
-  if (!profile) return '';
+  if (!profile || animal.theme === 'eagle') return '';      // grown-ups don't get a pretend paycheck
   if (!wallet) wallet = freshWallet();
   const today = new Date().toDateString();
   if (wallet.paidToday.date !== today) wallet.paidToday = { date: today, lists: [] };
