@@ -412,13 +412,70 @@ const SPELLING = {
   ]
 };
 
+// What each spelling word means: [part of speech, meaning, example sentence]
+// Shown after every spelling answer, so kids learn the word, not just the letters.
+const MEANINGS = {
+  // Kittens
+  because: ['joining word', 'tells why something happens', 'I wore a coat because it was cold.'],
+  friend: ['noun', 'someone you like who likes you back', 'My friend shared her crayons with me.'],
+  said: ['verb', 'talked; the past of "say"', 'Mom said it\'s time for bed.'],
+  again: ['adverb', 'one more time', 'Let\'s sing that song again!'],
+  could: ['verb', 'was able to, or might', 'I could see the moon last night.'],
+  their: ['pronoun', 'belonging to them', 'The kids put on their coats.'],
+  people: ['noun', 'more than one person', 'Lots of people came to the party.'],
+  school: ['noun', 'the place where kids go to learn', 'We read books at school.'],
+  before: ['preposition', 'earlier than something', 'Brush your teeth before bed.'],
+  every: ['adjective', 'each one; all of them', 'I feed my cat every day.'],
+  laugh: ['verb', 'to make the happy sound you make when something is funny', 'The silly joke made me laugh.'],
+  other: ['adjective', 'a different one', 'Try the other shoe.'],
+  house: ['noun', 'a building where a family lives', 'Our house has a red door.'],
+  answer: ['noun', 'what you say back to a question', 'I knew the answer!'],
+  happy: ['adjective', 'feeling good and glad', 'Puppies make me happy.'],
+  little: ['adjective', 'small', 'The little bird sang a song.'],
+  night: ['noun', 'the dark time when the stars come out', 'We sleep at night.'],
+  write: ['verb', 'to put words on paper or a screen', 'I can write my name.'],
+  thought: ['verb', 'had an idea in your mind; the past of "think"', 'I thought it would rain today.'],
+  pretty: ['adjective', 'nice to look at', 'That flower is so pretty.'],
+  // Tigers
+  necessary: ['adjective', 'needed; something you have to have', 'Sleep is necessary for a healthy brain.'],
+  separate: ['verb', 'to keep things apart', 'Separate the white clothes from the dark ones.'],
+  definitely: ['adverb', 'for sure, with no doubt', 'I\'m definitely coming to your game.'],
+  beginning: ['noun', 'the start of something', 'The beginning of the movie was funny.'],
+  believe: ['verb', 'to think something is true', 'I believe you can do it.'],
+  government: ['noun', 'the group of people who run a city, state or country and make its laws', 'The government builds roads and schools.'],
+  environment: ['noun', 'the world around us: the air, water, land, plants and animals', 'Recycling helps protect the environment.'],
+  tomorrow: ['noun', 'the day after today', 'Tomorrow is Saturday!'],
+  probably: ['adverb', 'very likely, but not for sure', 'It will probably rain later.'],
+  restaurant: ['noun', 'a place where you pay to eat a meal', 'We had tacos at a restaurant.'],
+  February: ['noun', 'the second month of the year', 'Valentine\'s Day is in February.'],
+  library: ['noun', 'a place where you can borrow books for free', 'I checked out three books from the library.'],
+  favorite: ['adjective', 'the one you like best', 'Pizza is my favorite food.'],
+  surprise: ['noun', 'something you didn\'t expect', 'The party was a big surprise!'],
+  weird: ['adjective', 'strange or unusual', 'That bug looks weird.'],
+  // Lions
+  accommodate: ['verb', 'to make room for someone, or adjust to fit their needs', 'The hotel can accommodate 200 guests.'],
+  conscientious: ['adjective', 'careful and hard-working; wanting to do things right', 'She\'s a conscientious student who double-checks her work.'],
+  embarrass: ['verb', 'to make someone feel awkward or ashamed in front of others', 'Please don\'t embarrass me in front of my friends.'],
+  occurrence: ['noun', 'something that happens; an event', 'Snow is a rare occurrence in Las Vegas.'],
+  privilege: ['noun', 'a special right or advantage not everyone has', 'Driving is a privilege, not a right.'],
+  rhythm: ['noun', 'a strong, repeating pattern of beats or sounds', 'Clap along to the rhythm of the song.'],
+  maintenance: ['noun', 'the work of keeping something in good condition', 'The car needs regular maintenance.'],
+  millennium: ['noun', 'a period of 1,000 years', 'The year 2000 started a new millennium.'],
+  conscience: ['noun', 'the inner sense that tells you what\'s right and wrong', 'My conscience told me to return the lost wallet.'],
+  recommend: ['verb', 'to suggest something as good or worth trying', 'I recommend this book to everyone.'],
+  questionnaire: ['noun', 'a written set of questions that people answer, like a survey', 'Fill out the questionnaire before your appointment.'],
+  liaison: ['noun', 'a person who helps two groups talk and work together', 'The student liaison shares ideas with the principal.'],
+  mischievous: ['adjective', 'playfully causing small trouble', 'The mischievous puppy hid my shoe.'],
+  perseverance: ['noun', 'continuing to try even when something is hard', 'Perseverance helped her finish the race.']
+};
+
 // Picks 5 different questions from a list
 function pickFive(list) {
   return shuffle(list).slice(0, QUESTIONS_PER_ROUND);
 }
 
 // Shows answer buttons for word games. Long answers get wide buttons.
-function showWordChoices(options, rightOption, explain) {
+function showWordChoices(options, rightOption, explain, meaning) {
   const box = document.getElementById('gameChoices');
   box.textContent = '';
   options.forEach(option => {
@@ -429,12 +486,12 @@ function showWordChoices(options, rightOption, explain) {
     const longest = Math.max(...options.map(o => o.length));
     if (longest > 14) { button.style.width = '90%'; button.style.fontSize = '20px'; }
     else if (longest > 7) { button.style.width = '90%'; button.style.fontSize = '26px'; }
-    button.addEventListener('click', () => checkWordAnswer(button, option === rightOption, explain));
+    button.addEventListener('click', () => checkWordAnswer(button, option === rightOption, explain, meaning));
     box.appendChild(button);
   });
 }
 
-function checkWordAnswer(button, isRight, explain) {
+function checkWordAnswer(button, isRight, explain, meaning) {
   document.querySelectorAll('#gameChoices .choice').forEach(b => b.disabled = true);
   const feedback = document.getElementById('gameFeedback');
   if (isRight) {
@@ -442,12 +499,46 @@ function checkWordAnswer(button, isRight, explain) {
     round.correct += 1;
     document.getElementById('gameBowl').textContent += pet ? (PET_FOOD[pet.type] || '⭐') : '⭐';
     feedback.textContent = '✅ Yes! ' + explain;
-    setTimeout(nextWordQuestion, 2200);
   } else {
     button.classList.add('wrong');
     feedback.textContent = 'Not quite! ' + explain;
-    setTimeout(nextWordQuestion, 3800);
   }
+  // Spelling words: show what the word means, then wait for "Next" so there's time to read it
+  if (meaning) {
+    showMeaning(meaning);
+    return;
+  }
+  setTimeout(nextWordQuestion, isRight ? 2200 : 3800);
+}
+
+function showMeaning([word, kind, means, example]) {
+  const box = document.createElement('div');
+  box.className = 'meaning';
+  const head = document.createElement('div');
+  head.className = 'meaningWord';
+  head.textContent = `📖 ${word} `;
+  const type = document.createElement('span');
+  type.textContent = `(${kind})`;
+  head.appendChild(type);
+  const what = document.createElement('div');
+  what.textContent = means.charAt(0).toUpperCase() + means.slice(1) + '.';
+  const use = document.createElement('div');
+  use.className = 'meaningExample';
+  use.textContent = `"${example}"`;
+  const buttons = document.createElement('div');
+  const hear = document.createElement('button');
+  hear.className = 'meaningHear';
+  hear.textContent = '🔊';
+  hear.title = 'Hear the meaning';
+  hear.addEventListener('click', () => sayWord(`${word}. ${means}. For example: ${example}`));
+  const next = document.createElement('button');
+  next.className = 'meaningNext';
+  next.textContent = round.number === (round.total || QUESTIONS_PER_ROUND) ? 'Finish 🎉' : 'Next ➡️';
+  next.addEventListener('click', nextWordQuestion);
+  buttons.append(hear, next);
+  box.append(head, what, use, buttons);
+  document.getElementById('gameFeedback').appendChild(box);
+  box.scrollIntoView({ behavior: 'smooth', block: 'end' });      // bring it on screen on small phones
 }
 
 function nextWordQuestion() {
@@ -503,5 +594,6 @@ function showSpellingQuestion(item) {
   hear.addEventListener('click', () => sayWord(word));
   question.appendChild(hear);
   sayWord(word);
-  showWordChoices(shuffle(item), word, `It's spelled ${word}.`);
+  const m = MEANINGS[word];
+  showWordChoices(shuffle(item), word, `It's spelled ${word}.`, m ? [word, ...m] : null);
 }
