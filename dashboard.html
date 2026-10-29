@@ -369,6 +369,8 @@
                                                      p_pin: pin.value, p_code: cleanFamilyCode(code.value) });
         if (!r.ok) { note.textContent = '⚠️ ' + r.error; return; }
         logOut();
+        document.getElementById('code').value = '';           // don't leave the deleted family's login showing
+        document.getElementById('pin').value = '';
         document.getElementById('loginNote').textContent = '✅ Your family was deleted. Thank you for using Kiddy Kat.';
       });
     }
