@@ -107,6 +107,15 @@ function cloudCollect() {
   }
   // For the parent dashboard: the task lists this kid sees right now (including the starting lists)
   if (typeof tasks !== 'undefined' && tasks) data._tasks = JSON.stringify(tasks);
+  // For timed alerts: this phone's time zone and what's still left on today's lists
+  try { data._tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (err) {}
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const leftOn = list => [...document.querySelectorAll(`#${list} .task:not(.done)`)].map(t => t.textContent);
+  if (document.getElementById('morning')) {
+    data._today = JSON.stringify({ date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+                                   morningLeft: leftOn('morning'), bedtimeLeft: leftOn('bedtime') });
+  }
   // For the League: this week's points (league.js)
   if (typeof leagueForCloud === 'function') data._league = JSON.stringify(leagueForCloud());
   return data;

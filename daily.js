@@ -144,6 +144,25 @@ function showParentClock() {
     showClock();
   });
   box.append(label, input, save, status);
+
+  // Bedtime: a reminder alert 30 minutes before, if the bedtime list isn't done
+  const bedLabel = document.createElement('label');
+  bedLabel.textContent = 'Bedtime (every night)';
+  const bedInput = document.createElement('input');
+  bedInput.type = 'time';
+  bedInput.value = localStorage.getItem('kiddyKatBedTime') || '';
+  const bedSave = document.createElement('button');
+  bedSave.textContent = 'Save bedtime';
+  const bedStatus = document.createElement('div');
+  bedSave.addEventListener('click', () => {
+    if (bedInput.value) localStorage.setItem('kiddyKatBedTime', bedInput.value);
+    else localStorage.removeItem('kiddyKatBedTime');
+    bedStatus.textContent = bedInput.value ? '✅ Saved. A reminder comes 30 minutes before bedtime if the bedtime list isn\'t done.' : '✅ Bedtime reminder turned off.';
+  });
+  const tip = document.createElement('div');
+  tip.className = 'pushNote';
+  tip.textContent = '🔔 Alerts on this phone come 15 and 5 minutes before leaving (only if the morning list isn\'t done), and grown-ups get one at leave time. Turn on alerts in ☁️ Online family.';
+  box.append(document.createElement('br'), bedLabel, bedInput, bedSave, bedStatus, tip);
 }
 
 // ---------- Weather for where this phone is ----------
