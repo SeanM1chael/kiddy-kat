@@ -110,6 +110,7 @@
     #petCard button, #petChooser button { font-size: 18px; padding: 10px 20px; margin-top: 8px; border: none;
                                           border-radius: 12px; background: var(--main); color: white; }
     #petChooser { display: none; position: fixed; inset: 0; background: var(--bg); padding-top: 10vh; z-index: 11; }
+    #petChooser .petOptionLabel { display: block; font-size: 13px; color: #495057; margin-top: 2px; }
     #petChooser .petOption { font-size: 48px; background: white; color: black; margin: 6px;
                              border: 4px solid transparent; }
     #petChooser .petOption.picked { border-color: var(--main); }
@@ -260,6 +261,18 @@
     .noteText { font-size: 20px; font-weight: bold; margin-top: 2px; overflow-wrap: anywhere; }
     .noteLove { flex: none; font-size: 22px; background: white; border: none; border-radius: 50%; width: 44px; height: 44px; }
     .noteLove:disabled { width: auto; height: auto; border-radius: 12px; font-size: 13px; padding: 6px 8px; color: #0ca678; }
+    /* 🧭 First-time tour */
+    #tour { display: none; position: fixed; left: 12px; right: 12px; bottom: 16px; z-index: 40; background: white; border-radius: 20px;
+            padding: 14px 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.25); text-align: left; max-width: 520px; margin: 0 auto; }
+    .tourCount { font-size: 13px; color: #868e96; }
+    .tourTitle { font-size: 20px; font-weight: bold; margin: 2px 0 4px; }
+    .tourText { font-size: 16px; line-height: 1.4; }
+    .tourButtons { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+    .tourButtons button { font-size: 16px; padding: 10px 14px; border: none; border-radius: 12px; }
+    .tourSkip { background: none; color: #868e96; margin-right: auto; }
+    .tourBack { background: #f1f3f5; color: #495057; }
+    .tourNext { background: var(--main); color: white; font-weight: bold; }
+    .tourSpot { position: relative; z-index: 35; box-shadow: 0 0 0 4px var(--main), 0 0 0 9999px rgba(0,0,0,0.45) !important; border-radius: 16px; }
     /* 🦅 Career mode */
     #careerCard { display: none; background: white; border-radius: 20px; padding: 12px 14px; margin: 12px auto; width: 80%; text-align: left; }
     .careerTitle { font-size: 18px; font-weight: bold; margin-bottom: 6px; }
@@ -272,6 +285,12 @@
     .careerButtons { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 4px; }
     .careerButtons button { font-size: 15px; padding: 6px 10px; border: none; border-radius: 10px; background: var(--main); color: white; }
     .careerButtons .careerMinus { background: #e9ecef; color: #495057; }
+    .careerGoal.bump { animation: careerBump 0.45s ease; }
+    @keyframes careerBump { 0% { background: transparent; } 30% { background: #d0ebff; transform: scale(1.02); } 100% { background: transparent; transform: none; } }
+    #careerToast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); background: #1c7ed6; color: white;
+                   font-size: 17px; font-weight: bold; padding: 12px 18px; border-radius: 16px; opacity: 0; pointer-events: none;
+                   transition: opacity 0.25s, transform 0.25s; z-index: 30; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,0.15); }
+    #careerToast.show { opacity: 1; transform: translate(-50%, 0); }
     .careerOpen { width: 100%; margin-top: 10px; font-size: 16px; padding: 10px; border: none; border-radius: 12px; background: #e7f5ff; color: #1864ab; }
     #career { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 15; overflow-y: auto; padding: 16px 16px 40px; text-align: left; }
     #career .closeGame { position: absolute; right: 16px; top: 12px; font-size: 28px; background: none; border: none; }
@@ -443,7 +462,7 @@ Level 4 pets unlock new eggs in the 🏠 Pet House!">i</button>
     <button onclick="openPractice()">🎮 Practice</button>
     <button id="shopButton" onclick="openShop()">🛍️ Shop</button>
     <button id="challengeButton" onclick="openChallenge()">🔴 Challenge</button>
-    <button onclick="openAlbum()">📒 Stickers</button>
+    <button id="albumButton" onclick="openAlbum()">📒 Stickers</button>
     <button id="houseButton" onclick="openPetHouse()">🏠 Pet House</button>
     <button onclick="openRewards()">🎁 Rewards</button>
     <button id="walletButton" onclick="openWallet()">💵 Wallet</button>
@@ -476,7 +495,7 @@ Level 4 pets unlock new eggs in the 🏠 Pet House!">i</button>
   <!-- Sticker album (filled in by stickers.js) -->
   <div id="album">
     <button class="closeGame" onclick="closeAlbum()">✖</button>
-    <h2>📒 My Sticker Album</h2>
+    <h2 id="albumTitle">📒 My Sticker Album</h2>
     <div id="albumCount"></div>
     <div id="albumPages"></div>
   </div>
@@ -582,6 +601,9 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
   <div id="settings">
     <div id="pinBanner">🔓 Grown-ups isn't locked yet. Set a parent PIN in the 🎁 Rewards section below to lock it.</div>
 
+    <div id="parentTour"></div>
+    <hr>
+
     <h2>⏰ School mornings &amp; bedtime</h2>
     <div id="parentClock"></div>
     <hr>
@@ -683,7 +705,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     <div id="petOptions"></div>
     <div id="petLockHint"></div>
     <input id="petNameInput" placeholder="Your pet's name">
-    <button onclick="hatchPet()">Hatch! 🥚</button>
+    <button id="hatchButton" onclick="hatchPet()">Hatch! 🥚</button>
     <br><button class="cancelChoose" onclick="closePetChooser()">Not now</button>
   </div>
 
@@ -705,24 +727,25 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
   </div>
 
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-10-29b"></script>
-  <script src="push.js?v=2026-10-29b"></script>
-  <script src="sync.js?v=2026-10-29b"></script>
-  <script src="daily.js?v=2026-10-29b"></script>
-  <script src="pet.js?v=2026-10-29b"></script>
-  <script src="stickers.js?v=2026-10-29b"></script>
-  <script src="games.js?v=2026-10-29b"></script>
-  <script src="challenge.js?v=2026-10-29b"></script>
-  <script src="rewards.js?v=2026-10-29b"></script>
-  <script src="wallet.js?v=2026-10-29b"></script>
-  <script src="catchup.js?v=2026-10-29b"></script>
-  <script src="packs.js?v=2026-10-29b"></script>
-  <script src="league.js?v=2026-10-29b"></script>
-  <script src="uploads.js?v=2026-10-29b"></script>
-  <script src="weekend.js?v=2026-10-29b"></script>
-  <script src="streak.js?v=2026-10-29b"></script>
-  <script src="supplies.js?v=2026-10-29b"></script>
-  <script src="career.js?v=2026-10-29b"></script>
+  <script src="config.js?v=2026-10-29g"></script>
+  <script src="push.js?v=2026-10-29g"></script>
+  <script src="sync.js?v=2026-10-29g"></script>
+  <script src="daily.js?v=2026-10-29g"></script>
+  <script src="pet.js?v=2026-10-29g"></script>
+  <script src="stickers.js?v=2026-10-29g"></script>
+  <script src="games.js?v=2026-10-29g"></script>
+  <script src="challenge.js?v=2026-10-29g"></script>
+  <script src="rewards.js?v=2026-10-29g"></script>
+  <script src="wallet.js?v=2026-10-29g"></script>
+  <script src="catchup.js?v=2026-10-29g"></script>
+  <script src="packs.js?v=2026-10-29g"></script>
+  <script src="league.js?v=2026-10-29g"></script>
+  <script src="uploads.js?v=2026-10-29g"></script>
+  <script src="weekend.js?v=2026-10-29g"></script>
+  <script src="streak.js?v=2026-10-29g"></script>
+  <script src="supplies.js?v=2026-10-29g"></script>
+  <script src="career.js?v=2026-10-29g"></script>
+  <script src="tour.js?v=2026-10-29g"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -823,10 +846,15 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       document.getElementById('myTasksButton').style.display = animal.theme === 'lion' || animal.theme === 'eagle' ? 'inline-block' : 'none';
       // Kid-only things grown-ups don't need: the pretend wallet
       document.getElementById('walletButton').style.display = animal.theme === 'eagle' ? 'none' : '';
+      document.getElementById('albumButton').textContent = animal.theme === 'eagle' ? '🏆 Badges' : '📒 Stickers';
       if (!iconChoice && (animal.theme === 'tiger' || animal.theme === 'lion')) {
         document.getElementById('appIcon').href = animal.theme + '.png';
       }
       document.getElementById('setup').style.display = 'none';
+      if (typeof showPet === 'function') showPet();      // redraw now that we know the age (pets vs. grown-up projects)
+      // ...and the cards that depend on who's using the app
+      ['showStreakCard', 'showCareerCard', 'showSuppliesCard', 'showWeekendCard', 'showUploadCard', 'showLeagueCard']
+        .forEach(fn => { if (typeof window[fn] === 'function') window[fn](); });
 
       // This kid's own lists, or the starting lists for their animal
       tasks = JSON.parse(localStorage.getItem('kiddyKatTasks') || 'null') || DEFAULT_TASKS[animal.theme];
@@ -867,6 +895,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
                   nicknames: splitNames(document.getElementById('setupNicknames').value) };
       localStorage.setItem('kiddyKatProfile', JSON.stringify(profile));
       applyProfile();
+      if (typeof maybeStartTour === 'function') maybeStartTour();      // first-time tour (tour.js)
     }
 
     function changeProfile() {
@@ -1013,6 +1042,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       showParentClock();
       showParentWeekend();
       showParentStreak();
+      if (typeof showTourButton === 'function') showTourButton();
       showEvents();
       showProofPhotos();
       showCloud();

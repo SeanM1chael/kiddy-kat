@@ -15,6 +15,17 @@ const STICKER_SETS = [
                      stickers: [['🎃','c'], ['👻','c'], ['🦇','c'], ['🕷️','c'], ['🕸️','c'], ['🧙','r'], ['💀','r'], ['🧛','s']] }
 ];
 
+// Grown-ups (career mode) collect badges for a Trophy Case instead
+const ADULT_SETS = [
+  { name: 'Career',     stickers: [['💼','c'], ['📈','c'], ['📨','c'], ['🤝','c'], ['🧠','c'], ['🎯','r'], ['🏅','r'], ['👔','s']] },
+  { name: 'Tech',       stickers: [['💻','c'], ['⌨️','c'], ['🖱️','c'], ['🔧','c'], ['📡','c'], ['🤖','r'], ['☁️','r'], ['🛰️','s']] },
+  { name: 'Wellness',   stickers: [['🏃','c'], ['🧘','c'], ['💧','c'], ['🥗','c'], ['😴','c'], ['🚴','r'], ['🏋️','r'], ['🏔️','s']] },
+  { name: 'Leadership', stickers: [['📣','c'], ['📋','c'], ['🧭','c'], ['🗓️','c'], ['☕','c'], ['🎤','r'], ['🏛️','r'], ['👑','s']] },
+  { name: 'Family',     stickers: [['🍕','c'], ['🎬','c'], ['🏡','c'], ['⚽','c'], ['🎲','c'], ['🎢','r'], ['🏖️','r'], ['❤️','s']] }
+];
+const adultAlbum = () => typeof animal !== 'undefined' && animal.theme === 'eagle';
+const stickerSets = () => adultAlbum() ? ADULT_SETS : STICKER_SETS;
+
 const SET_BONUS = 10;
 
 let stickerBook = JSON.parse(localStorage.getItem('kiddyKatStickers') || '{}');   // emoji -> how many
@@ -30,7 +41,7 @@ function randomSticker() {
   const roll = Math.random();
   const rarity = roll < 0.03 ? 's' : roll < 0.20 ? 'r' : 'c';
   const pool = [];
-  STICKER_SETS.filter(set => inSeason(set)).forEach(set =>
+  stickerSets().filter(set => inSeason(set)).forEach(set =>
     set.stickers.forEach(([emoji, r]) => { if (r === rarity) pool.push([emoji, r]); }));
   return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -50,12 +61,12 @@ function earnStickers(count) {
   }
 
   // Did any set just get finished?
-  STICKER_SETS.forEach(set => {
+  stickerSets().forEach(set => {
     const complete = set.stickers.every(([emoji]) => stickerBook[emoji]);
     if (complete && !setsDone.includes(set.name)) {
       setsDone.push(set.name);
       addStars(SET_BONUS);
-      notes.push(`📒 ${set.name} set complete! +${SET_BONUS} ⭐`);
+      notes.push(`${adultAlbum() ? '🏆' : '📒'} ${set.name} set complete! +${SET_BONUS} ⭐`);
     }
   });
 
@@ -74,13 +85,15 @@ function closeAlbum() {
 }
 
 function showAlbum() {
-  const total = STICKER_SETS.reduce((sum, set) => sum + set.stickers.length, 0);
-  const have = Object.keys(stickerBook).length;
-  document.getElementById('albumCount').textContent = `You have ${have} of ${total} stickers`;
+  const sets = stickerSets();
+  const total = sets.reduce((sum, set) => sum + set.stickers.length, 0);
+  const have = sets.reduce((sum, set) => sum + set.stickers.filter(([emoji]) => stickerBook[emoji]).length, 0);
+  document.getElementById('albumTitle').textContent = adultAlbum() ? '🏆 My Trophy Case' : '📒 My Sticker Album';
+  document.getElementById('albumCount').textContent = `You have ${have} of ${total} ${adultAlbum() ? 'badges' : 'stickers'}`;
 
   const pages = document.getElementById('albumPages');
   pages.textContent = '';
-  STICKER_SETS.forEach(set => {
+  sets.forEach(set => {
     const page = document.createElement('div');
     page.className = 'albumPage';
 
