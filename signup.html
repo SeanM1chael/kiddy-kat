@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Start your Kiddy Kat family</title>
+  <link rel="apple-touch-icon" href="icon.png">
+  <style>
+    :root { --main: #ff7a00; --bg: #fff4e6; --ok: #2b8a3e; --warn: #c92a2a; --muted: #868e96; --soft: #ffd8a8; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding: 16px; color: #212529; }
+    .card { max-width: 480px; margin: 4vh auto; background: white; border-radius: 20px; padding: 22px; }
+    h1 { color: var(--main); margin: 0 0 4px; font-size: 26px; text-align: center; }
+    h2 { margin: 0 0 6px; font-size: 20px; }
+    .sub { color: var(--muted); text-align: center; margin-bottom: 16px; }
+    .steps { display: flex; justify-content: center; gap: 6px; margin-bottom: 16px; }
+    .steps span { width: 28px; height: 28px; line-height: 28px; border-radius: 50%; background: #f1f3f5; color: var(--muted); text-align: center; font-weight: bold; }
+    .steps span.on { background: var(--main); color: white; }
+    label { display: block; font-weight: bold; margin-top: 12px; }
+    .hint { font-size: 14px; color: var(--muted); margin-top: 2px; }
+    input:not([type=checkbox]):not([type=radio]) { display: block; width: 100%; font-size: 18px; padding: 10px; margin-top: 4px;
+                                                    border: 2px solid var(--soft); border-radius: 12px; }
+    .check { display: flex; gap: 10px; align-items: flex-start; font-weight: normal; margin-top: 12px; }
+    .check input { width: 22px; height: 22px; flex: none; margin-top: 1px; }
+    button { font-size: 18px; padding: 12px 18px; border: none; border-radius: 12px; background: var(--main); color: white;
+             cursor: pointer; margin-top: 16px; width: 100%; }
+    button.plain { background: #eee; color: #333; }
+    button:disabled { opacity: 0.6; }
+    .error { color: var(--warn); margin-top: 8px; min-height: 1.2em; }
+    .code { font-size: 34px; font-weight: bold; letter-spacing: 2px; text-align: center; background: #fff9db; border-radius: 14px;
+            padding: 14px; margin: 10px 0 6px; font-family: ui-monospace, Menlo, monospace; }
+    .warnBox { background: #fff3bf; border-radius: 12px; padding: 10px 12px; font-size: 15px; }
+    .animals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+    .animals label { margin: 0; border: 2px solid var(--soft); border-radius: 12px; padding: 8px 4px; text-align: center; font-weight: normal; cursor: pointer; }
+    .animals label.picked { border-color: var(--main); background: #fff4e6; }
+    .animals input { display: none; }
+    .animals .big { font-size: 30px; display: block; }
+    .kidRow { display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid #f1f3f5; }
+    ol { padding-left: 22px; }
+    ol li { margin: 10px 0; }
+    .link { word-break: break-all; color: var(--muted); font-size: 14px; }
+    a { color: var(--main); }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🐱 Kiddy Kat</h1>
+    <div class="sub">Daily routines, practice and rewards for your kids. No ads, ever.</div>
+    <div class="steps"><span id="s1" class="on">1</span><span id="s2">2</span><span id="s3">3</span></div>
+
+    <!-- Step 1: the family -->
+    <div id="step1">
+      <h2>Start your family</h2>
+      <label for="familyName">Family name</label>
+      <input id="familyName" maxlength="40" placeholder="The Smith Family" autocomplete="off">
+      <label for="pin">Parent PIN</label>
+      <div class="hint">4 to 8 digits. You use it to approve rewards and open the grown-up dashboard. Don't share it with the kids.</div>
+      <input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password">
+      <label for="pin2">Type the PIN again</label>
+      <input id="pin2" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password">
+      <label class="check"><input type="checkbox" id="consentParent"><span>I'm the parent or legal guardian of the kids I'll add, and I'm 18 or older.</span></label>
+      <label class="check"><input type="checkbox" id="consentPolicy"><span>I've read the <a href="privacy.html" target="_blank">privacy policy</a> and agree to it for my kids.</span></label>
+      <button id="create">Create our family</button>
+      <div class="error" id="err1"></div>
+      <div class="hint" style="text-align:center">Already have a family code? <a href="dashboard.html">Log in to the dashboard</a></div>
+    </div>
+
+    <!-- Step 2: the code, then the kids -->
+    <div id="step2" class="hidden">
+      <h2>🎉 Your family code</h2>
+      <div class="code" id="code"></div>
+      <button class="plain" id="copy">📋 Copy the code</button>
+      <div class="warnBox" style="margin-top:10px">✍️ <b>Write this code down.</b> Every phone and the dashboard use it to log in, and there's no email to send it to you later.</div>
+
+      <h2 style="margin-top:20px">Add your kids</h2>
+      <label for="nick">Nickname</label>
+      <div class="hint">Use a nickname, like "Juju". Your kid's real name stays on their own phone and is never sent online.</div>
+      <input id="nick" maxlength="20" placeholder="Juju" autocomplete="off">
+      <label>Age group</label>
+      <div class="animals" id="animals">
+        <label><input type="radio" name="animal" value="kitten"><span class="big">🐱</span>Kitten<br><span class="hint">ages 4 to 9</span></label>
+        <label><input type="radio" name="animal" value="tiger"><span class="big">🐯</span>Tiger<br><span class="hint">ages 10 to 13</span></label>
+        <label><input type="radio" name="animal" value="lion"><span class="big">🦁</span>Lion<br><span class="hint">ages 14 and up</span></label>
+      </div>
+      <label for="kidPin">Kid PIN</label>
+      <div class="hint">4 digits your kid uses to log in on a new phone or Chromebook.</div>
+      <input id="kidPin" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">
+      <button id="addKid">➕ Add this kid</button>
+      <div class="error" id="err2"></div>
+      <div id="kidList"></div>
+      <button class="plain" id="toStep3">Done adding kids →</button>
+    </div>
+
+    <!-- Step 3: what to do next -->
+    <div id="step3" class="hidden">
+      <h2>✅ You're all set!</h2>
+      <ol>
+        <li><b>On each kid's phone or Chromebook</b>, open the Kiddy Kat app link and tap <b>"☁️ Already use Kiddy Kat? Log in"</b>. Type the family code, tap their name, then their kid PIN.
+          <div class="link" id="appLink"></div>
+          <button class="plain" id="copyApp">📋 Copy the app link</button></li>
+        <li><b>On iPhone:</b> tap Share → <b>Add to Home Screen</b>, then open Kiddy Kat from the new icon. Alerts only work from the icon.</li>
+        <li><b>Your grown-up dashboard</b> shows every kid's day and lets you approve rewards and jobs. Log in with the family code and your parent PIN, and add it to your Home Screen too.</li>
+      </ol>
+      <button id="openDash">Open my dashboard</button>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    const $ = id => document.getElementById(id);
+    let token = null, familyCode = null;
+    const kidsAdded = [];
+
+    async function cloudCall(name, args) {
+      try {
+        const r = await fetch(`${KIDDY_KAT_CLOUD.url}/rest/v1/rpc/${name}`, {
+          method: 'POST', headers: { apikey: KIDDY_KAT_CLOUD.key, 'Content-Type': 'application/json' }, body: JSON.stringify(args)
+        });
+        const body = await r.json().catch(() => ({}));
+        return r.ok ? body : { ok: false, error: body.message || `Server error ${r.status}` };
+      } catch (err) {
+        return { ok: false, error: 'No internet right now. Try again in a moment.' };
+      }
+    }
+
+    function goStep(n) {
+      [1, 2, 3].forEach(i => {
+        $('step' + i).classList.toggle('hidden', i !== n);
+        $('s' + i).classList.toggle('on', i <= n);
+      });
+      window.scrollTo(0, 0);
+    }
+
+    // Same easy-to-guess check the server does, so the message comes right away
+    function weakPin(p) {
+      return /^(.)\1+$/.test(p) || '0123456789012345'.includes(p) || '9876543210987654'.includes(p) ||
+             ['1212', '121212', '6969', '1004', '2000', '2580', '0852'].includes(p);
+    }
+
+    async function copy(text, button) {
+      try { await navigator.clipboard.writeText(text); button.textContent = '✅ Copied'; }
+      catch (err) { button.textContent = 'Press and hold to copy'; }
+    }
+
+    // ---------- Step 1 ----------
+    $('create').addEventListener('click', async () => {
+      const name = $('familyName').value.trim(), pin = $('pin').value;
+      const err = $('err1');
+      err.textContent = '';
+      if (name.length < 2) { err.textContent = 'Type a family name.'; return; }
+      if (!/^[0-9]{4,8}$/.test(pin)) { err.textContent = 'The parent PIN must be 4 to 8 digits.'; return; }
+      if (weakPin(pin)) { err.textContent = 'That PIN is too easy to guess. Try a different one.'; return; }
+      if (pin !== $('pin2').value) { err.textContent = "The two PINs don't match."; return; }
+      if (!$('consentParent').checked || !$('consentPolicy').checked) { err.textContent = 'Please check both boxes to continue.'; return; }
+      $('create').disabled = true;
+      $('create').textContent = '⏳ Creating...';
+      const r = await cloudCall('sign_up_family', { p_name: name, p_parent_pin: pin, p_consent: true });
+      $('create').disabled = false;
+      $('create').textContent = 'Create our family';
+      if (!r.ok) { err.textContent = '⚠️ ' + r.error; return; }
+      token = r.token;
+      familyCode = r.code;
+      sessionStorage.setItem('kiddyKatDashToken', token);      // the dashboard opens logged in
+      $('code').textContent = familyCode;
+      goStep(2);
+    });
+
+    // ---------- Step 2 ----------
+    $('copy').addEventListener('click', () => copy(familyCode, $('copy')));
+    document.querySelectorAll('#animals input').forEach(radio => radio.addEventListener('change', () => {
+      document.querySelectorAll('#animals label').forEach(l => l.classList.toggle('picked', l.contains(radio) && radio.checked));
+    }));
+
+    $('addKid').addEventListener('click', async () => {
+      const nick = $('nick').value.trim(), pin = $('kidPin').value;
+      const picked = document.querySelector('#animals input:checked');
+      const err = $('err2');
+      err.textContent = '';
+      if (!nick) { err.textContent = 'Type a nickname.'; return; }
+      if (!picked) { err.textContent = 'Pick an age group.'; return; }
+      if (!/^[0-9]{4}$/.test(pin)) { err.textContent = 'The kid PIN must be 4 digits.'; return; }
+      if (weakPin(pin)) { err.textContent = 'That PIN is too easy to guess. Try a different one.'; return; }
+      const r = await cloudCall('add_kid', { p_token: token, p_nickname: nick, p_animal: picked.value, p_pin: pin });
+      if (!r.ok) { err.textContent = '⚠️ ' + r.error; return; }
+      kidsAdded.push({ nick, animal: picked.value });
+      $('nick').value = '';
+      $('kidPin').value = '';
+      picked.checked = false;
+      document.querySelectorAll('#animals label').forEach(l => l.classList.remove('picked'));
+      drawKids();
+    });
+
+    function drawKids() {
+      const box = $('kidList');
+      box.textContent = '';
+      const faces = { kitten: '🐱', tiger: '🐯', lion: '🦁' };
+      kidsAdded.forEach(k => {
+        const row = document.createElement('div');
+        row.className = 'kidRow';
+        row.textContent = `${faces[k.animal]} ${k.nick}`;
+        const ok = document.createElement('span');
+        ok.textContent = '✅ Added';
+        row.appendChild(ok);
+        box.appendChild(row);
+      });
+      $('toStep3').textContent = kidsAdded.length ? 'Done adding kids →' : 'Skip for now →';
+    }
+    drawKids();
+
+    // ---------- Step 3 ----------
+    const appLink = location.href.replace(/signup\.html.*$/, '');
+    $('toStep3').addEventListener('click', () => { $('appLink').textContent = appLink; goStep(3); });
+    $('copyApp').addEventListener('click', () => copy(appLink, $('copyApp')));
+    $('openDash').addEventListener('click', () => { location.href = appLink + 'dashboard.html'; });
+  </script>
+</body>
+</html>

@@ -65,6 +65,12 @@
     #sendPanel label { margin-right: 12px; white-space: nowrap; }
     .eventRow { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid #f1f3f5; font-size: 14px; }
     .eventRow .who { color: var(--muted); }
+    #familyPanel { background: white; border-radius: 20px; padding: 16px; margin-top: 14px; }
+    #familyPanel h3 { margin: 0 0 6px; }
+    #familyPanel input { width: 100%; font-size: 15px; padding: 8px; border: 2px solid #ffd8a8; border-radius: 10px; margin: 4px 0; }
+    #familyPanel button { font-size: 14px; padding: 6px 12px; margin: 6px 6px 0 0; }
+    #familyPanel button.danger { background: #c92a2a; }
+    .dangerBox { border: 2px solid #ffc9c9; border-radius: 12px; padding: 10px 12px; margin-top: 8px; }
     #fans { background: white; border-radius: 20px; padding: 16px; margin-bottom: 14px; }
     #fans h3 { margin: 0 0 8px; }
     .fanRow { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
@@ -82,6 +88,7 @@
     <input id="pin" type="password" inputmode="numeric" placeholder="Online parent PIN">
     <button onclick="logIn()">Log in</button>
     <div id="loginNote"></div>
+    <div class="sub" style="margin-top:14px">New to Kiddy Kat? <a href="signup.html">Start your family</a></div>
   </div>
 
   <!-- The dashboard -->
@@ -97,6 +104,7 @@
     <div id="leaguePanel"></div>
     <div id="fans"></div>
     <div class="kids" id="kids"></div>
+    <div id="familyPanel"></div>
   </div>
 
   <script src="config.js"></script>
@@ -184,6 +192,7 @@
       if (!document.getElementById('pushBox').childElementCount)
         pushSwitch(document.getElementById('pushBox'), () => sessionStorage.getItem('kiddyKatDashToken'), 'this device (grown-up alerts)');
       showSendPanel(result.kids);
+      showFamilyPanel(result.family);
       showFans();
       showLeaguePanel();
     }
@@ -330,6 +339,38 @@
           });
         });
       }
+    }
+
+    // ---------- Family settings: privacy and Delete my family ----------
+    function showFamilyPanel(familyName) {
+      const box = document.getElementById('familyPanel');
+      box.textContent = '';
+      const add = (parent, tag, text, cls) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (cls) el.className = cls; parent.appendChild(el); return el; };
+      add(box, 'h3', '🔒 Family settings');
+      const policy = add(box, 'a', 'Privacy policy');
+      policy.href = 'privacy.html';
+      policy.target = '_blank';
+      const open = add(add(box, 'div'), 'button', '🗑️ Delete my family', 'plain');
+      const form = add(box, 'div', undefined, 'dangerBox');
+      form.style.display = 'none';
+      add(form, 'div', `This permanently deletes ${familyName} from Kiddy Kat: every kid, their progress, stars, pets, ` +
+        'photos, Fans, alert devices and logins. It can\'t be undone. Progress saved only on a kid\'s device stays there until you remove the app.');
+      const code = add(form, 'input'); code.placeholder = 'Type your family code (KAT-XXXXXX)'; code.autocapitalize = 'characters';
+      const pin = add(form, 'input'); pin.type = 'password'; pin.inputMode = 'numeric'; pin.placeholder = 'Parent PIN';
+      const go = add(form, 'button', 'Delete everything', 'danger');
+      const cancel = add(form, 'button', 'Cancel', 'plain');
+      const note = add(form, 'div', '', 'pushNote');
+      open.addEventListener('click', () => { form.style.display = 'block'; open.style.display = 'none'; });
+      cancel.addEventListener('click', () => { form.style.display = 'none'; open.style.display = ''; note.textContent = ''; });
+      go.addEventListener('click', async () => {
+        if (!confirm(`Delete ${familyName} and all of its data forever?`)) return;
+        note.textContent = '⏳ Deleting...';
+        const r = await cloudCall('delete_family', { p_token: sessionStorage.getItem('kiddyKatDashToken'),
+                                                     p_pin: pin.value, p_code: cleanFamilyCode(code.value) });
+        if (!r.ok) { note.textContent = '⚠️ ' + r.error; return; }
+        logOut();
+        document.getElementById('loginNote').textContent = '✅ Your family was deleted. Thank you for using Kiddy Kat.';
+      });
     }
 
     async function showFans() {

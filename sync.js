@@ -333,6 +333,11 @@ function showCloud() {
   // Step 1: grown-up logs in
   if (!cloudParent) {
     add('p', 'Save progress online so it follows your kid to a Chromebook or a new phone.');
+    const newFamily = add('p', 'New to Kiddy Kat? ');
+    const signUp = document.createElement('a');
+    signUp.href = 'signup.html';
+    signUp.textContent = 'Start your family online';
+    newFamily.appendChild(signUp);
     add('label', 'Family code');
     const code = add('input');
     code.placeholder = 'KAT-XXXXXX';
