@@ -112,8 +112,8 @@
     <div id="familyPanel"></div>
   </div>
 
-  <script src="config.js"></script>
-  <script src="push.js"></script>
+  <script src="config.js?v=2026-10-29b"></script>
+  <script src="push.js?v=2026-10-29b"></script>
   <script>
     // =================================================================
     // Parent dashboard: every kid's day at a glance (read-only).
@@ -121,7 +121,7 @@
     // The grown-up login lasts until this browser tab is closed.
     // =================================================================
 
-    const ANIMALS = { kitten: '🐱', tiger: '🐯', lion: '🦁' };
+    const ANIMALS = { kitten: '🐱', tiger: '🐯', lion: '🦁', eagle: '🦅' };
     const PET_STAGES = {
       kitten: ['🥚', '🐱', '😺', '🐈'], puppy: ['🥚', '🐶', '🐕', '🦮'], bunny: ['🥚', '🐰', '🐇', '🐇'],
       flower: ['🌰', '🌱', '🌷', '🌻'], hamster: ['🥚', '🐭', '🐹', '🐹'], turtle: ['🥚', '🐢', '🐢', '🐢'],
@@ -575,6 +575,14 @@
       const lgRow = add(todayBox, 'div', undefined, 'list');
       add(lgRow, 'span', '🏆 League points this week');
       add(lgRow, 'span', weekPoints >= 60 ? `${weekPoints} ⭐ goal!` : `${weekPoints} of 60`, weekPoints >= 60 ? 'done' : 'none');
+
+      // 🦅 Career mode: this week's goals (numbers only)
+      const cr = read(data, '_career', null);
+      if (cr && cr.week === mondayKey()) {
+        const crRow = add(todayBox, 'div', undefined, 'list');
+        add(crRow, 'span', '🦅 Career goals this week');
+        add(crRow, 'span', `${cr.done} of ${cr.target}`, cr.done >= cr.target ? 'done' : 'partial');
+      }
 
       // 🔥 Morning streak
       const st = read(data, 'kiddyKatStreak', null);

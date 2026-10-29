@@ -43,15 +43,15 @@
   <div id="kids"></div>
   <button class="plain" id="logout" style="display:none" onclick="logOut()">Log out</button>
 
-  <script src="config.js"></script>
-  <script src="push.js"></script>
+  <script src="config.js?v=2026-10-29b"></script>
+  <script src="push.js?v=2026-10-29b"></script>
   <script>
     // =================================================================
     // A Fan (like a grandparent) can ONLY send stars and a short cheer,
     // up to a weekly limit their parent set. They can't see grades,
     // money or anything else. The login stays on this phone for 90 days.
     // =================================================================
-    const ANIMALS = { kitten: '🐱', tiger: '🐯', lion: '🦁' };
+    const ANIMALS = { kitten: '🐱', tiger: '🐯', lion: '🦁', eagle: '🦅' };
 
     function cleanFamilyCode(text) {
       let code = String(text || '').toUpperCase().replace(/[^A-Z0-9]/g, '');

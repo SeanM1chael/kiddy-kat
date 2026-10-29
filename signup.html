@@ -78,10 +78,11 @@
       <div class="hint">Use a nickname, like "Juju". Your kid's real name stays on their own phone and is never sent online.</div>
       <input id="nick" maxlength="20" placeholder="Juju" autocomplete="off">
       <label>Age group</label>
-      <div class="animals" id="animals">
+      <div class="animals" id="animals" style="grid-template-columns: repeat(2, 1fr)">
         <label><input type="radio" name="animal" value="kitten"><span class="big">🐱</span>Kitten<br><span class="hint">ages 4 to 9</span></label>
         <label><input type="radio" name="animal" value="tiger"><span class="big">🐯</span>Tiger<br><span class="hint">ages 10 to 13</span></label>
-        <label><input type="radio" name="animal" value="lion"><span class="big">🦁</span>Lion<br><span class="hint">ages 14 and up</span></label>
+        <label><input type="radio" name="animal" value="lion"><span class="big">🦁</span>Lion<br><span class="hint">ages 14 to 21</span></label>
+        <label><input type="radio" name="animal" value="eagle"><span class="big">🦅</span>Eagle<br><span class="hint">grown-ups: career mode</span></label>
       </div>
       <label for="kidPin">Kid PIN</label>
       <div class="hint">4 digits your kid uses to log in on a new phone or Chromebook.</div>
@@ -106,7 +107,7 @@
     </div>
   </div>
 
-  <script src="config.js"></script>
+  <script src="config.js?v=2026-10-29b"></script>
   <script>
     const $ = id => document.getElementById(id);
     let token = null, familyCode = null;
@@ -194,7 +195,7 @@
     function drawKids() {
       const box = $('kidList');
       box.textContent = '';
-      const faces = { kitten: '🐱', tiger: '🐯', lion: '🦁' };
+      const faces = { kitten: '🐱', tiger: '🐯', lion: '🦁', eagle: '🦅' };
       kidsAdded.forEach(k => {
         const row = document.createElement('div');
         row.className = 'kidRow';
