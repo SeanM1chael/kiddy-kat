@@ -106,7 +106,8 @@ function cloudCollect() {
     data.kiddyKatProfile = JSON.stringify(profile);
   }
   // For the parent dashboard: the task lists this kid sees right now (including the starting lists)
-  if (typeof tasks !== 'undefined' && tasks) data._tasks = JSON.stringify(tasks);
+  // (today's lists: weekend and no-school-night lists when they apply)
+  if (typeof tasks !== 'undefined' && tasks) data._tasks = JSON.stringify(typeof todaysLists === 'function' ? todaysLists() : tasks);
   // For timed alerts: this phone's time zone and what's still left on today's lists
   try { data._tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (err) {}
   const now = new Date();

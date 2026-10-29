@@ -438,6 +438,7 @@
       const weekPoints = lg && lg.week === mondayKey() ? lg.points : 0;
       let offset = 0;
       LISTS.forEach(([key, label]) => {
+        if (key === 'afternoon' && [0, 6].includes(new Date().getDay())) label = '🌤️ Afternoon';
         const items = tasks ? tasks[key] || [] : [];
         const doneHere = items.map((t, i) => checked.includes(offset + i));
         offset += items.length;
@@ -458,6 +459,14 @@
       const lgRow = add(todayBox, 'div', undefined, 'list');
       add(lgRow, 'span', '🏆 League points this week');
       add(lgRow, 'span', weekPoints >= 60 ? `${weekPoints} ⭐ goal!` : `${weekPoints} of 60`, weekPoints >= 60 ? 'done' : 'none');
+
+      // 🔥 Morning streak
+      const st = read(data, 'kiddyKatStreak', null);
+      if (st) {
+        const stRow = add(todayBox, 'div', undefined, 'list');
+        add(stRow, 'span', '🔥 Morning streak');
+        add(stRow, 'span', `${st.current} day${st.current === 1 ? '' : 's'} · best ${st.best}${st.freezes ? ' · ❄️' + st.freezes : ''}`, st.current ? 'done' : 'none');
+      }
 
       // Weekend Earn & Play: gaming hours used today
       const wk = read(data, '_weekend', null);

@@ -250,6 +250,26 @@
                         border: 2px solid var(--soft); border-radius: 10px; box-sizing: border-box; }
     .uploadPreview { max-width: 100%; max-height: 260px; border-radius: 10px; margin: 8px auto 0; }
     .uploadStatus { font-size: 15px; color: #495057; margin-top: 6px; }
+    .listNote { font-size: 14px; color: #868e96; margin: 4px 0 2px; }
+    /* 🔥 Streak */
+    #streakCard { display: none; align-items: center; gap: 12px; background: #fff4e6; border-radius: 20px; padding: 10px 14px; margin: 12px auto; width: 80%; }
+    .streakBig { text-align: center; min-width: 70px; }
+    .streakNum { font-size: 32px; font-weight: bold; color: #e8590c; line-height: 1.1; }
+    .streakNum.zero { color: #adb5bd; }
+    .streakLabel { font-size: 13px; color: #868e96; }
+    .streakRight { flex: 1; }
+    .streakHead { font-size: 14px; font-weight: bold; margin-bottom: 4px; }
+    .streakWeek { display: flex; justify-content: space-between; gap: 2px; }
+    .streakDay { text-align: center; flex: 1; }
+    .streakDow { font-size: 11px; color: #868e96; }
+    .streakDot { width: 26px; height: 26px; line-height: 26px; margin: 2px auto 0; border-radius: 50%; font-size: 14px; background: #f1f3f5; color: #adb5bd; }
+    .streakDot.done { background: #ff922b; position: relative; }
+    .streakDot.done::after { content: ''; position: absolute; left: 9px; top: 5px; width: 6px; height: 11px;
+                             border: solid white; border-width: 0 3px 3px 0; transform: rotate(45deg); }
+    .streakDot.freeze, .streakDot.sick { background: #e7f5ff; }
+    .streakDot.rest { background: transparent; font-size: 12px; }
+    .streakDot.today { border: 2px dashed #ff922b; background: white; box-sizing: border-box; }
+    .streakFoot { font-size: 12px; color: #868e96; margin-top: 4px; }
     /* Weekend Earn & Play */
     #weekendCard { display: none; background: #f3f0ff; border-radius: 20px; padding: 12px 14px; margin: 12px auto; width: 80%; text-align: left; }
     .weekendTitle { font-size: 18px; font-weight: bold; text-align: center; }
@@ -418,12 +438,13 @@ Level 4 pets unlock new eggs in the 🏠 Pet House!">i</button>
 
   <div class="tabs">
     <button onclick="pickList('morning')">☀️ Morning</button>
-    <button onclick="pickList('afternoon')">🎒 After School</button>
+    <button id="tabAfternoon" onclick="pickList('afternoon')">🎒 After School</button>
     <button onclick="pickList('bedtime')">🌙 Bedtime</button>
     <button class="info" data-info="Tap a list to see it. Tap each task when it's done.
 Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet and earn 2 🏆 League points.">i</button>
   </div>
 
+  <div id="streakCard"></div>
   <div id="today"></div>
   <div id="weather">🌤️ Checking the weather...</div>
   <div id="catchupCard"></div>
@@ -449,6 +470,14 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     <textarea id="editAfternoon"></textarea>
     <label>🌙 Bedtime</label>
     <textarea id="editBedtime"></textarea>
+    <h3>🎉 Weekends &amp; no-school nights</h3>
+    <p>These show instead on Saturdays and Sundays, and at bedtime on Friday and Saturday (no school the next day).</p>
+    <label>☀️ Weekend morning (Sat &amp; Sun)</label>
+    <textarea id="editWkMorning"></textarea>
+    <label>🌤️ Weekend afternoon (Sat &amp; Sun)</label>
+    <textarea id="editWkAfternoon"></textarea>
+    <label>🌙 No-school bedtime (Fri &amp; Sat)</label>
+    <textarea id="editWkBedtime"></textarea>
     <button onclick="saveTasks()">Save tasks</button>
     <button class="plain" onclick="closeTaskEditor()">Close</button>
     <div id="taskStatus"></div>
@@ -493,6 +522,10 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     <input id="eventTip" placeholder="🎃 Halloween dress-up day! Wear your costume" maxlength="120">
     <button onclick="addEvent()">Add special day</button>
     <div id="eventStatus"></div>
+    <hr>
+
+    <h2>🔥 Morning streak</h2>
+    <div id="parentStreak"></div>
     <hr>
 
     <h2>🎮 Weekend Earn & Play</h2>
@@ -602,6 +635,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
   <script src="league.js"></script>
   <script src="uploads.js"></script>
   <script src="weekend.js"></script>
+  <script src="streak.js"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -621,6 +655,44 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
         bedtime:   ['🔌 Charge phone and laptop', '🎒 Pack for tomorrow', '😴 Screens off on time']
       }
     };
+
+    // Weekends (Saturday and Sunday) and no-school nights (Friday and Saturday bedtime)
+    const DEFAULT_WEEKEND_TASKS = {
+      kitten: {
+        morning:   ['🪥 Brush teeth', '🛏️ Make bed', '👕 Get dressed', '🥣 Eat breakfast'],
+        afternoon: ['🧸 Tidy your toys', '🌳 Play outside', '🤝 Help with a chore'],
+        bedtime:   ['🪥 Brush teeth', '🩳 Put on pajamas', '📖 Pick a bedtime story']
+      },
+      tiger: {
+        morning:   ['🪥 Brush teeth', '🍳 Eat breakfast', '🛏️ Make your bed'],
+        afternoon: ['🧹 Clean your room', '🌳 Get outside', '📚 Check homework for Monday'],
+        bedtime:   ['🪥 Brush teeth', '🧺 Clothes in the hamper', '📖 Read 20 minutes']
+      },
+      lion: {
+        morning:   ['🪥 Brush teeth', '🍳 Eat breakfast', '🛏️ Make your bed'],
+        afternoon: ['🧹 Clean your room', '📅 Plan homework for the week', '🧺 Laundry'],
+        bedtime:   ['🔌 Charge your phone', '🧹 Quick room tidy', '😴 Screens off on time']
+      }
+    };
+
+    // Is this list a no-school one today? Mornings and afternoons on Sat/Sun; bedtime on Fri/Sat.
+    function noSchoolList(name, d = new Date()) {
+      const day = d.getDay();
+      return name === 'bedtime' ? (day === 5 || day === 6) : (day === 0 || day === 6);
+    }
+
+    function weekendTasks() {
+      return (tasks && tasks.weekend) || DEFAULT_WEEKEND_TASKS[animal.theme];
+    }
+
+    // The list a kid sees today
+    function todaysList(name) {
+      return noSchoolList(name) ? weekendTasks()[name] || [] : tasks[name] || [];
+    }
+
+    function todaysLists() {
+      return { morning: todaysList('morning'), afternoon: todaysList('afternoon'), bedtime: todaysList('bedtime') };
+    }
 
     // ---------- Profile: who uses this phone ----------
     function animalFor(age) {
@@ -723,7 +795,13 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       ['morning', 'afternoon', 'bedtime'].forEach(listName => {
         const box = document.getElementById(listName);
         box.innerHTML = '';
-        tasks[listName].forEach(text => {
+        if (noSchoolList(listName)) {
+          const note = document.createElement('div');
+          note.className = 'listNote';
+          note.textContent = listName === 'bedtime' ? '🎉 No school tomorrow!' : '🎉 Weekend list';
+          box.appendChild(note);
+        }
+        todaysList(listName).forEach(text => {
           const task = document.createElement('div');
           task.className = 'task';
           task.textContent = text;
@@ -734,6 +812,9 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
         });
       });
       loadProgress();
+      // On weekends the after-school list is just the afternoon
+      const tab = document.getElementById('tabAfternoon');
+      if (tab) tab.textContent = noSchoolList('afternoon') ? '🌤️ Afternoon' : '🎒 After School';
     }
 
     function show(name) {
@@ -746,6 +827,10 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       document.getElementById('editMorning').value = tasks.morning.join('\n');
       document.getElementById('editAfternoon').value = tasks.afternoon.join('\n');
       document.getElementById('editBedtime').value = tasks.bedtime.join('\n');
+      const wk = weekendTasks();
+      document.getElementById('editWkMorning').value = (wk.morning || []).join('\n');
+      document.getElementById('editWkAfternoon').value = (wk.afternoon || []).join('\n');
+      document.getElementById('editWkBedtime').value = (wk.bedtime || []).join('\n');
     }
 
     function linesOf(id) {
@@ -756,7 +841,12 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       tasks = {
         morning: linesOf('editMorning'),
         afternoon: linesOf('editAfternoon'),
-        bedtime: linesOf('editBedtime')
+        bedtime: linesOf('editBedtime'),
+        weekend: {
+          morning: linesOf('editWkMorning'),
+          afternoon: linesOf('editWkAfternoon'),
+          bedtime: linesOf('editWkBedtime')
+        }
       };
       localStorage.setItem('kiddyKatTasks', JSON.stringify(tasks));
       localStorage.removeItem('kiddyKatChecklist');   // lists changed, so start today's checkmarks fresh
@@ -819,6 +909,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       showParentPack();
       showParentClock();
       showParentWeekend();
+      showParentStreak();
       showEvents();
       showProofPhotos();
       showCloud();
@@ -989,8 +1080,9 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
         const petMessage = carePet(list.id);          // feeds the pet (once per list per day)
         const pay = earnMoney('list', list.id);       // pays into the wallet (once per list per day)
         leagueRecord('list', list.id);                // 2 league points (once per list per day)
+        const streak = list.id === 'morning' && typeof markStreakDay === 'function' ? markStreakDay() : '';   // 🔥 streak.js
         // Stickers only the first time each list is finished today (when the pet gets cared for)
-        celebrate((petMessage ? 'You did it! ' + petMessage : 'You did it!') + (pay ? ' ' + pay : ''), animal.emoji, petMessage !== null);
+        celebrate((petMessage ? 'You did it! ' + petMessage : 'You did it!') + (pay ? ' ' + pay : '') + streak, animal.emoji, petMessage !== null);
       }
     }
 
@@ -1041,6 +1133,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     showLeagueCard();
     showUploadCard();
     showWeekendCard();
+    showStreakCard();
     showClock();
   </script>
 </body>
