@@ -319,7 +319,7 @@ function showParentWallet() {
 
   // Extra job approvals
   wallet.jobRequests.filter(r => r.status === 'waiting').forEach(r => {
-    const row = add('div', `${r.emoji} ${r.name} (${dollars(r.cents)}, ${r.date}) `);
+    const row = add('div', `${r.emoji} ${r.name} (${[r.cents ? dollars(r.cents) : '', r.stars ? r.stars + ' ⭐' : ''].filter(Boolean).join(' + ') || dollars(0)}, ${r.date}) `);
     const yes = document.createElement('button');
     yes.textContent = '✅ Pay it';
     yes.addEventListener('click', () => { payJob(r); showParentWallet(); });
@@ -391,8 +391,13 @@ function payJob(r) {
   r.status = 'paid';
   wallet.spend += r.cents;
   wallet.earnedThisPeriod += r.cents;
-  logMoney(r.name, r.cents);
+  if (r.cents) logMoney(r.name, r.cents);           // stars-only weekend jobs don't add a $0 line
   saveWallet();
+  // Weekend jobs and weekend catch-up pay stars (weekend.js)
+  if (r.stars && typeof addStars === 'function') {
+    addStars(r.stars);
+    if (typeof weekendEarned === 'function') weekendEarned(`${r.emoji || '⭐'} ${r.name}`);
+  }
   if (r.catchUp && typeof leagueRecord === 'function') leagueRecord('catchup');    // 5 league points
   if (typeof showCatchUp === 'function') showCatchUp();
 }

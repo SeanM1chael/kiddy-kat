@@ -250,6 +250,26 @@
                         border: 2px solid var(--soft); border-radius: 10px; box-sizing: border-box; }
     .uploadPreview { max-width: 100%; max-height: 260px; border-radius: 10px; margin: 8px auto 0; }
     .uploadStatus { font-size: 15px; color: #495057; margin-top: 6px; }
+    /* Weekend Earn & Play */
+    #weekendCard { display: none; background: #f3f0ff; border-radius: 20px; padding: 12px 14px; margin: 12px auto; width: 80%; text-align: left; }
+    .weekendTitle { font-size: 18px; font-weight: bold; text-align: center; }
+    .weekendBox { background: white; border-radius: 14px; padding: 10px 12px; margin-top: 10px; }
+    .weekendHead { font-weight: bold; margin-bottom: 6px; }
+    .weekendRow { padding: 8px 0; border-top: 1px solid #eee; font-size: 16px; }
+    .weekendRow button:not(.info) { font-size: 15px; padding: 6px 12px; border: none; border-radius: 10px;
+                                    background: var(--main); color: white; margin: 4px 4px 0 0; }
+    .weekendRow button.plain { background: #adb5bd; }
+    .weekendRow button:disabled, .weekendBox > button:disabled { opacity: 0.6; }
+    .weekendBox > button { font-size: 17px; padding: 10px 14px; border: none; border-radius: 12px; background: var(--main);
+                           color: white; margin-top: 8px; width: 100%; }
+    .weekendRow input, .weekendRow textarea { display: block; width: 100%; font-size: 16px; padding: 8px; margin: 6px 0 0;
+                                              border: 2px solid var(--soft); border-radius: 10px; box-sizing: border-box; }
+    .weekendRow textarea { height: 90px; }
+    .weekendTimer { font-weight: bold; color: var(--main); }
+    .weekendNote { font-size: 14px; color: #c92a2a; }
+    #parentWeekend label { display: block; margin-top: 8px; }
+    #parentWeekend input[type=number] { width: 80px; }
+    #parentWeekend textarea { width: 100%; height: 120px; box-sizing: border-box; }
     /* League */
     #leagueCard { display: none; background: #fff9db; border-radius: 20px; padding: 12px 14px; margin: 12px auto; width: 80%; cursor: pointer; }
     .leagueTitle { font-size: 18px; font-weight: bold; }
@@ -407,6 +427,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
   <div id="today"></div>
   <div id="weather">🌤️ Checking the weather...</div>
   <div id="catchupCard"></div>
+  <div id="weekendCard"></div>
   <div id="leagueCard"></div>
   <div id="uploadCard"></div>
 
@@ -472,6 +493,11 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     <input id="eventTip" placeholder="🎃 Halloween dress-up day! Wear your costume" maxlength="120">
     <button onclick="addEvent()">Add special day</button>
     <div id="eventStatus"></div>
+    <hr>
+
+    <h2>🎮 Weekend Earn & Play</h2>
+    <p>On Saturdays and Sundays, kids earn stars (extra practice, outside time, reading, weekend jobs) and spend them on gaming hours. After each hour they do one earn activity before the next hour unlocks.</p>
+    <div id="parentWeekend"></div>
     <hr>
 
     <h2>🎁 Rewards (parents)</h2>
@@ -575,6 +601,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
   <script src="packs.js"></script>
   <script src="league.js"></script>
   <script src="uploads.js"></script>
+  <script src="weekend.js"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -791,6 +818,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       showParentCatchUp();
       showParentPack();
       showParentClock();
+      showParentWeekend();
       showEvents();
       showProofPhotos();
       showCloud();
@@ -1012,6 +1040,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     showCatchUp();
     showLeagueCard();
     showUploadCard();
+    showWeekendCard();
     showClock();
   </script>
 </body>

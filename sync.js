@@ -118,6 +118,8 @@ function cloudCollect() {
   }
   // For the League: this week's points (league.js)
   if (typeof leagueForCloud === 'function') data._league = JSON.stringify(leagueForCloud());
+  // For the dashboard: today's gaming hours (weekend.js)
+  if (typeof weekendForCloud === 'function') data._weekend = JSON.stringify(weekendForCloud());
   return data;
 }
 

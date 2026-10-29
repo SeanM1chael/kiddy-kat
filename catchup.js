@@ -51,7 +51,9 @@ function turnedIn(item) {
   // Ask a parent to check it and pay (shows in Grown-ups → Wallet)
   if (!wallet) wallet = freshWallet();
   wallet.jobRequests.push({ id: Date.now(), emoji: '📚', name: `Turned in: ${item.text}`, cents: catchUp.pay,
-                            date: item.doneDate, status: 'waiting', catchUp: true });
+                            date: item.doneDate, status: 'waiting', catchUp: true,
+                            // Weekend Earn & Play: catch-up turned in on a weekend is worth stars too
+                            stars: typeof weekendOn === 'function' && weekendOn() ? CATCHUP_WEEKEND_STARS : 0 });
   saveWallet();
   if (typeof kidAlert === 'function') kidAlert('catchup', item.text);         // alert the grown-ups
 

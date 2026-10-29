@@ -146,6 +146,7 @@ function showPet() {
   }
 
   showPetExtras();
+  if (typeof showWeekendCard === 'function') showWeekendCard();     // star count changed
 }
 
 // Tap the pet: it bounces and makes a sound

@@ -7,6 +7,11 @@
 const ROUNDS_PER_DAY = 3;
 const QUESTIONS_PER_ROUND = 5;
 
+// 3 rounds on school days; more on weekends when Weekend Earn & Play is on (weekend.js)
+function maxRoundsToday() {
+  return typeof weekendOn === 'function' && weekendOn() ? WEEKEND_ROUNDS : ROUNDS_PER_DAY;
+}
+
 // Food that lands in the bowl, by pet type
 const PET_FOOD = { kitten: '🐟', puppy: '🦴', bunny: '🥕', flower: '💧',
                    hamster: '🌻', turtle: '🥬', parrot: '🍓', unicorn: '🌈', dragon: '🔥' };
@@ -156,7 +161,7 @@ function openPractice() {
   clearGame();
   document.getElementById('gameTitle').textContent = '🎮 Practice time!';
 
-  const left = ROUNDS_PER_DAY - roundsToday();
+  const left = maxRoundsToday() - roundsToday();
   if (left <= 0) {
     const who = pet ? pet.name : 'Your pet';
     document.getElementById('gameQuestion').textContent = `😴 ${who} is full and sleepy. Come back tomorrow!`;
@@ -265,18 +270,21 @@ function endRound() {
 
   const treat = givePetTreat();
   addStars(round.correct);                       // 1 star for each right answer
-  const pay = earnMoney('round');                // practice pays into the wallet
+  // Weekend packs pay double stars, and a good round unlocks the next gaming hour (weekend.js)
+  const bonus = typeof weekendRoundBonus === 'function' ? weekendRoundBonus(round.game, round.correct) : 0;
+  // Practice pays into the wallet, but only for the first 3 rounds a day (weekend rounds earn stars only)
+  const pay = roundsToday() <= ROUNDS_PER_DAY ? earnMoney('round') : '';
   if (typeof leagueRecord === 'function') leagueRecord('practice', round.correct);   // 1 league point per right answer
   clearGame();
   document.getElementById('gameTitle').textContent = '🎉 Round done!';
   document.getElementById('gameQuestion').textContent =
     `You got ${round.correct} out of ${total}! ${'⭐'.repeat(round.correct)}`;
   document.getElementById('gameFeedback').textContent = pet
-    ? `${treat || ''} +${round.correct} ⭐ for the shop! ${pay}`
+    ? `${treat || ''} +${round.correct + bonus} ⭐ for the shop!${bonus ? ' (packs ×2 on weekends)' : ''} ${pay}`
     : 'Hatch a pet to give it treats!';
 
   const box = document.getElementById('gameChoices');
-  if (roundsToday() < ROUNDS_PER_DAY) addMenuButton(box, '▶️ Play again', openPractice);
+  if (roundsToday() < maxRoundsToday()) addMenuButton(box, '▶️ Play again', openPractice);
   addMenuButton(box, '🏠 Done', closeGame);
   if (round.game === 'pack') afterPackRound();
   round = null;

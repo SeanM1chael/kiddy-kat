@@ -362,6 +362,16 @@
       add(lgRow, 'span', '🏆 League points this week');
       add(lgRow, 'span', weekPoints >= 60 ? `${weekPoints} ⭐ goal!` : `${weekPoints} of 60`, weekPoints >= 60 ? 'done' : 'none');
 
+      // Weekend Earn & Play: gaming hours used today
+      const wk = read(data, '_weekend', null);
+      if (wk && wk.date === new Date().toDateString() && (wk.hours || wk.gamingUntil)) {
+        const wkRow = add(todayBox, 'div', undefined, 'list');
+        add(wkRow, 'span', '🎮 Gaming today');
+        const playingNow = wk.gamingUntil > Date.now()
+          ? ` · playing until ${new Date(wk.gamingUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : '';
+        add(wkRow, 'span', `${wk.hours} of ${wk.cap} hours${playingNow}`, wk.hours >= wk.cap ? 'done' : 'partial');
+      }
+
       // Waiting for a grown-up: decide right here. The kid's phone carries it out when it syncs.
       const rewards = read(data, 'kiddyKatRewardRequests', []).filter(r => r.status === 'waiting');
       const jobs = wallet ? wallet.jobRequests.filter(j => j.status === 'waiting') : [];
@@ -405,7 +415,7 @@
           }
         };
         rewards.forEach(r => item(`🎁 ${r.emoji || ''} ${r.name} (${r.price} ⭐)`, 'reward', r.id, '✅ Yes', '❌ Not this time', {}, r.name));
-        jobs.forEach(j => item(`💵 ${j.emoji || ''} ${j.name} (${money(j.cents)})`, 'job', j.id, '✅ Pay it', '↩️ Not done yet', {}, j.name));
+        jobs.forEach(j => item(`💵 ${j.emoji || ''} ${j.name} (${[j.cents ? money(j.cents) : '', j.stars ? j.stars + ' ⭐' : ''].filter(Boolean).join(' + ') || money(0)})`, 'job', j.id, '✅ Pay it', '↩️ Not done yet', {}, j.name));
         if (wallet && wallet.payoutDue) {
           item(`💸 Payday: hand over ${money(wallet.payoutDue)} (cash or Apple Cash)`, 'payout', undefined,
                '✅ I paid it', null, { cents: wallet.payoutDue });
