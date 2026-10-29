@@ -464,6 +464,14 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     </table>
     <button onclick="saveSpecials()">Save schedule</button>
     <div id="specialStatus"></div>
+
+    <h3>📅 Special days</h3>
+    <p>One-time days like dress-up day, picture day or a field trip. They show on the blue card that day, and as a heads-up after 3 PM the day before.</p>
+    <div id="eventRows"></div>
+    <input type="date" id="eventDate">
+    <input id="eventTip" placeholder="🎃 Halloween dress-up day! Wear your costume" maxlength="120">
+    <button onclick="addEvent()">Add special day</button>
+    <div id="eventStatus"></div>
     <hr>
 
     <h2>🎁 Rewards (parents)</h2>
@@ -783,6 +791,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       showParentCatchUp();
       showParentPack();
       showParentClock();
+      showEvents();
       showProofPhotos();
       showCloud();
       const box = document.getElementById('settings');
@@ -828,19 +837,84 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       document.getElementById('specialStatus').textContent = '✅ Saved! Check the blue card at the top.';
     }
 
+    // ---------- Special days: one-time events a grown-up adds ----------
+    // Saved as [{ date: '2026-10-31', tip: '🎃 Halloween dress-up day!' }]
+    function dateKey(d) {
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    function loadEvents() {
+      let list = [];
+      try { list = JSON.parse(localStorage.getItem('kiddyKatEvents') || '[]'); } catch (err) {}
+      if (!Array.isArray(list)) list = [];
+      // Days that are over clean themselves up
+      const today = dateKey(new Date());
+      const kept = list.filter(e => e && e.date >= today);
+      if (kept.length !== list.length) localStorage.setItem('kiddyKatEvents', JSON.stringify(kept));
+      return kept.sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    function showEvents() {
+      const box = document.getElementById('eventRows');
+      if (!box) return;
+      box.textContent = '';
+      loadEvents().forEach(e => {
+        const row = document.createElement('div');
+        const when = new Date(e.date + 'T12:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+        row.textContent = `${when}: ${e.tip} `;
+        const remove = document.createElement('button');
+        remove.className = 'plain';
+        remove.textContent = '✕';
+        remove.onclick = () => {
+          const left = loadEvents().filter(x => !(x.date === e.date && x.tip === e.tip));
+          localStorage.setItem('kiddyKatEvents', JSON.stringify(left));
+          showEvents();
+          showToday();
+        };
+        row.appendChild(remove);
+        box.appendChild(row);
+      });
+    }
+
+    function addEvent() {
+      const date = document.getElementById('eventDate').value;
+      const tip = document.getElementById('eventTip').value.trim();
+      const status = document.getElementById('eventStatus');
+      if (!date || !tip) { status.textContent = 'Pick a date and type what the day is.'; return; }
+      if (date < dateKey(new Date())) { status.textContent = 'That day already passed.'; return; }
+      const list = loadEvents();
+      list.push({ date: date, tip: tip.slice(0, 120) });
+      localStorage.setItem('kiddyKatEvents', JSON.stringify(list));
+      document.getElementById('eventTip').value = '';
+      status.textContent = '✅ Added! It shows on the blue card that day.';
+      showEvents();
+      showToday();
+    }
+
     // ---------- What's today? card ----------
     function showToday() {
-      const day = new Date().getDay();
+      const now = new Date();
+      const day = now.getDay();
       const todayCard = document.getElementById('today');
       const todaysTips = specials.filter(s => Number(s.day) === day).map(s => s.tip);
+      const events = loadEvents();
+      const todayEvents = events.filter(e => e.date === dateKey(now)).map(e => e.tip);
+      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const tomorrowEvents = now.getHours() >= 15 ? events.filter(e => e.date === dateKey(tomorrow)).map(e => '👀 Tomorrow: ' + e.tip) : [];
 
-      if (day === 0 || day === 6) {
-        todayCard.textContent = '🎉 No school today! Have fun!';
-      } else if (todaysTips.length > 0) {
-        todayCard.innerHTML = todaysTips.join('<br>');
-      } else {
-        todayCard.textContent = '🏫 School day! Have a great day!';
-      }
+      let lines;
+      if (day === 0 || day === 6) lines = ['🎉 No school today! Have fun!'];
+      else if (todaysTips.length > 0) lines = todaysTips;
+      else lines = ['🏫 School day! Have a great day!'];
+      if (todayEvents.length) lines = (day === 0 || day === 6) ? todayEvents : todayEvents.concat(todaysTips);
+      lines = lines.concat(tomorrowEvents);
+
+      todayCard.textContent = '';
+      lines.forEach((text, i) => {
+        if (i) todayCard.appendChild(document.createElement('br'));
+        todayCard.appendChild(document.createTextNode(text));
+      });
     }
 
     // ---------- Weather card ----------
