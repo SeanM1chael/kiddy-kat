@@ -602,6 +602,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     <div id="pinBanner">🔓 Grown-ups isn't locked yet. Set a parent PIN in the 🎁 Rewards section below to lock it.</div>
 
     <div id="parentTour"></div>
+    <div id="appVersionLine" style="font-size:13px;color:#868e96;margin-top:6px"></div>
     <hr>
 
     <h2>⏰ School mornings &amp; bedtime</h2>
@@ -726,26 +727,47 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     <div id="stickerNote"></div>
   </div>
 
+  <!-- Problem reporter: if any file or step fails, show which one at the bottom of the screen (for testing) -->
+  <script>
+    const APP_VERSION = '2026-10-29h';      // bump with the ?v= numbers below
+    function kkReport(where, message) {
+      try { localStorage.setItem('kkLastError', new Date().toLocaleString() + ' · ' + where + ': ' + message); } catch (err) {}
+      let bar = document.getElementById('kkError');
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'kkError';
+        bar.title = 'Tap to hide';
+        bar.onclick = () => bar.remove();
+        bar.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:99;background:#c92a2a;color:white;' +
+                            'font:13px/1.3 sans-serif;padding:8px 10px;border-radius:10px;text-align:left;';
+        document.body.appendChild(bar);
+      }
+      const line = `${where}: ${message}`; kkReport.lines = kkReport.lines || []; if (kkReport.lines.includes(line)) return; kkReport.lines = kkReport.lines.concat(line).slice(-3);
+      bar.textContent = `⚠️ Problem (version ${APP_VERSION}). Screenshot this for Dad, then tap to hide. ` + kkReport.lines.join(' · ');
+    }
+    window.addEventListener('error', e => kkReport(((e.filename || 'page').split('/').pop().split('?')[0]) + ' line ' + e.lineno, e.message));
+    window.addEventListener('unhandledrejection', e => kkReport('a background step', (e.reason && e.reason.message) || String(e.reason)));
+  </script>
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-10-29g"></script>
-  <script src="push.js?v=2026-10-29g"></script>
-  <script src="sync.js?v=2026-10-29g"></script>
-  <script src="daily.js?v=2026-10-29g"></script>
-  <script src="pet.js?v=2026-10-29g"></script>
-  <script src="stickers.js?v=2026-10-29g"></script>
-  <script src="games.js?v=2026-10-29g"></script>
-  <script src="challenge.js?v=2026-10-29g"></script>
-  <script src="rewards.js?v=2026-10-29g"></script>
-  <script src="wallet.js?v=2026-10-29g"></script>
-  <script src="catchup.js?v=2026-10-29g"></script>
-  <script src="packs.js?v=2026-10-29g"></script>
-  <script src="league.js?v=2026-10-29g"></script>
-  <script src="uploads.js?v=2026-10-29g"></script>
-  <script src="weekend.js?v=2026-10-29g"></script>
-  <script src="streak.js?v=2026-10-29g"></script>
-  <script src="supplies.js?v=2026-10-29g"></script>
-  <script src="career.js?v=2026-10-29g"></script>
-  <script src="tour.js?v=2026-10-29g"></script>
+  <script src="config.js?v=2026-10-29h"></script>
+  <script src="push.js?v=2026-10-29h"></script>
+  <script src="sync.js?v=2026-10-29h"></script>
+  <script src="daily.js?v=2026-10-29h"></script>
+  <script src="pet.js?v=2026-10-29h"></script>
+  <script src="stickers.js?v=2026-10-29h"></script>
+  <script src="games.js?v=2026-10-29h"></script>
+  <script src="challenge.js?v=2026-10-29h"></script>
+  <script src="rewards.js?v=2026-10-29h"></script>
+  <script src="wallet.js?v=2026-10-29h"></script>
+  <script src="catchup.js?v=2026-10-29h"></script>
+  <script src="packs.js?v=2026-10-29h"></script>
+  <script src="league.js?v=2026-10-29h"></script>
+  <script src="uploads.js?v=2026-10-29h"></script>
+  <script src="weekend.js?v=2026-10-29h"></script>
+  <script src="streak.js?v=2026-10-29h"></script>
+  <script src="supplies.js?v=2026-10-29h"></script>
+  <script src="career.js?v=2026-10-29h"></script>
+  <script src="tour.js?v=2026-10-29h"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -851,15 +873,23 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
         document.getElementById('appIcon').href = animal.theme + '.png';
       }
       document.getElementById('setup').style.display = 'none';
-      if (typeof showPet === 'function') showPet();      // redraw now that we know the age (pets vs. grown-up projects)
-      // ...and the cards that depend on who's using the app
-      ['showStreakCard', 'showCareerCard', 'showSuppliesCard', 'showWeekendCard', 'showUploadCard', 'showLeagueCard']
-        .forEach(fn => { if (typeof window[fn] === 'function') window[fn](); });
-
-      // This kid's own lists, or the starting lists for their animal
+      // This kid's own lists, or the starting lists for their animal (first, so nothing below can block them)
       tasks = JSON.parse(localStorage.getItem('kiddyKatTasks') || 'null') || DEFAULT_TASKS[animal.theme];
       showTasks();
       showTaskEditor();
+      // Redraw what depends on who's using the app (pets vs. grown-up projects, and the cards).
+      // Each runs on its own, so one problem can't hide the rest.
+      ['showPet', 'showStreakCard', 'showCareerCard', 'showSuppliesCard', 'showWeekendCard', 'showUploadCard', 'showLeagueCard'].forEach(safeRun);
+    }
+
+    // Runs one part of the app; if it fails, report it instead of stopping everything after it
+    function safeRun(name) {
+      try {
+        if (typeof window[name] === 'function') window[name]();
+        else kkReport(name, 'is missing (a file did not load)');
+      } catch (err) {
+        kkReport(name, err.message);
+      }
     }
 
     // Turns "Junior, Juju" into ["Junior", "Juju"]
@@ -1043,6 +1073,8 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       showParentWeekend();
       showParentStreak();
       if (typeof showTourButton === 'function') showTourButton();
+      const lastProblem = (() => { try { return localStorage.getItem('kkLastError'); } catch (err) { return null; } })();
+      document.getElementById('appVersionLine').textContent = `Kiddy Kat version ${APP_VERSION}` + (lastProblem ? ` · Last problem: ${lastProblem}` : '');
       showEvents();
       showProofPhotos();
       showCloud();
@@ -1254,23 +1286,10 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
 
     // ---------- Start up ----------
     show('morning');
-    showSpecials();
-    showToday();
-    showWeather();
-    showPet();
-    applyProfile();
-    showPracticeStats();
-    showChallengeButton();
-    checkPayday();          // runs payday if it's due
-    showCatchUp();
-    showLeagueCard();
-    showUploadCard();
-    showWeekendCard();
-    showStreakCard();
-    showNoteCard();
-    showSuppliesCard();
-    showCareerCard();
-    showClock();
+    // Each step runs on its own: if one fails, the rest still load (and the problem shows at the bottom)
+    ['showSpecials', 'showToday', 'showWeather', 'showPet', 'applyProfile', 'showPracticeStats', 'showChallengeButton',
+     'checkPayday', 'showCatchUp', 'showLeagueCard', 'showUploadCard', 'showWeekendCard', 'showStreakCard',
+     'showNoteCard', 'showSuppliesCard', 'showCareerCard', 'showClock'].forEach(safeRun);
   </script>
 </body>
 </html>
