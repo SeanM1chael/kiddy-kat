@@ -14,8 +14,31 @@ const PET_TYPES = {
   turtle:  { stages: ['🥚', '🐢', '🐢', '🐢'], sounds: ['*slow happy blink*', '*peeks out of shell*', '*tiny yawn*'] },
   parrot:  { stages: ['🥚', '🐣', '🐥', '🦜'], sounds: ['Hello! Hello!', 'Pretty bird!', '*whistles a song*'] },
   unicorn: { stages: ['🥚', '🦄', '🦄', '🦄'], sounds: ['*sparkles* ✨', '*rainbow neigh* 🌈', '*magic glitter*'] },
-  dragon:  { stages: ['🥚', '🦎', '🐲', '🐉'], sounds: ['*tiny puff of smoke*', 'RAWR! 🔥', '*flaps wings*'] }
+  dragon:  { stages: ['🥚', '🦎', '🐲', '🐉'], sounds: ['*tiny puff of smoke*', 'RAWR! 🔥', '*flaps wings*'] },
+  // Grown-ups (career mode) grow a project instead of a pet
+  startup: { adult: true, stages: ['💡', '🛠️', '🚀', '🏢'], names: ['idea', 'prototype', 'launch', 'company'], mess: '🐛',
+             sounds: ['*ships a new feature*', 'Revenue is up 📈', '*whiteboard full of ideas*'] },
+  bonsai:  { adult: true, stages: ['🌰', '🌱', '🪴', '🌳'], names: ['seed', 'sprout', 'bonsai', 'oak'], mess: '🍂',
+             sounds: ['*steady growth*', '*new leaves*', '*roots go deeper*'] },
+  summit:  { adult: true, stages: ['🏕️', '🥾', '🧗', '🏔️'], names: ['base camp', 'trail', 'climb', 'summit'], mess: '🪨',
+             sounds: ['*one step at a time*', '*view keeps getting better*', '*clear skies ahead*'] },
+  home:    { adult: true, stages: ['📐', '🧱', '🏗️', '🏡'], names: ['blueprint', 'foundation', 'framing', 'dream home'], mess: '🔩',
+             sounds: ['*measure twice, cut once*', '*the walls go up*', '*feels like home*'] },
+  dog:     { adult: true, stages: ['🐾', '🐶', '🐕', '🦮'], names: ['paw prints', 'puppy', 'good dog', 'best friend'], mess: '💩',
+             sounds: ['Woof!', '*wags tail*', '*brings you your shoes*'] },
+  eaglet:  { adult: true, stages: ['🪺', '🐣', '🐥', '🦅'], names: ['nest', 'hatchling', 'fledgling', 'eagle'], mess: '🪶',
+             sounds: ['*soars over the city*', '*sharp eyes on the goal*', '*rides the wind*'] }
 };
+
+// Grown-up projects vs. kid pets
+const isAdultType = type => !!(PET_TYPES[type] && PET_TYPES[type].adult);
+const grownUpUser = () => typeof animal !== 'undefined' && animal.theme === 'eagle';
+const petMess = (p = pet) => PET_TYPES[p.type].mess || (p.type === 'flower' ? '🍂' : '💩');
+// "Kiddy hatched!" for pets, "Startup is underway!" for projects
+function levelUpLine(p = pet) {
+  if (petStage(p) === 1) return isAdultType(p.type) ? `🎉 ${p.name} is underway!` : `🐣 ${p.name} hatched!`;
+  return `⬆️ ${p.name} leveled up to Level ${petStage(p) + 1}!`;
+}
 
 // When each pet type can be picked. Starter pets are always available.
 const UNLOCKS = {
@@ -23,7 +46,8 @@ const UNLOCKS = {
   turtle:  { need: () => grownCount() >= 1, hint: 'Get 1 pet to Level 4' },
   parrot:  { need: () => grownCount() >= 1, hint: 'Get 1 pet to Level 4' },
   unicorn: { need: () => (typeof trophies === 'function' ? trophies() : 0) >= 10, hint: 'Win 10 challenges' },
-  dragon:  { need: () => grownCount() >= 3, hint: 'Get 3 pets to Level 4' }
+  dragon:  { need: () => grownCount() >= 3, hint: 'Get 3 pets to Level 4' },
+  eaglet:  { need: () => grownCount() >= 1, hint: 'Get 1 project to Level 4' }
 };
 
 const STAGE_NAMES  = ['egg', 'baby', 'big kid', 'grown-up'];
@@ -75,6 +99,7 @@ function petStage(p = pet) {
 }
 
 function stageName(stage, p = pet) {
+  if (PET_TYPES[p.type].names) return PET_TYPES[p.type].names[stage];
   return p.type === 'flower' ? FLOWER_NAMES[stage] : STAGE_NAMES[stage];
 }
 
@@ -89,7 +114,8 @@ function canHatchNewPet() {
 
 // Adds a note when the pet just became a grown-up
 function grownUpNote() {
-  return petStage() === 3 && canHatchNewPet() ? '  🥚 A new egg appeared in the Pet House!' : '';
+  if (!(petStage() === 3 && canHatchNewPet())) return '';
+  return isAdultType(pet.type) ? '  🏗️ Room for a new project in your Projects!' : '  🥚 A new egg appeared in the Pet House!';
 }
 
 // ---------- Drawing the pet card ----------
@@ -98,9 +124,11 @@ function showPet() {
   const button = document.getElementById('petChooseButton');
 
   if (!pet) {
-    emoji.textContent = '🥚';
+    emoji.textContent = grownUpUser() ? '🌱' : '🥚';
     emoji.className = 'petEmoji';
-    document.getElementById('petName').textContent = 'Someone is waiting to meet you!';
+    document.getElementById('petName').textContent = grownUpUser()
+      ? 'Start a project that grows with your routines!' : 'Someone is waiting to meet you!';
+    button.textContent = grownUpUser() ? 'Choose your project' : 'Choose your pet';
     if (document.getElementById('petNext')) document.getElementById('petNext').textContent = '';
     document.getElementById('petMood').textContent = '';
     document.getElementById('petBar').style.display = 'none';
@@ -113,14 +141,18 @@ function showPet() {
   emoji.textContent = PET_TYPES[pet.type].stages[stage];
   emoji.className = 'petEmoji stage' + stage;
   // An egg gets cracks as it gets close to hatching
-  if (stage === 0 && pet.points > 0) emoji.className += ' cracks' + Math.min(pet.points, 2);
+  if (stage === 0 && pet.points > 0 && !isAdultType(pet.type)) emoji.className += ' cracks' + Math.min(pet.points, 2);
   document.getElementById('petName').textContent = pet.name;
   button.style.display = 'none';
 
   // Mood is always kind: happy, or waiting for them
   const cared = Object.keys(CARE).filter(list => pet.cared[list] === petToday());
   let mood;
-  if (cared.length === 0) mood = `${pet.name} is waiting for you! 💛`;
+  if (isAdultType(pet.type)) {
+    if (cared.length === 0) mood = `Finish a list to move ${pet.name} forward.`;
+    else if (cared.length === 3) mood = `All 3 lists done. Great day for ${pet.name}! 🌟`;
+    else mood = `${cared.length} of 3 lists done today. Keep going!`;
+  } else if (cared.length === 0) mood = `${pet.name} is waiting for you! 💛`;
   else if (cared.length === 3) mood = `${pet.name} is SO happy today! 🌟`;
   else mood = `${pet.name} had ${cared.map(list => CARE[list]).join(' and ')}!`;
   document.getElementById('petMood').textContent = mood;
@@ -139,7 +171,8 @@ function showPet() {
   if (nextLine) {
     const toGo = next ? next - pet.points : 0;
     const lists = `${toGo} more checklist${toGo === 1 ? '' : 's'}`;
-    if (stage === 0) nextLine.textContent = toGo === 1 ? `🥚💥 ${pet.name} is almost out! Finish 1 more checklist to hatch!`
+    if (stage === 0 && isAdultType(pet.type)) nextLine.textContent = `${PET_TYPES[pet.type].stages[0]} ${pet.name} is at the ${stageName(0)} stage. ${lists} to get it going!`;
+    else if (stage === 0) nextLine.textContent = toGo === 1 ? `🥚💥 ${pet.name} is almost out! Finish 1 more checklist to hatch!`
                                                        : `🥚 ${pet.name} is inside the egg! Finish ${lists} to hatch.`;
     else if (next) nextLine.textContent = `⭐ Level ${stage + 1} of 4 · ${lists} until ${pet.name} levels up!`;
     else nextLine.textContent = `🌟 Level 4 of 4 · ${pet.name} is at the top level!`;
@@ -163,14 +196,21 @@ function petPoke() {
 // ---------- Choosing and naming a pet ----------
 // The picture shown for each type in the chooser
 const CHOOSER_ICONS = { kitten: '🐱', puppy: '🐶', bunny: '🐰', flower: '🌻', hamster: '🐹',
-                        turtle: '🐢', parrot: '🦜', unicorn: '🦄', dragon: '🐉' };
+                        turtle: '🐢', parrot: '🦜', unicorn: '🦄', dragon: '🐉',
+                        startup: '🚀', bonsai: '🌳', summit: '🏔️', home: '🏡', dog: '🐕', eaglet: '🦅' };
+const CHOOSER_LABELS = { startup: 'Startup', bonsai: 'Bonsai', summit: 'Summit', home: 'Dream home', dog: 'Best friend', eaglet: 'Eagle' };
 
 function openPetChooser() {
   pickedType = null;
   document.getElementById('petNameInput').value = '';
   const box = document.getElementById('petOptions');
   box.textContent = '';
-  Object.keys(PET_TYPES).forEach(type => {
+  const adult = grownUpUser();
+  document.querySelector('#petChooser h2').textContent = adult ? 'Pick your project!' : 'Pick your pet!';
+  document.getElementById('petNameInput').placeholder = adult ? 'Name it (like "Kiddy Kat")' : "Your pet's name";
+  document.getElementById('hatchButton').textContent = adult ? 'Start! 🚀' : 'Hatch! 🥚';
+  // Grown-ups pick projects, kids pick pets
+  Object.keys(PET_TYPES).filter(type => isAdultType(type) === adult).forEach(type => {
     const unlock = UNLOCKS[type];
     const open = !unlock || unlock.need();
     const button = document.createElement('button');
@@ -178,6 +218,12 @@ function openPetChooser() {
     button.id = 'option-' + type;
     if (open) {
       button.textContent = CHOOSER_ICONS[type];
+      if (CHOOSER_LABELS[type]) {
+        const label = document.createElement('span');
+        label.className = 'petOptionLabel';
+        label.textContent = CHOOSER_LABELS[type];
+        button.appendChild(label);
+      }
       button.addEventListener('click', () => pickPetType(type));
     } else {
       button.textContent = '🔒';
@@ -205,7 +251,7 @@ function pickPetType(type) {
 function hatchPet() {
   const name = document.getElementById('petNameInput').value.trim();
   if (!pickedType || !name) {
-    alert('Pick a pet and give it a name!');
+    alert(grownUpUser() ? 'Pick a project and give it a name!' : 'Pick a pet and give it a name!');
     return;
   }
   const newPet = { type: pickedType, name: name, points: 0, cared: {}, treats: { date: '', count: 0 },
@@ -217,7 +263,7 @@ function hatchPet() {
   document.getElementById('petChooser').style.display = 'none';
   closePetHouse();
   showPet();
-  celebrate(`🎉 Welcome, ${name}!`, PET_TYPES[pet.type].stages[0]);
+  celebrate(isAdultType(pet.type) ? `🚀 ${name} has begun! Finish your lists to grow it.` : `🎉 Welcome, ${name}!`, PET_TYPES[pet.type].stages[0]);
   // Gift stars that were waiting for a pet (sync.js)
   if (typeof processParentInbox === 'function') setTimeout(processParentInbox, 3500);
 }
@@ -234,8 +280,8 @@ function carePet(listName) {
   maybePoop();
   savePet();
   showPet();
-  if (petStage() > before) return `${petStage() === 1 ? '🐣 ' + pet.name + ' hatched!' : '⬆️ ' + pet.name + ' leveled up to Level ' + (petStage() + 1) + '!'} +3 ⭐${grownUpNote()}`;
-  return `${pet.name} got ${CARE[listName]}! +3 ⭐`;
+  if (petStage() > before) return `${levelUpLine()} +3 ⭐${grownUpNote()}`;
+  return isAdultType(pet.type) ? `+1 progress on ${pet.name}! +3 ⭐` : `${pet.name} got ${CARE[listName]}! +3 ⭐`;
 }
 
 // Called by the learning games. Up to 3 treats a day.
@@ -250,8 +296,8 @@ function givePetTreat() {
   maybePoop();
   savePet();
   showPet();
-  if (petStage() > before) return `${petStage() === 1 ? '🐣 ' + pet.name + ' hatched!' : '⬆️ ' + pet.name + ' leveled up to Level ' + (petStage() + 1) + '!'}${grownUpNote()}`;
-  return `${pet.name} loved the treat! 🍪`;
+  if (petStage() > before) return `${levelUpLine()}${grownUpNote()}`;
+  return isAdultType(pet.type) ? `+1 progress on ${pet.name}! 📈` : `${pet.name} loved the treat! 🍪`;
 }
 
 function petTreatsLeft() {
@@ -341,10 +387,12 @@ function showPetExtras() {
     return;
   }
 
-  shopButton.style.display = 'inline-block';
+  const adultPet = isAdultType(pet.type);
+  shopButton.style.display = adultPet ? 'none' : 'inline-block';      // pet outfits are a kid thing
   const houseButton = document.getElementById('houseButton');
   houseButton.style.display = (petHouse.length > 1 || canHatchNewPet()) ? 'inline-block' : 'none';
-  houseButton.textContent = canHatchNewPet() ? '🏠 Pet House 🥚 NEW!' : '🏠 Pet House';
+  houseButton.textContent = adultPet ? (canHatchNewPet() ? '🏗️ Projects ✨ NEW!' : '🏗️ Projects')
+                                     : (canHatchNewPet() ? '🏠 Pet House 🥚 NEW!' : '🏠 Pet House');
   stars.textContent = `⭐ ${pet.stars} `;
   if (typeof infoButton === 'function') stars.appendChild(infoButton(
     'Stars ⭐ are what you spend in the 🛍️ Shop and on 🎁 Rewards.\n' +
@@ -356,8 +404,8 @@ function showPetExtras() {
     .map(item => item.emoji)
     .join(' ');
 
-  // Flowers drop leaves instead of poop
-  const mess = pet.type === 'flower' ? '🍂' : '💩';
+  // Flowers drop leaves instead of poop; projects get bugs, rocks, bolts...
+  const mess = petMess();
   poops.textContent = '';
   for (let i = 0; i < pet.poops; i++) {
     const button = document.createElement('button');
@@ -369,7 +417,8 @@ function showPetExtras() {
   }
   if (pet.poops > 0) {
     document.getElementById('petMood').textContent =
-      pet.type === 'flower' ? 'Some leaves fell! Tap to tidy up 🍂' : 'Uh oh! Tap the 💩 to scoop it!';
+      adultPet ? `Tap the ${mess} to clear it! +1 ⭐`
+      : pet.type === 'flower' ? 'Some leaves fell! Tap to tidy up 🍂' : 'Uh oh! Tap the 💩 to scoop it!';
   }
   if (typeof showGoal === 'function') showGoal();   // reward goal line (rewards.js)
 }
@@ -475,10 +524,10 @@ function showPetHouse() {
     look.className = 'shopEmoji';
     look.textContent = PET_TYPES[p.type].stages[petStage(p)] + (p.wearing ? shopItem(p.wearing).emoji : '');
     const name = document.createElement('div');
-    name.textContent = petStage(p) === 0 ? `${p.name} (egg)` : `${p.name} · Level ${petStage(p) + 1}`;
+    name.textContent = petStage(p) === 0 && !isAdultType(p.type) ? `${p.name} (egg)` : `${p.name} · Level ${petStage(p) + 1} (${stageName(petStage(p), p)})`;
     const status = document.createElement('button');
     if (p === pet) {
-      status.textContent = '🎾 Playing now';
+      status.textContent = isAdultType(p.type) ? '🛠️ Working on it now' : '🎾 Playing now';
       status.disabled = true;
     } else {
       status.textContent = '😴 Napping · Play!';
@@ -493,11 +542,11 @@ function showPetHouse() {
     egg.className = 'shopCard newEgg';
     const look = document.createElement('div');
     look.className = 'shopEmoji';
-    look.textContent = '🥚';
+    look.textContent = grownUpUser() ? '🌱' : '🥚';
     const name = document.createElement('div');
-    name.textContent = 'A new egg!';
+    name.textContent = grownUpUser() ? 'Room for a new project!' : 'A new egg!';
     const button = document.createElement('button');
-    button.textContent = 'Hatch it!';
+    button.textContent = grownUpUser() ? 'Start one!' : 'Hatch it!';
     button.addEventListener('click', openPetChooser);
     egg.append(look, name, button);
     box.appendChild(egg);

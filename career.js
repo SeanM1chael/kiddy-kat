@@ -66,14 +66,38 @@ function careerStep(id, by = 1) {
   const before = w.counts[id] || 0;
   w.counts[id] = Math.max(0, before + by);
   localStorage.setItem('kiddyKatCareerWeek', JSON.stringify(w));
+  let hitGoal = false;
   if (by > 0) {
     if (typeof addStars === 'function') addStars(1);
     if (typeof leagueRecord === 'function') leagueRecord('career');
     if (before < goal[3] && w.counts[id] >= goal[3] && typeof celebrate === 'function') {
       celebrate(`🎯 Goal hit: ${goal[3]} ${goal[2].toLowerCase()} this week!`, '🦅', true);
+      hitGoal = true;
     }
   }
   showCareerCard();
+  if (by > 0 && !hitGoal) {
+    careerToast(`+1 ⭐  +1 🏆  ·  ${goal[2]} ${w.counts[id]} of ${goal[3]}`);
+    const row = document.querySelector(`#careerCard .careerGoal[data-id="${id}"]`);
+    if (row) row.classList.add('bump');
+  }
+}
+
+// A quick message that fades away, so each tap clearly "lands"
+function careerToast(text) {
+  let toast = document.getElementById('careerToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'careerToast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = text;
+  toast.classList.remove('show');
+  void toast.offsetWidth;                     // restart the fade
+  toast.classList.add('show');
+  clearTimeout(careerToast.timer);
+  careerToast.timer = setTimeout(() => toast.classList.remove('show'), 1800);
+  if (navigator.vibrate) navigator.vibrate(30);
 }
 
 // ---------- 🦅 The weekly goals card ----------
@@ -102,6 +126,7 @@ function showCareerCard() {
   goals.forEach(([id, emoji, name, goal]) => {
     const n = w.counts[id] || 0;
     const row = add(card, 'div', undefined, 'careerGoal' + (n >= goal ? ' met' : ''));
+    row.dataset.id = id;
     const label = add(row, 'div', undefined, 'careerGoalLabel');
     add(label, 'span', `${emoji} ${name}`);
     add(label, 'span', n >= goal ? `${n} of ${goal} ✅` : `${n} of ${goal}`, 'careerCount');

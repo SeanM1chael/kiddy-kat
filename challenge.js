@@ -65,6 +65,15 @@ const CHEERS = ['You got this!! 💪', 'GO GO GO 🔥', 'SO FAST 😮', 'this is
                 'LET\'S GOOO 🚀', 'wow wow wow', '❤️❤️❤️', 'you\'re amazing!!', 'keep going!!', 'legend 🏆'];
 const WIN_LINES = ['OMG YOU DID IT!! 🎉', 'CHAMPION 🏆🏆', 'best challenge ever!!', 'GG!! 🥳', 'I knew you could do it ❤️'];
 
+// Grown-ups (career mode) get a grown-up chat
+const ADULT_FANS = ['ShipItSam', 'CoffeeAndCode', 'StandupSteve', 'TechLeadTina', 'CloudNative_Kim', 'MarathonMike', 'RecruiterRay', 'MentorMaya'];
+const ADULT_CHEERS = ['Strong work 💪', 'Consistency wins 📈', 'Discipline beats motivation 💯', 'Crushing it before lunch ☕',
+                      'Leading by example 👏', 'Ship it! 🚀', 'Small wins add up', 'This is how habits get built', 'Respect 🙌'];
+const ADULT_WIN_LINES = ['Done and done ✅', 'That\'s how it\'s done 🏆', 'Mic drop 🎤', 'Another one in the books 📚', 'Proud of you 🙌'];
+const grownUp = () => typeof animal !== 'undefined' && animal.theme === 'eagle';
+const chatFans = () => grownUp() ? ADULT_FANS : FANS;
+const chatCheers = () => grownUp() ? ADULT_CHEERS : CHEERS;
+
 let challengeTimer = null;
 let chatTimer = null;
 let live = null;   // the challenge being played right now
@@ -106,6 +115,12 @@ function addWinToStreak() {
 // Chat lines that know the kid: their name, the pet's outfit, trophies, streak
 function personalCheers() {
   const name = callName();   // her name or a nickname
+  if (grownUp()) {
+    const grown = [`Let's go ${name}! 💪`, `${name} leading by example`, `The kids are watching, ${name} 👀`, `Morning, ${name} ☕`,
+                   `Whoever hires ${name} is lucky`, `${name} out here building habits 📈`];
+    if (winStreak() > 1) grown.push(`${winStreak()} days in a row. That's a system, not luck 🔥`);
+    return grown;
+  }
   const lines = [`GO ${name.toUpperCase()}!! 🔥`, `${name} is the best streamer ever`, `hi ${name}!! 👋`,
                  `${name} for president 😂`, `I came back just to watch ${name}!!`, `${callName().toUpperCase()}!!! ❤️`];
   if (pet) {
@@ -148,7 +163,7 @@ function openChallenge() {
     addChat(host, `You already won today, ${name}! 🏆 New challenge tomorrow!`);
     addChallengeButton(area, '🔁 Do it again for fun', startCountdown);
   } else {
-    addChat(host, `Welcome to ${name}'s stream!! Today's challenge is ready 👀`);
+    addChat(host, grownUp() ? `Welcome back, ${name}. Today's challenge is ready.` : `Welcome to ${name}'s stream!! Today's challenge is ready 👀`);
     addChallengeButton(area, '▶️ Start the challenge!', startCountdown);
   }
   startChat();
@@ -188,7 +203,7 @@ async function startCountdown() {
     } else {
       clearInterval(challengeTimer);
       timerBox.textContent = 'GO!';
-      addChat(randomFan(), 'GOOOO 🏁');
+      addChat(randomFan(), grownUp() ? 'Clock\'s running. Go! 🏁' : 'GOOOO 🏁');
       runChallenge();
     }
   }, 1000);
@@ -295,7 +310,7 @@ function nextBlitzQuestion() {
         spawnHearts(2);
         if (live.right >= item.goal) { clearInterval(challengeTimer); winChallenge(); return; }
       } else {
-        addChat(randomFan(), 'oops, next one! 😅');
+        addChat(randomFan(), grownUp() ? 'Shake it off, next one' : 'oops, next one! 😅');
       }
       nextBlitzQuestion();
     });
@@ -312,7 +327,7 @@ function winChallenge() {
   document.getElementById('chArea').textContent = '';
   document.getElementById('chTimer').textContent = '🏆';
   spawnHearts(15);
-  WIN_LINES.forEach((line, i) => setTimeout(() => addChat(randomFan(), line), i * 400));
+  (grownUp() ? ADULT_WIN_LINES : WIN_LINES).forEach((line, i) => setTimeout(() => addChat(randomFan(), line), i * 400));
 
   if (firstWinToday) {
     localStorage.setItem('kiddyKatChallenge', JSON.stringify({ date: new Date().toDateString(), done: true }));
@@ -336,7 +351,8 @@ function winChallenge() {
 
 // ---------- Pretend live chat ----------
 function randomFan() {
-  return FANS[Math.floor(Math.random() * FANS.length)];
+  const fans = chatFans();
+  return fans[Math.floor(Math.random() * fans.length)];
 }
 
 function addChat(name, message) {
@@ -360,7 +376,7 @@ function startChat() {
     if (!live) return;
     if (Math.random() < 0.6) {
       // About half the comments are personal
-      const pool = Math.random() < 0.5 ? personalCheers() : CHEERS;
+      const pool = Math.random() < 0.5 ? personalCheers() : chatCheers();
       addChat(randomFan(), pool[Math.floor(Math.random() * pool.length)]);
     }
     if (Math.random() < 0.5) { live.viewers += Math.floor(Math.random() * 3); updateViewers(); }
