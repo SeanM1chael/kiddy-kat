@@ -588,8 +588,8 @@
       }
 
       // 🔥 Morning streak
-      const st = read(data, 'kiddyKatStreak', null);
-      if (st) {
+      const st = read(data, 'kiddyKatMorningStreak', null);
+      if (st && st.days) {
         const stRow = add(todayBox, 'div', undefined, 'list');
         add(stRow, 'span', '🔥 Morning streak');
         add(stRow, 'span', `${st.current} day${st.current === 1 ? '' : 's'} · best ${st.best}${st.freezes ? ' · ❄️' + st.freezes : ''}`, st.current ? 'done' : 'none');

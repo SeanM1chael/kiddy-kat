@@ -21,15 +21,18 @@ function nextKey(k) { const d = keyToDate(k); d.setDate(d.getDate() + 1); return
 
 function loadStreak() {
   let s = null;
-  try { s = JSON.parse(localStorage.getItem('kiddyKatStreak') || 'null'); } catch (err) {}
-  return s || { current: 0, best: 0, last: null, freezes: 0, days: {}, milestones: [] };
+  try { s = JSON.parse(localStorage.getItem('kiddyKatMorningStreak') || 'null'); } catch (err) {}
+  // Start fresh if nothing is saved yet, or if the saved data isn't a morning streak
+  if (!s || typeof s.days !== 'object' || s.days === null) s = { current: 0, best: 0, last: null, freezes: 0, days: {}, milestones: [] };
+  if (!Array.isArray(s.milestones)) s.milestones = [];
+  return s;
 }
 
 function saveStreak(s) {
   // Keep about 6 weeks of day marks
   const keys = Object.keys(s.days).sort();
   keys.slice(0, Math.max(0, keys.length - 42)).forEach(k => delete s.days[k]);
-  localStorage.setItem('kiddyKatStreak', JSON.stringify(s));
+  localStorage.setItem('kiddyKatMorningStreak', JSON.stringify(s));
 }
 
 // Walk the days after the last one counted, up to yesterday:

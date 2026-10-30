@@ -729,7 +729,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
 
   <!-- Problem reporter: if any file or step fails, show which one at the bottom of the screen (for testing) -->
   <script>
-    const APP_VERSION = '2026-10-29h';      // bump with the ?v= numbers below
+    const APP_VERSION = '2026-10-29i';      // bump with the ?v= numbers below
     function kkReport(where, message) {
       try { localStorage.setItem('kkLastError', new Date().toLocaleString() + ' · ' + where + ': ' + message); } catch (err) {}
       let bar = document.getElementById('kkError');
@@ -749,25 +749,25 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     window.addEventListener('unhandledrejection', e => kkReport('a background step', (e.reason && e.reason.message) || String(e.reason)));
   </script>
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-10-29h"></script>
-  <script src="push.js?v=2026-10-29h"></script>
-  <script src="sync.js?v=2026-10-29h"></script>
-  <script src="daily.js?v=2026-10-29h"></script>
-  <script src="pet.js?v=2026-10-29h"></script>
-  <script src="stickers.js?v=2026-10-29h"></script>
-  <script src="games.js?v=2026-10-29h"></script>
-  <script src="challenge.js?v=2026-10-29h"></script>
-  <script src="rewards.js?v=2026-10-29h"></script>
-  <script src="wallet.js?v=2026-10-29h"></script>
-  <script src="catchup.js?v=2026-10-29h"></script>
-  <script src="packs.js?v=2026-10-29h"></script>
-  <script src="league.js?v=2026-10-29h"></script>
-  <script src="uploads.js?v=2026-10-29h"></script>
-  <script src="weekend.js?v=2026-10-29h"></script>
-  <script src="streak.js?v=2026-10-29h"></script>
-  <script src="supplies.js?v=2026-10-29h"></script>
-  <script src="career.js?v=2026-10-29h"></script>
-  <script src="tour.js?v=2026-10-29h"></script>
+  <script src="config.js?v=2026-10-29i"></script>
+  <script src="push.js?v=2026-10-29i"></script>
+  <script src="sync.js?v=2026-10-29i"></script>
+  <script src="daily.js?v=2026-10-29i"></script>
+  <script src="pet.js?v=2026-10-29i"></script>
+  <script src="stickers.js?v=2026-10-29i"></script>
+  <script src="games.js?v=2026-10-29i"></script>
+  <script src="challenge.js?v=2026-10-29i"></script>
+  <script src="rewards.js?v=2026-10-29i"></script>
+  <script src="wallet.js?v=2026-10-29i"></script>
+  <script src="catchup.js?v=2026-10-29i"></script>
+  <script src="packs.js?v=2026-10-29i"></script>
+  <script src="league.js?v=2026-10-29i"></script>
+  <script src="uploads.js?v=2026-10-29i"></script>
+  <script src="weekend.js?v=2026-10-29i"></script>
+  <script src="streak.js?v=2026-10-29i"></script>
+  <script src="supplies.js?v=2026-10-29i"></script>
+  <script src="career.js?v=2026-10-29i"></script>
+  <script src="tour.js?v=2026-10-29i"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -932,7 +932,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       if (!confirm('Start over for a new person? This clears the name, tasks, pet and checkmarks on this phone.')) return;
       cloudUnlink();                     // stop saving online first, so nothing online gets erased
       ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist', 'kiddyKatPet', 'kiddyKatPets', 'kiddyKatActivePet', 'kiddyKatPractice', 'kiddyKatMathLevel', 'kiddyKatChallenge', 'kiddyKatTrophies',
-       'kiddyKatFollowers', 'kiddyKatStreak', 'kiddyKatStickers', 'kiddyKatSetsDone',
+       'kiddyKatFollowers', 'kiddyKatStreak', 'kiddyKatMorningStreak', 'kiddyKatStickers', 'kiddyKatSetsDone',
        'kiddyKatRewards', 'kiddyKatRewardRequests', 'kiddyKatGoal', 'kiddyKatProofPhotos',
        'kiddyKatWallet', 'kiddyKatMoney', 'kiddyKatCatchUp', 'kiddyKatPack', 'kiddyKatLeague']
         .forEach(k => localStorage.removeItem(k));
