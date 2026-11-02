@@ -9,6 +9,8 @@
 //     ~30 min before bedtime  → the kid: "🌙 Bedtime soon"
 //   Grown-ups' bills (career mode), about 9 AM their time:
 //     on the reminder day     → their app: "🧾 Bill reminder: Rent due tomorrow"
+//   Grocery day (picked on the dashboard), at the time picked:
+//     → grown-ups: "🛒 Grocery day! Toothpaste (PJ Flash, Juju), Deodorant (PJ Flash)"
 // Each alert goes out at most once per kid per day.
 // Secrets it uses: the same VAPID keys as kiddy-push.
 // =====================================================================
@@ -46,6 +48,7 @@ function localNow(now: Date, tz: string | null) {
   return {
     date: `${parts.year}-${parts.month}-${parts.day}`,
     schoolDay: !["Sat", "Sun"].includes(parts.weekday),
+    weekday: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(parts.weekday),
     minutes: Number(parts.hour) * 60 + Number(parts.minute),
   };
 }
@@ -56,6 +59,28 @@ const listOf = (items: string[]) => {
   return shown.join(", ") + (items.length > 3 ? ` +${items.length - 3} more` : "");
 };
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// ---------- 🛒 Grocery list: "Toothpaste (PJ Flash 🔴, Juju), Deodorant (PJ Flash)" ----------
+type Item = { nickname: string; name: string; status: string };
+function groceryList(items: Item[]) {
+  const byName = new Map<string, string[]>();
+  const shown = new Map<string, string>();
+  for (const i of items) {
+    const key = clean(i.name, 30).toLowerCase();
+    if (!key) continue;
+    if (!byName.has(key)) { byName.set(key, []); shown.set(key, clean(i.name, 30)); }
+    byName.get(key)!.push(clean(i.nickname, 20) + (i.status === "out" ? " 🔴" : ""));
+  }
+  const parts = [...byName.entries()].map(([k, who]) => `${shown.get(k)} (${who.join(", ")})`);
+  let text = "";
+  let used = 0;
+  for (const p of parts) {
+    if ((text + p).length > 170) break;
+    text += (text ? ", " : "") + p;
+    used += 1;
+  }
+  return { count: parts.length, text: text + (used < parts.length ? ` +${parts.length - used} more` : "") };
+}
 
 // ---------- Bills (no amounts ever come here: just names, schedules and paid dates) ----------
 type Bill = { name: string; every: string; day: number; remind: number; start: string; paid: string[] };
@@ -183,6 +208,20 @@ Deno.serve(async (req) => {
     const to = kid.kidDevices.length ? kid.kidDevices : kid.parentDevices;
     await send(kid, "bills", local.date, to, due.length === 1 ? "🧾 Bill reminder" : `🧾 ${due.length} bill reminders`,
                due.slice(0, 4).join(", ") + (due.length > 4 ? ` +${due.length - 4} more` : ""), "./");
+  }
+
+  // 🛒 Grocery day: the kids' low and out supplies, to the grown-ups at the time they picked
+  const groceries = await db("timer_grocery", { p_key: key });
+  for (const fam of (groceries?.families ?? []) as { marker: string; day: number; time: string; tz: string; items: Item[]; parentDevices: Device[]; eagleDevices: Device[] }[]) {
+    const local = localNow(now, fam.tz);
+    const at = minutesOf(fam.time);
+    if (at === null || local.weekday !== Number(fam.day) || local.minutes < at || local.minutes >= at + 30) continue;
+    const list = groceryList(fam.items ?? []);
+    const who = { id: fam.marker, nickname: "family" } as Kid;
+    const to = fam.parentDevices?.length ? fam.parentDevices : (fam.eagleDevices ?? []);   // dashboard alerts first, else the 🦅 app
+    await send(who, "grocery", local.date, to,
+               list.count ? `🛒 Grocery day! The kids need ${plural(list.count, "thing")}` : "🛒 Grocery day!",
+               list.count ? list.text : "Nothing on the kids' supply list this week. ✅", "dashboard.html");
   }
 
   if (dead.length) await db("push_forget", { p_ids: dead });
