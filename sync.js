@@ -13,7 +13,7 @@
 // =====================================================================
 
 const CLOUD_ANIMALS = { kitten: '🐱', tiger: '🐯', lion: '🦁', eagle: '🦅' };
-const LOCAL_ONLY = ['kiddyKatProofPhotos', 'kiddyKatParentPhone', 'kiddyKatPlace', 'kiddyKatSpoken', 'kiddyKatBills'];   // never sent online
+const LOCAL_ONLY = ['kiddyKatProofPhotos', 'kiddyKatParentPhone', 'kiddyKatPlace', 'kiddyKatSpoken', 'kiddyKatBills', 'kiddyKatMoneyGoals'];   // never sent online
 
 // Cloud bookkeeping (these stay on this device)
 const CLOUD = {

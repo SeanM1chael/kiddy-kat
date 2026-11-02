@@ -9,6 +9,8 @@
 //     ~30 min before bedtime  → the kid: "🌙 Bedtime soon"
 //   Grown-ups' bills (career mode), about 9 AM their time:
 //     on the reminder day     → their app: "🧾 Bill reminder: Rent due tomorrow"
+//     due day, at the time they pick (like 6 PM), still not marked paid → "⚠️ Rent isn't marked paid yet"
+//     the next morning, still not paid → included in the 9 AM alert as overdue
 //   Grocery day (picked on the dashboard), at the time picked:
 //     → grown-ups: "🛒 Grocery day! Toothpaste (PJ Flash, Juju), Deodorant (PJ Flash)"
 // Each alert goes out at most once per kid per day.
@@ -83,7 +85,7 @@ function groceryList(items: Item[]) {
 }
 
 // ---------- Bills (no amounts ever come here: just names, schedules and paid dates) ----------
-type Bill = { name: string; every: string; day: number; remind: number; start: string; paid: string[] };
+type Bill = { name: string; every: string; day: number; remind: number; start: string; paid: string[]; autopay?: boolean; late?: string };
 const dayKey = (d: Date) => d.toISOString().slice(0, 10);
 const addDays = (key: string, n: number) => { const d = new Date(key + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return dayKey(d); };
 // Is this bill due on this day?
@@ -110,6 +112,11 @@ function billsToRemind(bills: Bill[], today: string) {
     }
   }
   return out;
+}
+
+// Bills due on a day that still aren't marked paid (autopay bills pay themselves, so they're skipped)
+function billsUnpaid(bills: Bill[], day: string) {
+  return bills.filter((b) => !b.autopay && billDueOn(b, day) && !(b.paid ?? []).includes(day)).map((b) => clean(b.name, 30));
 }
 
 Deno.serve(async (req) => {
@@ -202,12 +209,26 @@ Deno.serve(async (req) => {
     const bills = parse(kid.bills);
     if (!Array.isArray(bills) || !bills.length) continue;
     const local = localNow(now, kid.tz);
-    if (local.minutes < 9 * 60 || local.minutes >= 10 * 60) continue;
-    const due = billsToRemind(bills as Bill[], local.date);
-    if (!due.length) continue;
     const to = kid.kidDevices.length ? kid.kidDevices : kid.parentDevices;
-    await send(kid, "bills", local.date, to, due.length === 1 ? "🧾 Bill reminder" : `🧾 ${due.length} bill reminders`,
-               due.slice(0, 4).join(", ") + (due.length > 4 ? ` +${due.length - 4} more` : ""), "./");
+    // Morning: what's coming up, plus anything from yesterday still not paid
+    if (local.minutes >= 9 * 60 && local.minutes < 10 * 60) {
+      const late = billsUnpaid(bills as Bill[], addDays(local.date, -1)).map((n) => `${n} was due yesterday`);
+      const due = late.concat(billsToRemind(bills as Bill[], local.date));
+      if (due.length) {
+        await send(kid, "bills", local.date, to,
+                   late.length ? "⚠️ Overdue bill" + (late.length === 1 ? "" : "s") : due.length === 1 ? "🧾 Bill reminder" : `🧾 ${due.length} bill reminders`,
+                   due.slice(0, 4).join(", ") + (due.length > 4 ? ` +${due.length - 4} more` : ""), "./");
+      }
+    }
+    // Due day, at the time they picked: still not marked paid?
+    const lateAt = minutesOf((bills as Bill[])[0]?.late ?? null);
+    if (lateAt !== null && local.minutes >= lateAt && local.minutes < lateAt + 30) {
+      const unpaid = billsUnpaid(bills as Bill[], local.date);
+      if (unpaid.length) {
+        await send(kid, "billslate", local.date, to, "⚠️ Not marked paid yet",
+                   `${unpaid.slice(0, 3).join(", ")}${unpaid.length > 3 ? ` +${unpaid.length - 3} more` : ""} ${unpaid.length === 1 ? "is" : "are"} due today and not marked paid yet`, "./");
+      }
+    }
   }
 
   // 🛒 Grocery day: the kids' low and out supplies, to the grown-ups at the time they picked
