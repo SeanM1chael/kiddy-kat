@@ -97,9 +97,11 @@ function billHow(bill) {
 function billsForCloud() {
   const b = loadBills();
   const today = billDayKey();
+  const late = b.lateAt === undefined ? '18:00' : b.lateAt;      // "still not paid" check time ('' = off)
   return b.list.filter(bill => bill.remind >= 0).slice(0, 30).map(bill => ({
     name: String(bill.name).slice(0, 30), every: bill.every, day: Number(bill.day), remind: bill.remind,
-    start: bill.start || '', paid: billDueDates(bill, today, billAddDays(today, 10)).filter(d => b.paid[bill.id + '|' + d])
+    start: bill.start || '', autopay: !!bill.autopay, late: late,
+    paid: billDueDates(bill, billAddDays(today, -1), billAddDays(today, 10)).filter(d => b.paid[bill.id + '|' + d])
   }));
 }
 
@@ -108,7 +110,9 @@ function setBillPaid(bill, due, paid) {
   const key = bill.id + '|' + due;
   if (paid) b.paid[key] = true; else delete b.paid[key];
   saveBills(b);
-  if (paid && typeof careerToast === 'function') careerToast(`✅ ${bill.name} marked paid`);
+  // 💰 Pay-early game (money.js): points, streak and trophies for paying on time or early
+  const bonus = typeof moneyBillPaid === 'function' ? moneyBillPaid(bill, due, paid) : '';
+  if (paid && typeof careerToast === 'function') careerToast(bonus || `✅ ${bill.name} marked paid`);
   showBills();
   showBillsCard();
 }
@@ -241,6 +245,20 @@ function showBills() {
     add(buttons, 'button', '✏️ Edit', 'careerDelete').addEventListener('click', () => { billEditing = bill.id; showBills(); });
   });
   add(all, 'button', '➕ Add a bill', 'careerSave').addEventListener('click', () => { billEditing = 'new'; showBills(); });
+  // ⚠️ Still-not-paid alert time
+  const lateSec = add(box, 'div', undefined, 'careerSection');
+  add(lateSec, 'h3', '⚠️ Not-paid alert');
+  add(lateSec, 'div', 'On a due day, if a bill still isn\'t marked paid by this time, you get an alert. If it\'s still not paid the next morning, the 9 AM alert says it\'s overdue. Autopay bills are skipped.', 'careerNote');
+  const lateAt = add(lateSec, 'select');
+  [['', 'Off'], ['12:00', '12 PM'], ['15:00', '3 PM'], ['17:00', '5 PM'], ['18:00', '6 PM'], ['20:00', '8 PM']].forEach(([v, l]) => lateAt.add(new Option(l, v)));
+  lateAt.value = b.lateAt === undefined ? '18:00' : b.lateAt;
+  lateAt.addEventListener('change', () => {
+    const fresh = loadBills();
+    fresh.lateAt = lateAt.value;
+    saveBills(fresh);
+    if (typeof careerToast === 'function') careerToast(lateAt.value ? `⚠️ Not-paid alert at ${lateAt.options[lateAt.selectedIndex].text}` : '⚠️ Not-paid alert off');
+  });
+
   add(box, 'div', '🔒 Amounts stay on this phone only. Only bill names and due dates go online, so reminders can reach you. ' +
                   'Reminders come at about 9 AM when alerts are on (⚙️ Grown-ups → 🔔).', 'careerNote');
 }
