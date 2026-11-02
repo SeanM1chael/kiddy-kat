@@ -324,6 +324,34 @@
       });
     }
 
+    // 🎯 Earn-back goal: "Earn 50 ⭐ to get Roblox for 1 hour"
+    function addEarnbackBox(box, kids, add) {
+      add(box, 'h4', '🎯 Earn-back goal');
+      add(box, 'div', 'Set something they can earn back, like game time. Every star they earn from now on counts. ' +
+                      'When they reach it, it shows under 🔔 Waiting for you.', 'pushNote');
+      const kid = add(box, 'select');
+      kids.filter(k => k.animal !== 'eagle').forEach(k => kid.add(new Option(k.nickname, k.nickname)));
+      const goal = add(box, 'input'); goal.placeholder = 'Roblox for 1 hour'; goal.maxLength = 60;
+      const stars = add(box, 'select');
+      [10, 20, 30, 50, 75, 100, 150].forEach(n => stars.add(new Option(`Earn ${n} ⭐`, n)));
+      stars.value = '50';
+      const send = add(box, 'button', '🎯 Set goal');
+      const note = add(box, 'div', '', 'pushNote');
+      send.addEventListener('click', async () => {
+        if (!goal.value.trim()) { note.textContent = 'Type what they can earn back.'; return; }
+        const token = sessionStorage.getItem('kiddyKatDashToken');
+        let from = 'Dad';
+        try { from = localStorage.getItem('kiddyKatDashFrom') || 'Dad'; } catch (err) {}
+        note.textContent = '⏳ Sending...';
+        const r = await cloudCall('parent_earnback', { p_token: token, p_nickname: kid.value, p_goal: goal.value.trim(),
+                                                       p_stars: Number(stars.value), p_from: from, p_cancel: false });
+        if (!r.ok) { note.textContent = '⚠️ ' + r.error; return; }
+        pushSend(token, 'note', `🎯 New goal: earn ${stars.value} ⭐ to get ${goal.value.trim()}!`, kid.value);
+        note.textContent = `✅ Goal set for ${kid.value}. It shows at the top of their app.`;
+        goal.value = '';
+      });
+    }
+
     // 🛒 Shopping list: every kid's supplies that are running low or out
     function showShoppingList(kids) {
       const box = document.getElementById('shopPanel');
@@ -404,6 +432,7 @@
       const add = (parent, tag, text, cls) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (cls) el.className = cls; parent.appendChild(el); return el; };
       add(box, 'h3', '📣 Send to the kids');
       addMessageBox(box, kids, add);
+      addEarnbackBox(box, kids, add);
       add(box, 'h4', '📅 Special day');
       add(box, 'div', 'Dress-up day, picture day, a field trip. It shows on their blue card that day, with a heads-up the afternoon before.', 'pushNote');
       const date = add(box, 'input'); date.type = 'date'; date.min = localDateKey(new Date());
@@ -628,6 +657,25 @@
         const crRow = add(todayBox, 'div', undefined, 'list');
         add(crRow, 'span', '🦅 Career goals this week');
         add(crRow, 'span', `${cr.done} of ${cr.target}`, cr.done >= cr.target ? 'done' : 'partial');
+      }
+
+      // 🎯 Earn-back goal progress
+      const eb = read(data, 'kiddyKatEarnback', null);
+      const ebSent = read(data, 'kiddyKatParentInbox', []).filter(x => x.type === 'earnback').slice(-1)[0];
+      if (eb && eb.goal && !(ebSent && ebSent.cancel)) {
+        const ebRow = add(todayBox, 'div', undefined, 'list');
+        add(ebRow, 'span', `🎯 ${eb.goal}`);
+        add(ebRow, 'span', eb.reached ? '🏆 Reached!' : `${eb.earned} of ${eb.stars} ⭐`, eb.reached ? 'done' : 'partial');
+        if (!eb.reached) {
+          const stop = add(todayBox, 'button', 'Turn off this goal', 'plain');
+          stop.addEventListener('click', async () => {
+            if (!confirm(`Turn off the earn-back goal for ${kid.nickname}?`)) return;
+            const r = await cloudCall('parent_earnback', { p_token: sessionStorage.getItem('kiddyKatDashToken'), p_nickname: kid.nickname,
+                                                           p_goal: '', p_stars: 0, p_from: 'Dad', p_cancel: true });
+            if (!r.ok) { alert(r.error); return; }
+            loadBoard();
+          });
+        }
       }
 
       // 🔤 Daily Word (Arcade): today's result

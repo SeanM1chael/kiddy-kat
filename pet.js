@@ -280,6 +280,7 @@ function carePet(listName) {
   maybePoop();
   savePet();
   showPet();
+  if (typeof earnbackProgress === 'function') earnbackProgress(3);       // 🎯 counts toward an earn-back goal
   if (petStage() > before) return `${levelUpLine()} +3 ⭐${grownUpNote()}`;
   return isAdultType(pet.type) ? `+1 progress on ${pet.name}! +3 ⭐` : `${pet.name} got ${CARE[listName]}! +3 ⭐`;
 }
