@@ -341,7 +341,7 @@
     .careerTitle { font-size: 18px; font-weight: bold; margin-bottom: 6px; }
     .careerGoal { padding: 6px 0; border-top: 1px solid #f1f3f5; display: grid; grid-template-columns: 1fr auto; column-gap: 8px; align-items: center; }
     .careerGoalLabel { display: flex; justify-content: space-between; font-size: 15px; }
-    .careerCount { color: #868e96; }
+    .careerCount { color: #868e96; white-space: nowrap; margin-left: 6px; }
     .careerGoal.met .careerCount { color: #2b8a3e; font-weight: bold; }
     .careerBar { grid-column: 1; background: #e7f5ff; border-radius: 6px; height: 8px; overflow: hidden; margin-top: 4px; }
     .careerBar div { background: var(--main); height: 100%; }
@@ -840,7 +840,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
 
   <!-- Problem reporter: if any file or step fails, show which one at the bottom of the screen (for testing) -->
   <script>
-    const APP_VERSION = '2026-11-02f';      // bump with the ?v= numbers below
+    const APP_VERSION = '2026-11-02g';      // bump with the ?v= numbers below
     function kkReport(where, message) {
       try { localStorage.setItem('kkLastError', new Date().toLocaleString() + ' · ' + where + ': ' + message); } catch (err) {}
       let bar = document.getElementById('kkError');
@@ -860,30 +860,30 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     window.addEventListener('unhandledrejection', e => kkReport('a background step', (e.reason && e.reason.message) || String(e.reason)));
   </script>
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-11-02f"></script>
-  <script src="push.js?v=2026-11-02f"></script>
-  <script src="sync.js?v=2026-11-02f"></script>
-  <script src="daily.js?v=2026-11-02f"></script>
-  <script src="pet.js?v=2026-11-02f"></script>
-  <script src="stickers.js?v=2026-11-02f"></script>
-  <script src="games.js?v=2026-11-02f"></script>
-  <script src="challenge.js?v=2026-11-02f"></script>
-  <script src="rewards.js?v=2026-11-02f"></script>
-  <script src="wallet.js?v=2026-11-02f"></script>
-  <script src="catchup.js?v=2026-11-02f"></script>
-  <script src="packs.js?v=2026-11-02f"></script>
-  <script src="league.js?v=2026-11-02f"></script>
-  <script src="uploads.js?v=2026-11-02f"></script>
-  <script src="weekend.js?v=2026-11-02f"></script>
-  <script src="streak.js?v=2026-11-02f"></script>
-  <script src="supplies.js?v=2026-11-02f"></script>
-  <script src="career.js?v=2026-11-02f"></script>
-  <script src="bills.js?v=2026-11-02f"></script>
-  <script src="money.js?v=2026-11-02f"></script>
-  <script src="arcade.js?v=2026-11-02f"></script>
-  <script src="earnback.js?v=2026-11-02f"></script>
-  <script src="familygames.js?v=2026-11-02f"></script>
-  <script src="tour.js?v=2026-11-02f"></script>
+  <script src="config.js?v=2026-11-02g"></script>
+  <script src="push.js?v=2026-11-02g"></script>
+  <script src="sync.js?v=2026-11-02g"></script>
+  <script src="daily.js?v=2026-11-02g"></script>
+  <script src="pet.js?v=2026-11-02g"></script>
+  <script src="stickers.js?v=2026-11-02g"></script>
+  <script src="games.js?v=2026-11-02g"></script>
+  <script src="challenge.js?v=2026-11-02g"></script>
+  <script src="rewards.js?v=2026-11-02g"></script>
+  <script src="wallet.js?v=2026-11-02g"></script>
+  <script src="catchup.js?v=2026-11-02g"></script>
+  <script src="packs.js?v=2026-11-02g"></script>
+  <script src="league.js?v=2026-11-02g"></script>
+  <script src="uploads.js?v=2026-11-02g"></script>
+  <script src="weekend.js?v=2026-11-02g"></script>
+  <script src="streak.js?v=2026-11-02g"></script>
+  <script src="supplies.js?v=2026-11-02g"></script>
+  <script src="career.js?v=2026-11-02g"></script>
+  <script src="bills.js?v=2026-11-02g"></script>
+  <script src="money.js?v=2026-11-02g"></script>
+  <script src="arcade.js?v=2026-11-02g"></script>
+  <script src="earnback.js?v=2026-11-02g"></script>
+  <script src="familygames.js?v=2026-11-02g"></script>
+  <script src="tour.js?v=2026-11-02g"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {

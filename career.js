@@ -3,6 +3,8 @@
 //
 // • Weekly career goals on the home screen (applications, networking, learning...).
 //   Each step earns 1 ⭐ and 1 🏆 league point, so the kids see you working your plan.
+// • Two focuses: 💼 Job search, or 🚀 Building my own business (learning,
+//   projects, clients). Each has its own weekly goals and tracker tabs.
 // • A private tracker for the job search AND freelance work, side by side:
 //   companies/clients, stage, next step and date, notes. It's behind the parent PIN,
 //   so the kids can see your goals and streak but not job or client details.
@@ -17,7 +19,25 @@ const DEFAULT_CAREER_GOALS = [
   ['prep', '🎤', 'Interview prep sessions', 2]
 ];
 
+// 🚀 Building my own business: learning, shipping projects and finding clients
+const BUILDER_GOALS = [
+  ['learn', '📚', 'Learning hours', 6],
+  ['commits', '💻', 'Project commits', 5],
+  ['ship', '🚀', 'Milestones shipped', 2],
+  ['outreach', '🧲', 'Client outreach', 3],
+  ['network', '🤝', 'Mentor chats', 2],
+  ['plan', '🗺️', 'Planning hours', 2]
+];
+
+const CAREER_FOCUS = {
+  job:     { label: '💼 Job search', title: '🦅 Career this week', goals: DEFAULT_CAREER_GOALS, tabs: ['job', 'freelance'] },
+  builder: { label: '🚀 Building my own business', title: '🚀 Builder this week', goals: BUILDER_GOALS, tabs: ['projects', 'freelance'] }
+};
+
 const CAREER_TRACKS = {
+  projects: { label: '🚀 Projects', what: 'Project (like Kiddy Kat)', role: 'What it is (like Family routine app)',
+              stages: [['idea', '💡 Idea'], ['building', '🛠️ Building'], ['testing', '🧪 Testing'],
+                       ['launched', '🎉 Launched'], ['paused', '⏸️ Paused']] },
   job: { label: '💼 Job search', what: 'Company', role: 'Role (like Sr. Engineering Manager)',
          stages: [['interested', '⭐ Interested'], ['applied', '📨 Applied'], ['interviewing', '🗣️ Interviewing'],
                   ['offer', '🎉 Offer'], ['closed', '📦 Closed']] },
@@ -26,7 +46,26 @@ const CAREER_TRACKS = {
                         ['active', '🛠️ Active'], ['done', '✅ Done']] }
 };
 
-let careerTab = 'job';
+let careerTab = null;          // picked tracker tab (null = the focus's first tab)
+
+// Which focus: 'job' or 'builder' (null until chosen)
+function careerFocus() {
+  const f = localStorage.getItem('kiddyKatCareerFocus');
+  return CAREER_FOCUS[f] ? f : null;
+}
+
+function setCareerFocus(f) {
+  const old = careerFocus();
+  if (old === f) return;
+  // Custom goals made for the old focus give way to the new focus's starting goals
+  if (localStorage.getItem('kiddyKatCareerGoals') && old && !confirm(`Switch to ${CAREER_FOCUS[f].label}? Your weekly goals change to its starting goals. Your tracker stays.`)) return;
+  localStorage.setItem('kiddyKatCareerFocus', f);
+  localStorage.removeItem('kiddyKatCareerGoals');
+  careerTab = null;
+  showCareerCard();
+  if (document.getElementById('career') && document.getElementById('career').style.display === 'block') showCareer();
+  careerToast(`${CAREER_FOCUS[f].label}: new weekly goals are set!`);
+}
 let careerUnlocked = false;
 
 function isEagle() {
@@ -39,7 +78,7 @@ function careerWeekKey() {
 
 function careerGoals() {
   try { const g = JSON.parse(localStorage.getItem('kiddyKatCareerGoals') || 'null'); if (Array.isArray(g) && g.length) return g; } catch (err) {}
-  return DEFAULT_CAREER_GOALS;
+  return (CAREER_FOCUS[careerFocus()] || CAREER_FOCUS.job).goals;
 }
 
 function careerWeek() {
@@ -120,9 +159,20 @@ function showCareerCard() {
   const done = goals.reduce((n, g) => n + Math.min(w.counts[g[0]] || 0, g[3]), 0);
   const target = goals.reduce((n, g) => n + g[3], 0);
 
-  const title = add(card, 'div', `🦅 Career this week: ${done} of ${target}`, 'careerTitle');
+  // First time: pick a focus
+  if (!careerFocus()) {
+    const pick = add(card, 'div', undefined, 'careerFocusPick');
+    add(pick, 'div', '🦅 What\'s your focus right now?', 'careerTitle');
+    Object.entries(CAREER_FOCUS).forEach(([key, f]) => {
+      add(pick, 'button', f.label, 'careerOpen').addEventListener('click', () => setCareerFocus(key));
+    });
+    add(pick, 'div', 'You can switch any time in 📋 My tracker.', 'careerNote');
+    return;
+  }
+  const focus = CAREER_FOCUS[careerFocus()];
+  const title = add(card, 'div', `${focus.title}: ${done} of ${target}`, 'careerTitle');
   title.appendChild(infoButton('Tap + each time you do one. Every step earns 1 ⭐ and 1 🏆 league point, and goals start over every Monday. ' +
-    'Your job and client details live in the tracker, behind your parent PIN.'));
+    'Your project, job and client details live in the tracker, behind your parent PIN.'));
   goals.forEach(([id, emoji, name, goal]) => {
     const n = w.counts[id] || 0;
     const row = add(card, 'div', undefined, 'careerGoal' + (n >= goal ? ' met' : ''));
@@ -139,7 +189,7 @@ function showCareerCard() {
     add(buttons, 'button', '+1', 'careerPlus').addEventListener('click', () => careerStep(id, 1));
   });
   const items = loadCareer().items;
-  const due = items.filter(i => i.nextDate && i.nextDate <= suppliesDayKey() && !['closed', 'done'].includes(i.stage)).length;
+  const due = items.filter(i => i.nextDate && i.nextDate <= suppliesDayKey() && !['closed', 'done', 'paused'].includes(i.stage)).length;
   const open = add(card, 'button', due ? `📋 My tracker 🔒 · ${due} next step${due === 1 ? '' : 's'} due` : '📋 My tracker 🔒', 'careerOpen');
   open.addEventListener('click', openCareer);
 }
@@ -187,7 +237,7 @@ function showCareer() {
   const today = suppliesDayKey();
 
   // Next steps across both tracks, soonest first
-  const next = career.items.filter(i => i.next && !['closed', 'done'].includes(i.stage))
+  const next = career.items.filter(i => i.next && !['closed', 'done', 'paused'].includes(i.stage))
     .sort((a, b) => (a.nextDate || '9999').localeCompare(b.nextDate || '9999')).slice(0, 5);
   if (next.length) {
     const sec = add(box, 'div', undefined, 'careerSection');
@@ -199,10 +249,18 @@ function showCareer() {
     });
   }
 
-  // Job search | Freelance
+  // 🎯 Focus switch
+  const focusBox = add(box, 'div', undefined, 'careerTabs');
+  Object.entries(CAREER_FOCUS).forEach(([key, f]) => {
+    add(focusBox, 'button', f.label, careerFocus() === key ? 'picked' : '').addEventListener('click', () => setCareerFocus(key));
+  });
+
+  // The focus's tracker tabs (job search keeps Job + Freelance; builder has Projects + Clients)
+  const tabKeys = (CAREER_FOCUS[careerFocus()] || CAREER_FOCUS.job).tabs;
+  if (!tabKeys.includes(careerTab)) careerTab = tabKeys[0];
   const tabs = add(box, 'div', undefined, 'careerTabs');
-  Object.entries(CAREER_TRACKS).forEach(([key, t]) => {
-    const n = career.items.filter(i => i.track === key && !['closed', 'done'].includes(i.stage)).length;
+  tabKeys.map(key => [key, CAREER_TRACKS[key]]).forEach(([key, t]) => {
+    const n = career.items.filter(i => i.track === key && !['closed', 'done', 'paused'].includes(i.stage)).length;
     const b = add(tabs, 'button', `${t.label} (${n})`, careerTab === key ? 'picked' : '');
     b.addEventListener('click', () => { careerTab = key; showCareer(); });
   });
@@ -296,6 +354,10 @@ function careerAutoStep(track, from, to) {
   const ids = careerGoals().map(g => g[0]);
   if (track === 'job' && to === 'applied' && ids.includes('apps')) careerStep('apps', 1);
   if (track === 'freelance' && (to === 'lead' || to === 'talking') && from === null && ids.includes('outreach')) careerStep('outreach', 1);
+  if (track === 'projects' && to === 'launched') {
+    if (ids.includes('ship')) careerStep('ship', 1);
+    if (typeof celebrate === 'function') celebrate('🎉 LAUNCHED! Your project is out in the world!', '🚀', true);
+  }
   if (to === 'offer' && typeof celebrate === 'function') celebrate('🎉 AN OFFER! Huge week!', '🦅', true);
 }
 
