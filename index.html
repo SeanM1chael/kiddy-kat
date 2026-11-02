@@ -180,6 +180,19 @@
     .memoryCard { aspect-ratio: 1; font-size: clamp(24px, 8vw, 40px); border: none; border-radius: 12px; background: var(--main); color: white; }
     .memoryCard.up { background: white; box-shadow: inset 0 0 0 2px var(--soft); }
     .memoryCard.matched { background: #d3f9d8; box-shadow: none; }
+    .fgHead { margin: 14px auto 4px; max-width: 420px; text-align: left; font-size: 17px; }
+    .fgRow { margin: 6px auto; }
+    .fgPicked { background: var(--soft) !important; font-weight: bold; }
+    .fgPlayers { font-size: 18px; margin: 6px 0; }
+    .fgStatus { font-size: 17px; color: #495057; margin: 4px 0 8px; }
+    .fgStatus.mine { color: var(--main); font-weight: bold; }
+    .fgBoard { display: grid; gap: 6px; margin: 8px auto; padding: 8px; border-radius: 16px; }
+    .fgBoard.ttt { max-width: 300px; background: var(--soft); }
+    .fgBoard.c4 { max-width: 380px; background: #1c7ed6; gap: 4px; }
+    .fgCell { aspect-ratio: 1; border: none; border-radius: 12px; background: white; font-size: clamp(28px, 12vw, 56px); padding: 0; color: inherit; }
+    .fgBoard.c4 .fgCell { border-radius: 50%; font-size: clamp(20px, 7vw, 34px); }
+    .fgCell:disabled { opacity: 1; }
+    .fgCell.last { box-shadow: 0 0 0 3px #fab005 inset; }
     #party { z-index: 20; }   /* the dancing screen shows on top of the shop */
 
     /* Challenge of the Day: a pretend live stream */
@@ -809,7 +822,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
 
   <!-- Problem reporter: if any file or step fails, show which one at the bottom of the screen (for testing) -->
   <script>
-    const APP_VERSION = '2026-11-02d';      // bump with the ?v= numbers below
+    const APP_VERSION = '2026-11-02e';      // bump with the ?v= numbers below
     function kkReport(where, message) {
       try { localStorage.setItem('kkLastError', new Date().toLocaleString() + ' · ' + where + ': ' + message); } catch (err) {}
       let bar = document.getElementById('kkError');
@@ -829,28 +842,29 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     window.addEventListener('unhandledrejection', e => kkReport('a background step', (e.reason && e.reason.message) || String(e.reason)));
   </script>
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-11-02d"></script>
-  <script src="push.js?v=2026-11-02d"></script>
-  <script src="sync.js?v=2026-11-02d"></script>
-  <script src="daily.js?v=2026-11-02d"></script>
-  <script src="pet.js?v=2026-11-02d"></script>
-  <script src="stickers.js?v=2026-11-02d"></script>
-  <script src="games.js?v=2026-11-02d"></script>
-  <script src="challenge.js?v=2026-11-02d"></script>
-  <script src="rewards.js?v=2026-11-02d"></script>
-  <script src="wallet.js?v=2026-11-02d"></script>
-  <script src="catchup.js?v=2026-11-02d"></script>
-  <script src="packs.js?v=2026-11-02d"></script>
-  <script src="league.js?v=2026-11-02d"></script>
-  <script src="uploads.js?v=2026-11-02d"></script>
-  <script src="weekend.js?v=2026-11-02d"></script>
-  <script src="streak.js?v=2026-11-02d"></script>
-  <script src="supplies.js?v=2026-11-02d"></script>
-  <script src="career.js?v=2026-11-02d"></script>
-  <script src="bills.js?v=2026-11-02d"></script>
-  <script src="arcade.js?v=2026-11-02d"></script>
-  <script src="earnback.js?v=2026-11-02d"></script>
-  <script src="tour.js?v=2026-11-02d"></script>
+  <script src="config.js?v=2026-11-02e"></script>
+  <script src="push.js?v=2026-11-02e"></script>
+  <script src="sync.js?v=2026-11-02e"></script>
+  <script src="daily.js?v=2026-11-02e"></script>
+  <script src="pet.js?v=2026-11-02e"></script>
+  <script src="stickers.js?v=2026-11-02e"></script>
+  <script src="games.js?v=2026-11-02e"></script>
+  <script src="challenge.js?v=2026-11-02e"></script>
+  <script src="rewards.js?v=2026-11-02e"></script>
+  <script src="wallet.js?v=2026-11-02e"></script>
+  <script src="catchup.js?v=2026-11-02e"></script>
+  <script src="packs.js?v=2026-11-02e"></script>
+  <script src="league.js?v=2026-11-02e"></script>
+  <script src="uploads.js?v=2026-11-02e"></script>
+  <script src="weekend.js?v=2026-11-02e"></script>
+  <script src="streak.js?v=2026-11-02e"></script>
+  <script src="supplies.js?v=2026-11-02e"></script>
+  <script src="career.js?v=2026-11-02e"></script>
+  <script src="bills.js?v=2026-11-02e"></script>
+  <script src="arcade.js?v=2026-11-02e"></script>
+  <script src="earnback.js?v=2026-11-02e"></script>
+  <script src="familygames.js?v=2026-11-02e"></script>
+  <script src="tour.js?v=2026-11-02e"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -1373,7 +1387,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     // Each step runs on its own: if one fails, the rest still load (and the problem shows at the bottom)
     ['showSpecials', 'showToday', 'showWeather', 'showPet', 'applyProfile', 'showPracticeStats', 'showChallengeButton',
      'checkPayday', 'showCatchUp', 'showLeagueCard', 'showUploadCard', 'showWeekendCard', 'showStreakCard',
-     'showNoteCard', 'showSuppliesCard', 'showCareerCard', 'showBillsCard', 'showEarnbackCard', 'showClock'].forEach(safeRun);
+     'showNoteCard', 'showSuppliesCard', 'showCareerCard', 'showBillsCard', 'showEarnbackCard', 'showFamilyTurns', 'showClock'].forEach(safeRun);
   </script>
 </body>
 </html>

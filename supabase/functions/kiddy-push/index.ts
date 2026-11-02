@@ -35,6 +35,9 @@ const KINDS: Record<string, { to: "parents" | "kid"; title: string; words: (f: s
   supply:   { to: "parents", title: "🧴 Running low", words: (f, d) => `${f} is running low on ${d || "something"}` },
   bought:   { to: "kid", title: "🛒 Got it!", words: (f, d) => `${f} got your ${d || "supplies"}!` },
   gaming:   { to: "parents", title: "🎮 Gaming hour", words: (f, d) => `${f} started a gaming hour${d ? " (" + d + ")" : ""}` },
+  game:     { to: "kid", title: "🎲 Game on!", words: (f, d) => `${f} started ${d || "a game"} with you. Your turn!` },
+  turn:     { to: "kid", title: "🎲 Your turn!", words: (f, d) => `${f} made a move in ${d || "your game"}. Your turn!` },
+  gameover: { to: "kid", title: "🏁 Game over", words: (_f, d) => d || "Your family game is over" },
 };
 
 function reply(body: unknown, status = 200) {

@@ -64,6 +64,7 @@ function openArcade() {
 }
 
 function closeArcade() {
+  if (typeof fgStopPoll === 'function') fgStopPoll();
   clearTimeout(codeRun.timer);
   codeRun.running = false;
   document.getElementById('arcade').style.display = 'none';
@@ -81,6 +82,7 @@ function arcadeBack(box) {
 }
 
 function showArcadeMenu() {
+  if (typeof fgStopPoll === 'function') fgStopPoll();
   clearTimeout(codeRun.timer);
   codeRun.running = false;
   const box = arcadeBody('🕹️ Arcade');
@@ -94,7 +96,9 @@ function showArcadeMenu() {
   [
     ['🤖', 'Code Quest', `Program your ${arcadeFace()} through the maze · ${solved} of ${levels} levels`, openCodeQuest],
     ['🔤', 'Daily Word', word.done ? (word.won ? `✅ Solved in ${word.guesses.length}! New word tomorrow.` : '❌ Try again tomorrow!') : 'A new word every day, the same for the whole family', openWordGame],
-    ['🃏', 'Memory Match', 'Flip the cards and find the pairs', openMemory]
+    ['🃏', 'Memory Match', 'Flip the cards and find the pairs', openMemory],
+    ['🎲', 'Family games', typeof fgMyTurns === 'function' && fgMyTurns() ? `👉 ${fgMyTurns()} game${fgMyTurns() === 1 ? '' : 's'} waiting for your move!` : 'Tic-tac-toe and Connect Four against your family',
+     () => { if (typeof openFamilyGames === 'function') openFamilyGames(); }]
   ].forEach(([emoji, name, note, open]) => {
     const card = arcadeAdd(box, 'button', undefined, 'arcadeGame');
     arcadeAdd(card, 'span', emoji, 'arcadeGameEmoji');
