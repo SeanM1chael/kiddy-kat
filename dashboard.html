@@ -630,6 +630,15 @@
         add(crRow, 'span', `${cr.done} of ${cr.target}`, cr.done >= cr.target ? 'done' : 'partial');
       }
 
+      // 🔤 Daily Word (Arcade): today's result
+      const arc = read(data, 'kiddyKatArcade', null);
+      if (arc && arc.word && arc.word.day === localDateKey(new Date()) && arc.word.guesses && arc.word.guesses.length) {
+        const wRow = add(todayBox, 'div', undefined, 'list');
+        add(wRow, 'span', '🔤 Daily Word');
+        add(wRow, 'span', arc.word.won ? `Solved in ${arc.word.guesses.length} of 6` : arc.word.done ? 'Not solved today' : `${arc.word.guesses.length} guesses so far`,
+            arc.word.won ? 'done' : 'partial');
+      }
+
       // 🔥 Morning streak
       const st = read(data, 'kiddyKatMorningStreak', null);
       if (st && st.days) {

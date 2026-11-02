@@ -136,6 +136,50 @@
     .shopCard button { margin-top: 8px; font-size: 15px; padding: 8px 10px; border: none; border-radius: 10px;
                        background: var(--main); color: white; }
     .shopCard button:disabled { background: #ccc; }
+    #arcade { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 15; overflow-y: auto; padding: 16px 16px 40px; }
+    #arcade .closeGame { position: absolute; right: 16px; top: 12px; font-size: 28px; background: none; border: none; }
+    #arcade h2 { margin: 4px 40px 8px; }
+    .arcadeHint { color: #495057; font-size: 15px; margin: 6px auto; max-width: 420px; }
+    .arcadeMessage { min-height: 22px; font-weight: bold; margin: 8px auto; max-width: 420px; }
+    .arcadeBig { font-size: 64px; }
+    .arcadeBack { display: block; margin: 0 0 6px; font-size: 15px; padding: 6px 12px; border: none; border-radius: 10px; background: #e9ecef; }
+    .arcadeGame { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 420px; margin: 10px auto; padding: 14px; border: none;
+                  border-radius: 18px; background: white; text-align: left; font-size: 17px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+    .arcadeGame span { display: flex; flex-direction: column; }
+    .arcadeGameEmoji { font-size: 40px; }
+    .arcadeGameNote { font-size: 14px; color: #868e96; margin-top: 2px; }
+    .arcadeSize { justify-content: center; font-weight: bold; }
+    .arcadeSmall { font-size: 16px; padding: 10px 14px; border: none; border-radius: 12px; background: #e9ecef; }
+    .arcadeGo { font-size: 17px; padding: 10px 18px; border: none; border-radius: 12px; background: var(--main); color: white; font-weight: bold; }
+    button:disabled.arcadeGo, button:disabled.arcadeSmall, button:disabled.codeArrow { opacity: 0.45; }
+    .codeLevels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: 360px; margin: 10px auto; }
+    .codeLevel { white-space: pre-line; font-size: 16px; padding: 10px 4px; border: 2px solid var(--soft); border-radius: 12px; background: white; font-weight: bold; }
+    .codeLevel.done { border-color: var(--main); }
+    .codeBoard { display: grid; gap: 3px; max-width: 340px; margin: 8px auto; background: #d3f9d8; padding: 6px; border-radius: 14px; }
+    .codeCell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: clamp(18px, 6vw, 30px); background: #ebfbee; border-radius: 6px; }
+    .codeCell.wall { background: #b2f2bb; }
+    .codeProgram { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; min-height: 48px; max-width: 420px; margin: 8px auto;
+                   padding: 8px; background: white; border-radius: 14px; border: 2px dashed var(--soft); }
+    .codeBlock { font-size: 20px; padding: 6px 8px; border: 2px solid var(--main); border-radius: 10px; background: #fff; }
+    .codeBlock.active { background: var(--soft); transform: scale(1.1); }
+    .codePad { display: grid; grid-template-columns: repeat(4, 64px); gap: 8px; justify-content: center; margin: 8px auto; }
+    .codeArrow { font-size: 30px; padding: 8px 0; border: none; border-radius: 14px; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+    .codeTools { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 8px auto; }
+    .wordBoard { display: grid; gap: 6px; justify-content: center; margin: 10px auto; }
+    .wordRow { display: flex; gap: 6px; }
+    .wordTile { width: 48px; height: 48px; border: 2px solid #ced4da; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+                font-size: 26px; font-weight: bold; background: white; }
+    .wordTile.green, .wordKey.green { background: #51cf66; border-color: #51cf66; color: white; }
+    .wordTile.yellow, .wordKey.yellow { background: #fcc419; border-color: #fcc419; color: white; }
+    .wordTile.gray, .wordKey.gray { background: #adb5bd; border-color: #adb5bd; color: white; }
+    .wordKeys { max-width: 460px; margin: 8px auto; }
+    .wordKeyRow { display: flex; gap: 4px; justify-content: center; margin: 4px 0; }
+    .wordKey { flex: 1; max-width: 40px; padding: 12px 0; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; background: #e9ecef; }
+    .wordKey.wide { max-width: 64px; flex: 1.6; font-size: 14px; }
+    .memoryGrid { display: grid; gap: 8px; max-width: 380px; margin: 10px auto; }
+    .memoryCard { aspect-ratio: 1; font-size: clamp(24px, 8vw, 40px); border: none; border-radius: 12px; background: var(--main); color: white; }
+    .memoryCard.up { background: white; box-shadow: inset 0 0 0 2px var(--soft); }
+    .memoryCard.matched { background: #d3f9d8; box-shadow: none; }
     #party { z-index: 20; }   /* the dancing screen shows on top of the shop */
 
     /* Challenge of the Day: a pretend live stream */
@@ -474,6 +518,7 @@ Level 4 pets unlock new eggs in the 🏠 Pet House!">i</button>
     <div id="petNext"></div>
     <button id="petChooseButton" onclick="openPetChooser()">Choose your pet</button>
     <button onclick="openPractice()">🎮 Practice</button>
+    <button onclick="openArcade()">🕹️ Arcade</button>
     <button id="shopButton" onclick="openShop()">🛍️ Shop</button>
     <button id="challengeButton" onclick="openChallenge()">🔴 Challenge</button>
     <button id="albumButton" onclick="openAlbum()">📒 Stickers</button>
@@ -732,6 +777,13 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
   </div>
 
   <!-- Learning games (filled in by games.js) -->
+  <!-- 🕹️ Arcade (filled in by arcade.js) -->
+  <div id="arcade">
+    <button class="closeGame" onclick="closeArcade()">✖</button>
+    <h2 id="arcadeTitle">🕹️ Arcade</h2>
+    <div id="arcadeBody"></div>
+  </div>
+
   <div id="game">
     <button class="closeGame" onclick="closeGame()">✖</button>
     <div id="gameTitle"></div>
@@ -750,7 +802,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
 
   <!-- Problem reporter: if any file or step fails, show which one at the bottom of the screen (for testing) -->
   <script>
-    const APP_VERSION = '2026-11-02b';      // bump with the ?v= numbers below
+    const APP_VERSION = '2026-11-02c';      // bump with the ?v= numbers below
     function kkReport(where, message) {
       try { localStorage.setItem('kkLastError', new Date().toLocaleString() + ' · ' + where + ': ' + message); } catch (err) {}
       let bar = document.getElementById('kkError');
@@ -770,26 +822,27 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     window.addEventListener('unhandledrejection', e => kkReport('a background step', (e.reason && e.reason.message) || String(e.reason)));
   </script>
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-11-02b"></script>
-  <script src="push.js?v=2026-11-02b"></script>
-  <script src="sync.js?v=2026-11-02b"></script>
-  <script src="daily.js?v=2026-11-02b"></script>
-  <script src="pet.js?v=2026-11-02b"></script>
-  <script src="stickers.js?v=2026-11-02b"></script>
-  <script src="games.js?v=2026-11-02b"></script>
-  <script src="challenge.js?v=2026-11-02b"></script>
-  <script src="rewards.js?v=2026-11-02b"></script>
-  <script src="wallet.js?v=2026-11-02b"></script>
-  <script src="catchup.js?v=2026-11-02b"></script>
-  <script src="packs.js?v=2026-11-02b"></script>
-  <script src="league.js?v=2026-11-02b"></script>
-  <script src="uploads.js?v=2026-11-02b"></script>
-  <script src="weekend.js?v=2026-11-02b"></script>
-  <script src="streak.js?v=2026-11-02b"></script>
-  <script src="supplies.js?v=2026-11-02b"></script>
-  <script src="career.js?v=2026-11-02b"></script>
-  <script src="bills.js?v=2026-11-02b"></script>
-  <script src="tour.js?v=2026-11-02b"></script>
+  <script src="config.js?v=2026-11-02c"></script>
+  <script src="push.js?v=2026-11-02c"></script>
+  <script src="sync.js?v=2026-11-02c"></script>
+  <script src="daily.js?v=2026-11-02c"></script>
+  <script src="pet.js?v=2026-11-02c"></script>
+  <script src="stickers.js?v=2026-11-02c"></script>
+  <script src="games.js?v=2026-11-02c"></script>
+  <script src="challenge.js?v=2026-11-02c"></script>
+  <script src="rewards.js?v=2026-11-02c"></script>
+  <script src="wallet.js?v=2026-11-02c"></script>
+  <script src="catchup.js?v=2026-11-02c"></script>
+  <script src="packs.js?v=2026-11-02c"></script>
+  <script src="league.js?v=2026-11-02c"></script>
+  <script src="uploads.js?v=2026-11-02c"></script>
+  <script src="weekend.js?v=2026-11-02c"></script>
+  <script src="streak.js?v=2026-11-02c"></script>
+  <script src="supplies.js?v=2026-11-02c"></script>
+  <script src="career.js?v=2026-11-02c"></script>
+  <script src="bills.js?v=2026-11-02c"></script>
+  <script src="arcade.js?v=2026-11-02c"></script>
+  <script src="tour.js?v=2026-11-02c"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -954,7 +1007,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       if (!confirm('Start over for a new person? This clears the name, tasks, pet and checkmarks on this phone.')) return;
       cloudUnlink();                     // stop saving online first, so nothing online gets erased
       ['kiddyKatProfile', 'kiddyKatTasks', 'kiddyKatChecklist', 'kiddyKatPet', 'kiddyKatPets', 'kiddyKatActivePet', 'kiddyKatPractice', 'kiddyKatMathLevel', 'kiddyKatChallenge', 'kiddyKatTrophies',
-       'kiddyKatFollowers', 'kiddyKatStreak', 'kiddyKatMorningStreak', 'kiddyKatBills', 'kiddyKatStickers', 'kiddyKatSetsDone',
+       'kiddyKatFollowers', 'kiddyKatStreak', 'kiddyKatMorningStreak', 'kiddyKatBills', 'kiddyKatArcade', 'kiddyKatStickers', 'kiddyKatSetsDone',
        'kiddyKatRewards', 'kiddyKatRewardRequests', 'kiddyKatGoal', 'kiddyKatProofPhotos',
        'kiddyKatWallet', 'kiddyKatMoney', 'kiddyKatCatchUp', 'kiddyKatPack', 'kiddyKatLeague']
         .forEach(k => localStorage.removeItem(k));
