@@ -7,6 +7,8 @@
 //     leave time, still not done → grown-ups: "⏰ Juju's morning list isn't done"
 //   Every night, only if the bedtime list isn't done:
 //     ~30 min before bedtime  → the kid: "🌙 Bedtime soon"
+//   Grown-ups' bills (career mode), about 9 AM their time:
+//     on the reminder day     → their app: "🧾 Bill reminder: Rent due tomorrow"
 // Each alert goes out at most once per kid per day.
 // Secrets it uses: the same VAPID keys as kiddy-push.
 // =====================================================================
@@ -15,7 +17,7 @@ import webpush from "npm:web-push@3.6.7";
 type Device = { id: number; endpoint: string; p256dh: string; auth: string };
 type Kid = {
   id: string; nickname: string; leave: string | null; bed: string | null; tz: string | null;
-  today: string | null; tasks: string | null; kidDevices: Device[]; parentDevices: Device[];
+  today: string | null; tasks: string | null; bills: string | null; kidDevices: Device[]; parentDevices: Device[];
 };
 
 const json = (body: unknown, status = 200) =>
@@ -54,6 +56,36 @@ const listOf = (items: string[]) => {
   return shown.join(", ") + (items.length > 3 ? ` +${items.length - 3} more` : "");
 };
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// ---------- Bills (no amounts ever come here: just names, schedules and paid dates) ----------
+type Bill = { name: string; every: string; day: number; remind: number; start: string; paid: string[] };
+const dayKey = (d: Date) => d.toISOString().slice(0, 10);
+const addDays = (key: string, n: number) => { const d = new Date(key + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return dayKey(d); };
+// Is this bill due on this day?
+function billDueOn(bill: Bill, key: string) {
+  if (bill.start && key < bill.start) return false;
+  const d = new Date(key + "T12:00:00Z");
+  if (bill.every === "week") return d.getUTCDay() === Number(bill.day);
+  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  return d.getUTCDate() === Math.min(Number(bill.day) || 1, last);
+}
+// "Rent due tomorrow, Phone due today"
+function billsToRemind(bills: Bill[], today: string) {
+  const out: string[] = [];
+  for (const bill of bills) {
+    const r = Number(bill.remind);
+    if (!(r >= 0)) continue;
+    const days = r === 0 ? [0] : [r, 0];                       // the reminder day, plus a nudge on the due day
+    for (const n of days) {
+      const due = addDays(today, n);
+      if (billDueOn(bill, due) && !(bill.paid ?? []).includes(due)) {
+        out.push(`${clean(bill.name, 30)} due ${n === 0 ? "today" : n === 1 ? "tomorrow" : `in ${n} days`}`);
+        break;
+      }
+    }
+  }
+  return out;
+}
 
 Deno.serve(async (req) => {
   const key = req.headers.get("x-timer-key") ?? "";
@@ -138,6 +170,19 @@ Deno.serve(async (req) => {
                    `${plural(m, "minute")} to bedtime. ${plural(todo.length, "task")} to go: ${listOf(todo)}`, "./");
       }
     }
+  }
+
+  // 🧾 Bill reminders: once a day, around 9 AM the grown-up's time
+  for (const kid of (got.kids ?? []) as Kid[]) {
+    const bills = parse(kid.bills);
+    if (!Array.isArray(bills) || !bills.length) continue;
+    const local = localNow(now, kid.tz);
+    if (local.minutes < 9 * 60 || local.minutes >= 10 * 60) continue;
+    const due = billsToRemind(bills as Bill[], local.date);
+    if (!due.length) continue;
+    const to = kid.kidDevices.length ? kid.kidDevices : kid.parentDevices;
+    await send(kid, "bills", local.date, to, due.length === 1 ? "🧾 Bill reminder" : `🧾 ${due.length} bill reminders`,
+               due.slice(0, 4).join(", ") + (due.length > 4 ? ` +${due.length - 4} more` : ""), "./");
   }
 
   if (dead.length) await db("push_forget", { p_ids: dead });
