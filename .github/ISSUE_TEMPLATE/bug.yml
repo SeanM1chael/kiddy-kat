@@ -1,0 +1,60 @@
+name: 🐞 Bug report
+description: Something in Kiddy Kat isn't working right
+title: "🐞 "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for reporting! Please don't include real names, schools or photos of kids."
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did it happen?
+      options:
+        - Kids' app (index.html)
+        - Parent dashboard
+        - Fan page
+        - Sign-up page
+        - Alerts / notifications
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: who
+    attributes:
+      label: Whose app?
+      options:
+        - 🐱 Kitten (7-9)
+        - 🐯 Tiger (10-13)
+        - 🦁 Lion (14-21)
+        - 🦅 Eagle (grown-up)
+        - Grown-up dashboard
+        - Doesn't matter
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: iPhone 13, home-screen app / Chromebook, Chrome
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: ⚙️ Grown-ups → bottom line, like "Kiddy Kat version 2026-11-02e"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead? Screenshots help (drag them in).
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: How bad is it?
+      options:
+        - 🔴 Blocker (app won't open or lost data)
+        - 🟠 Major (a feature doesn't work)
+        - 🟡 Minor (looks wrong or confusing)
+        - ⚪ Idea / nice to have
+    validations:
+      required: true

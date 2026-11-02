@@ -1,0 +1,40 @@
+# =====================================================================
+# Automatic tests: GitHub runs these every time you push.
+# See the results on GitHub → your repo → Actions tab.
+# A ✅ means everything passed. A ❌ means something broke: click it to see what.
+# =====================================================================
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install the test tool
+        run: npm install --no-audit --no-fund
+
+      - name: Install the test browsers (Safari's engine and Chrome)
+        run: npx playwright install --with-deps webkit chromium
+
+      - name: Run the tests
+        run: npx playwright test
+
+      - name: Save the test report (open it if a test failed)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: playwright-report/
+          retention-days: 14

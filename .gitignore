@@ -9,3 +9,8 @@ __pycache__/
 !icon.png
 !tiger.png
 !lion.png
+
+# Automatic tests
+node_modules/
+test-results/
+playwright-report/

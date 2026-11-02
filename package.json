@@ -1,0 +1,11 @@
+{
+  "name": "kiddy-kat",
+  "private": true,
+  "description": "Kiddy Kat family routine app. Only used to run the automatic tests.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
