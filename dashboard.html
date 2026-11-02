@@ -74,6 +74,9 @@
     #shopPanel { background: white; border-radius: 20px; padding: 16px; margin-bottom: 14px; }
     #shopPanel h3 { margin: 0 0 6px; }
     #shopPanel button { font-size: 14px; padding: 6px 12px; }
+    .groceryDay { margin-top: 12px; padding-top: 10px; border-top: 1px solid #f1f3f5; }
+    .groceryRow { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+    .groceryRow select, .groceryRow input { font-size: 16px; padding: 6px 8px; border-radius: 10px; border: 2px solid #dee2e6; }
     #sendPanel select { font-size: 15px; padding: 6px; border: 2px solid #ffd8a8; border-radius: 10px; margin: 4px 0; }
     #fans { background: white; border-radius: 20px; padding: 16px; margin-bottom: 14px; }
     #fans h3 { margin: 0 0 8px; }
@@ -353,6 +356,46 @@
         });
       });
       if (!count) add(box, 'div', '✅ Nothing needed. Kids mark supplies as low in 🧴 My supplies, and they show up here.', 'empty');
+      showGroceryDay(box, add);
+    }
+
+    // 🔔 Grocery day: an alert that morning with everything on this list
+    async function showGroceryDay(box, add) {
+      const token = sessionStorage.getItem('kiddyKatDashToken');
+      const wrap = add(box, 'div', undefined, 'groceryDay');
+      add(wrap, 'b', '🔔 Grocery day reminder');
+      add(wrap, 'div', 'On your grocery day, you get an alert with everything on this list.', 'who');
+      const row = add(wrap, 'div', undefined, 'groceryRow');
+      const day = add(row, 'select');
+      day.add(new Option('Off', ''));
+      ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].forEach((d, i) => day.add(new Option(d, i)));
+      const time = add(row, 'input');
+      time.type = 'time';
+      time.value = '09:00';
+      const save = add(row, 'button', '💾 Save');
+      const note = add(wrap, 'div', '', 'who');
+      const got = await cloudCall('parent_get_grocery', { p_token: token });
+      if (got.ok) {
+        day.value = got.day === null || got.day === undefined ? '' : String(got.day);
+        time.value = got.time || '09:00';
+        if (got.day !== null && got.day !== undefined) note.textContent = `✅ Every ${day.options[day.selectedIndex].text} at ${niceTime(time.value)}.`;
+      }
+      save.addEventListener('click', async () => {
+        let tz = '';
+        try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (err) {}
+        save.textContent = '⏳';
+        const r = await cloudCall('parent_set_grocery', { p_token: token, p_day: day.value === '' ? null : Number(day.value),
+                                                          p_time: time.value || '09:00', p_tz: tz });
+        save.textContent = '💾 Save';
+        if (!r.ok) { note.textContent = '⚠️ ' + r.error; return; }
+        note.textContent = day.value === '' ? '🔕 Grocery day reminder is off.'
+          : `✅ Saved! Every ${day.options[day.selectedIndex].text} at ${niceTime(time.value)}. Make sure alerts are on for this device (top of the page).`;
+      });
+    }
+
+    function niceTime(hhmm) {
+      const [h, m] = hhmm.split(':').map(Number);
+      return new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     }
 
     function showSendPanel(kids) {
