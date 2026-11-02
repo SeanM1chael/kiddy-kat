@@ -13,7 +13,7 @@
 // =====================================================================
 
 const CLOUD_ANIMALS = { kitten: '🐱', tiger: '🐯', lion: '🦁', eagle: '🦅' };
-const LOCAL_ONLY = ['kiddyKatProofPhotos', 'kiddyKatParentPhone', 'kiddyKatPlace', 'kiddyKatSpoken'];   // never sent online
+const LOCAL_ONLY = ['kiddyKatProofPhotos', 'kiddyKatParentPhone', 'kiddyKatPlace', 'kiddyKatSpoken', 'kiddyKatBills'];   // never sent online
 
 // Cloud bookkeeping (these stay on this device)
 const CLOUD = {
@@ -123,6 +123,8 @@ function cloudCollect() {
   if (typeof weekendForCloud === 'function') data._weekend = JSON.stringify(weekendForCloud());
   // For the dashboard: this week's career goal numbers (career.js, grown-ups only)
   if (typeof careerForCloud === 'function' && typeof isEagle === 'function' && isEagle()) data._career = JSON.stringify(careerForCloud());
+  // For bill reminders (bills.js, grown-ups only): names and due dates, no amounts
+  if (typeof billsForCloud === 'function' && typeof isEagle === 'function' && isEagle()) data._bills = JSON.stringify(billsForCloud());
   return data;
 }
 
