@@ -566,7 +566,14 @@ function checkWordAnswer(button, isRight, explain, meaning) {
     showMeaning(meaning);
     return;
   }
-  setTimeout(nextWordQuestion, isRight ? 2200 : 3800);
+  // Wait for "Next" so there's time to read the explanation (no rushing to the next question)
+  const next = document.createElement('button');
+  next.className = 'meaningNext answerNext';
+  next.textContent = round.number === (round.total || QUESTIONS_PER_ROUND) ? 'Finish 🎉' : 'Next ➡️';
+  next.addEventListener('click', nextWordQuestion);
+  feedback.appendChild(document.createElement('br'));
+  feedback.appendChild(next);
+  next.scrollIntoView({ behavior: 'smooth', block: 'end' });     // bring it on screen on small phones
 }
 
 function showMeaning([word, kind, means, example]) {
