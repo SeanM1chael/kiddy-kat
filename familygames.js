@@ -6,9 +6,9 @@
 // A win earns 2 ⭐ and a tie 1 ⭐ (part of the daily Arcade stars).
 // =====================================================================
 
-const FG_NAMES = { ttt: '❌⭕ Tic-tac-toe', c4: '🔴🟡 Connect Four', dots: '🟦 Dots and Boxes', bs: '🚢 Battleship' };
+const FG_NAMES = { ttt: '❌🔵 Tic-tac-toe', c4: '🔴🟡 Connect Four', dots: '🟦 Dots and Boxes', bs: '🚢 Battleship' };
 const FG_SHORT = { ttt: 'tic-tac-toe', c4: 'Connect Four', dots: 'Dots and Boxes', bs: 'Battleship' };
-const FG_MARKS = { ttt: { X: '❌', O: '⭕' }, c4: { X: '🔴', O: '🟡' }, dots: { X: '🟥', O: '🟨' }, bs: { X: '⚓', O: '⚓' } };
+const FG_MARKS = { ttt: { X: '❌', O: '🔵' }, c4: { X: '🔴', O: '🟡' }, dots: { X: '🟥', O: '🟨' }, bs: { X: '⚓', O: '⚓' } };
 const FG_FACES = { kitten: '🐱', tiger: '🐯', lion: '🦁', eagle: '🦅' };
 let fgState = { list: null, game: null, poll: null, busy: false };
 

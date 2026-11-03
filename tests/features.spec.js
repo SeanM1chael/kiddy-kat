@@ -65,3 +65,18 @@ test('Bills (grown-ups): amounts never go online', async ({ page }) => {
   expect(sent._bills).toContain('Rent');
   expect(sent._bills).not.toContain('1800');
 });
+
+// Nov 2: the next question came too fast to read the explanation
+test('Practice: after an answer, the explanation stays until Next is tapped', async ({ page }) => {
+  const errors = await openAppAs(page, 'eagle', PET);
+  await page.click('text=🎮 Practice');
+  await page.click('text=🤝 Leadership');
+  const question = await page.locator('#gameQuestion').innerText();
+  await page.locator('#gameChoices .choice').first().click();
+  await page.waitForTimeout(4500);                                        // longer than the old auto-advance
+  await expect(page.locator('#gameQuestion')).toHaveText(question);
+  await expect(page.locator('#gameFeedback')).toContainText(/Yes!|Not quite/);
+  await page.click('.answerNext');
+  await expect(page.locator('#gameQuestion')).not.toHaveText(question);
+  await expectNoProblems(page, errors);
+});
