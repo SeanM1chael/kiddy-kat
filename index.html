@@ -193,6 +193,30 @@
     .fgBoard.c4 .fgCell { border-radius: 50%; font-size: clamp(20px, 7vw, 34px); }
     .fgCell:disabled { opacity: 1; }
     .fgCell.last { box-shadow: 0 0 0 3px #fab005 inset; }
+    .dotsGrid { display: grid; grid-template-columns: repeat(4, 14px 56px) 14px; grid-template-rows: repeat(4, 14px 56px) 14px; justify-content: center; margin: 10px auto; }
+    .dotsDot { width: 14px; height: 14px; border-radius: 50%; background: #343a40; transform: scale(0.75); }
+    .dotsH, .dotsV { border: none; padding: 0; background: #e9ecef; border-radius: 6px; }
+    .dotsH { height: 8px; margin: 3px 0; }
+    .dotsV { width: 8px; margin: 0 3px; }
+    .dotsH:not(:disabled):active, .dotsV:not(:disabled):active { background: var(--soft); }
+    .dotsH.drawn, .dotsV.drawn { background: #495057; opacity: 1; }
+    .dotsH.drawn.p1, .dotsV.drawn.p1 { background: #fa5252; }
+    .dotsH.drawn.p2, .dotsV.drawn.p2 { background: #fab005; }
+    .dotsH:disabled, .dotsV:disabled { opacity: 1; }
+    .dotsH.last, .dotsV.last { box-shadow: 0 0 0 3px #1c7ed6; }
+    .dotsBox { display: flex; align-items: center; justify-content: center; font-size: 26px; }
+    .dotsBox.p1 { background: #ffe3e3; }
+    .dotsBox.p2 { background: #fff3bf; }
+    .bsGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; max-width: 330px; margin: 6px auto; padding: 6px; background: #74c0fc; border-radius: 12px; }
+    .bsGrid.small { max-width: 230px; }
+    .bsCell { aspect-ratio: 1; border: none; border-radius: 6px; background: #d0ebff; display: flex; align-items: center; justify-content: center;
+              font-size: clamp(14px, 5vw, 22px); padding: 0; opacity: 1; }
+    .bsGrid.small .bsCell { font-size: clamp(11px, 3.5vw, 16px); }
+    button.bsCell:disabled { opacity: 1; }
+    .bsCell.ship { background: #adb5bd; }
+    .bsCell.hit, .bsCell.sunk { background: #ffc9c9; }
+    .bsCell.miss { background: #e7f5ff; }
+    .bsCell.last { box-shadow: 0 0 0 3px #fab005 inset; }
     #party { z-index: 20; }   /* the dancing screen shows on top of the shop */
 
     /* Challenge of the Day: a pretend live stream */
@@ -840,7 +864,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
 
   <!-- Problem reporter: if any file or step fails, show which one at the bottom of the screen (for testing) -->
   <script>
-    const APP_VERSION = '2026-11-02g';      // bump with the ?v= numbers below
+    const APP_VERSION = '2026-11-02h';      // bump with the ?v= numbers below
     function kkReport(where, message) {
       try { localStorage.setItem('kkLastError', new Date().toLocaleString() + ' · ' + where + ': ' + message); } catch (err) {}
       let bar = document.getElementById('kkError');
@@ -860,30 +884,30 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     window.addEventListener('unhandledrejection', e => kkReport('a background step', (e.reason && e.reason.message) || String(e.reason)));
   </script>
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-11-02g"></script>
-  <script src="push.js?v=2026-11-02g"></script>
-  <script src="sync.js?v=2026-11-02g"></script>
-  <script src="daily.js?v=2026-11-02g"></script>
-  <script src="pet.js?v=2026-11-02g"></script>
-  <script src="stickers.js?v=2026-11-02g"></script>
-  <script src="games.js?v=2026-11-02g"></script>
-  <script src="challenge.js?v=2026-11-02g"></script>
-  <script src="rewards.js?v=2026-11-02g"></script>
-  <script src="wallet.js?v=2026-11-02g"></script>
-  <script src="catchup.js?v=2026-11-02g"></script>
-  <script src="packs.js?v=2026-11-02g"></script>
-  <script src="league.js?v=2026-11-02g"></script>
-  <script src="uploads.js?v=2026-11-02g"></script>
-  <script src="weekend.js?v=2026-11-02g"></script>
-  <script src="streak.js?v=2026-11-02g"></script>
-  <script src="supplies.js?v=2026-11-02g"></script>
-  <script src="career.js?v=2026-11-02g"></script>
-  <script src="bills.js?v=2026-11-02g"></script>
-  <script src="money.js?v=2026-11-02g"></script>
-  <script src="arcade.js?v=2026-11-02g"></script>
-  <script src="earnback.js?v=2026-11-02g"></script>
-  <script src="familygames.js?v=2026-11-02g"></script>
-  <script src="tour.js?v=2026-11-02g"></script>
+  <script src="config.js?v=2026-11-02h"></script>
+  <script src="push.js?v=2026-11-02h"></script>
+  <script src="sync.js?v=2026-11-02h"></script>
+  <script src="daily.js?v=2026-11-02h"></script>
+  <script src="pet.js?v=2026-11-02h"></script>
+  <script src="stickers.js?v=2026-11-02h"></script>
+  <script src="games.js?v=2026-11-02h"></script>
+  <script src="challenge.js?v=2026-11-02h"></script>
+  <script src="rewards.js?v=2026-11-02h"></script>
+  <script src="wallet.js?v=2026-11-02h"></script>
+  <script src="catchup.js?v=2026-11-02h"></script>
+  <script src="packs.js?v=2026-11-02h"></script>
+  <script src="league.js?v=2026-11-02h"></script>
+  <script src="uploads.js?v=2026-11-02h"></script>
+  <script src="weekend.js?v=2026-11-02h"></script>
+  <script src="streak.js?v=2026-11-02h"></script>
+  <script src="supplies.js?v=2026-11-02h"></script>
+  <script src="career.js?v=2026-11-02h"></script>
+  <script src="bills.js?v=2026-11-02h"></script>
+  <script src="money.js?v=2026-11-02h"></script>
+  <script src="arcade.js?v=2026-11-02h"></script>
+  <script src="earnback.js?v=2026-11-02h"></script>
+  <script src="familygames.js?v=2026-11-02h"></script>
+  <script src="tour.js?v=2026-11-02h"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {

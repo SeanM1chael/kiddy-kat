@@ -97,7 +97,7 @@ function showArcadeMenu() {
     ['🤖', 'Code Quest', `Program your ${arcadeFace()} through the maze · ${solved} of ${levels} levels`, openCodeQuest],
     ['🔤', 'Daily Word', word.done ? (word.won ? `✅ Solved in ${word.guesses.length}! New word tomorrow.` : '❌ Try again tomorrow!') : 'A new word every day, the same for the whole family', openWordGame],
     ['🃏', 'Memory Match', 'Flip the cards and find the pairs', openMemory],
-    ['🎲', 'Family games', typeof fgMyTurns === 'function' && fgMyTurns() ? `👉 ${fgMyTurns()} game${fgMyTurns() === 1 ? '' : 's'} waiting for your move!` : 'Tic-tac-toe and Connect Four against your family',
+    ['🎲', 'Family games', typeof fgMyTurns === 'function' && fgMyTurns() ? `👉 ${fgMyTurns()} game${fgMyTurns() === 1 ? '' : 's'} waiting for your move!` : 'Tic-tac-toe, Connect Four, Dots and Boxes, Battleship',
      () => { if (typeof openFamilyGames === 'function') openFamilyGames(); }]
   ].forEach(([emoji, name, note, open]) => {
     const card = arcadeAdd(box, 'button', undefined, 'arcadeGame');
@@ -125,7 +125,20 @@ const CODE_LEVELS = [                       // easiest first (fewest blocks need
   ['S.....#', '#####.#', '*.....#', '.######', '......G'],
   ['S.#*...', '..#.##.', '#...#..', '..#.#.#', '*.#...G'],
   ['S#*....', '.#.###.', '.#...#.', '.###.#.', '.....#.', '#*.#...', '..##.#G'],
-  ['S#....', '.#.##.', '.#.*#.', '...##.', '##....', 'G..##*']
+  ['S#....', '.#.##.', '.#.*#.', '...##.', '##....', 'G..##*'],
+  // Levels 13-24: bigger mazes with winding paths (added Nov 2)
+  ['S.#.##.', '*#.....', '.##.##.', '....#..', '.###*.#', '#......', '..#..#G'],
+  ['S#.....#', '.....#.#', '#..##...', '.*..#...', '....#.#.', '#..##*.#', '.#...#.G'],
+  ['S.....#.', '#####.#.', '*.....#.', '.######.', '...*....', '######.#', 'G......*', '#######.'],
+  ['S#*.....', '.#.####.', '.#.#..#.', '.#.#.##.', '.#.#....', '.#.####.', '...#*...', '####.##G'],
+  ['S.#....', '...####', '#..*#.#', '..#...#', '.##.#..', '..##...', '##*..#G'],
+  ['S.#*....', '.##.#.#.', '...#..#.', '##.#.##.', '...#.#..', '.###.#.#', '...*.#..', '##.#...G'],
+  ['S..#*...', '##.#.##.', '...#.#..', '.###.#.#', '.....#..', '####.##.', '*....#..', '.####..G'],
+  ['S.#.....', '..#.###.', '#...#*#.', '.#.##.#.', '......#.', '.####.#.', '.#*...#.', '.#####.G'],
+  ['S.#....*', '#.#.##.#', '..#..#..', '.###.##.', '.*.#....', '##.#.###', '...#.*..', '.#...#.G'],
+  ['S#......', '.#.####.', '.#.#*.#.', '.#.##.#.', '.#....#.', '.######.', '.*......', '######.G'],
+  ['S...#*..', '###.#.#.', '*.#...#.', '.##.###.', '...#....', '.#.#.##.', '.#...#*.', '.####..G'],
+  ['S#....#*', '.#.##.#.', '.#..#...', '.##.####', '..#....*', '#.####.#', '..*.#...', '#.#...#G']
 ];
 
 function codeLevels() {
@@ -233,7 +246,7 @@ function drawCodeLevel(pos, got, bonk) {
   const pad = arcadeAdd(box, 'div', undefined, 'codePad');
   [['up', '⬆️'], ['left', '⬅️'], ['right', '➡️'], ['down', '⬇️']].forEach(([dir, label]) => {
     const b = arcadeAdd(pad, 'button', label, 'codeArrow');
-    b.disabled = codeRun.running || codeRun.program.length >= 20;
+    b.disabled = codeRun.running || codeRun.program.length >= 30;
     b.addEventListener('click', () => { codeRun.program.push({ dir: dir, times: 1 }); drawCodeLevel(); });
   });
   const tools = arcadeAdd(box, 'div', undefined, 'codeTools');

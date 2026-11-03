@@ -4,8 +4,10 @@
 const { test, expect } = require('@playwright/test');
 const { openAppAs, expectNoProblems, PET } = require('./helpers');
 
-const today = () => new Date().toISOString().slice(0, 10);
-const plusDays = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+// Local dates (like the app), not UTC: in the evening in California, UTC is already tomorrow
+const key = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const today = () => key(new Date());
+const plusDays = n => { const d = new Date(); d.setDate(d.getDate() + n); return key(d); };
 
 test('savings goal: milestones celebrate, 100% gives a trophy and stars', async ({ page }) => {
   const errors = await openAppAs(page, 'eagle', {
