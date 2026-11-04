@@ -56,3 +56,18 @@ test('a broken card shows the problem bar but the rest still loads', async ({ pa
   await expect(page.locator('#suppliesCard')).toBeVisible();
   await expect(page.locator('#morning .task').first()).toBeVisible();
 });
+
+// Nov 4: a task list sent from the dashboard replaces the list and can be locked
+test('a task list from the dashboard replaces the list, and a lock stops kid edits', async ({ page }) => {
+  const errors = await openAppAs(page, 'lion', {
+    ...PET, kiddyKatParentInbox: [{ type: 'tasks', list: 'afternoon', items: ['📱 Turn in your phone to Dad', '📚 Do your homework'], lock: true, from: 'Dad', id: 'list-1' }]
+  });
+  await page.evaluate(() => { processParentInbox(); document.getElementById('party').style.display = 'none'; });
+  expect(await page.evaluate(() => tasks.afternoon)).toEqual(['📱 Turn in your phone to Dad', '📚 Do your homework']);
+  await page.click('#myTasksButton');                                  // lions can edit their own lists...
+  expect(await page.locator('#editAfternoon').evaluate(e => e.readOnly)).toBe(true);   // ...but not a locked one
+  expect(await page.locator('#editMorning').evaluate(e => e.readOnly)).toBe(false);
+  await page.evaluate(() => { document.getElementById('editAfternoon').value = 'Nothing!'; saveTasks(); });
+  expect(await page.evaluate(() => tasks.afternoon)).toEqual(['📱 Turn in your phone to Dad', '📚 Do your homework']);
+  await expectNoProblems(page, errors);
+});
