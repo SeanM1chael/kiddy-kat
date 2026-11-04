@@ -47,3 +47,34 @@ test('grown-ups (eagle) do not get Kat Town', async ({ page }) => {
   await openAppAs(page, 'eagle', PET);
   await expect(page.locator('#townButton')).toBeHidden();
 });
+
+// Nov 4: leaving a place went to the app's home page instead of the town map
+test('✖ in a store goes back to the map; ✖ on the map leaves town', async ({ page }) => {
+  await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: { avatar: { skin: 1, hair: 'short', hairColor: 0, outfit: 'tee', color: 0, extra: 'none' } } });
+  await page.click('#townButton');
+  await page.click('.townPlace >> text=Toy Box');
+  await expect(page.locator('#townTitle')).toContainText('Toy Box');
+  await page.click('#town .closeGame');
+  await expect(page.locator('#townTitle')).toContainText('Kat Town');
+  await expect(page.locator('#town')).toBeVisible();
+  await page.click('#town .closeGame');
+  await expect(page.locator('#town')).toBeHidden();
+});
+
+test('Practice and the Arcade opened from town come back to the town map', async ({ page }) => {
+  await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: { avatar: { skin: 1, hair: 'short', hairColor: 0, outfit: 'tee', color: 0, extra: 'none' } } });
+  await page.click('#townButton');
+  await page.click('.townPlace >> text=Arcade');
+  await expect(page.locator('#arcade')).toBeVisible();
+  await page.click('#arcade .closeGame');
+  await expect(page.locator('#town')).toBeVisible();
+  await page.click('.townPlace >> text=Kat Academy');
+  await expect(page.locator('#game')).toBeVisible();
+  await page.click('#game .closeGame');
+  await expect(page.locator('#townTitle')).toContainText('Kat Town');
+  // Opening Practice from the main screen still closes normally
+  await page.click('#town .closeGame');
+  await page.click('text=🎮 Practice');
+  await page.click('#game .closeGame');
+  await expect(page.locator('#town')).toBeHidden();
+});
