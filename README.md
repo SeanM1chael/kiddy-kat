@@ -10,6 +10,7 @@ A family routine app that helps kids own their mornings, after-school time and b
 - **Grows with the kid:** 🐱 kitten (7–9), 🐯 tiger (10–13), 🦁 lion (14–21), 🦅 eagle (grown-ups, career mode)
 - **Motivation:** stars, a pet or project that levels up, morning streaks, a family league and team goal
 - **Learning:** math, spelling (with definitions), grammar, interview prep for grown-ups
+- **🏙️ Kat Town:** kids design a character, walk around a little town and spend stars at made-up stores; their ❤️ wish list shows up on the parent dashboard as gift, reward and dinner ideas
 - **🕹️ Arcade:** Code Quest (beginner coding), Daily Word, Memory Match, and tic-tac-toe / Connect Four against family
 - **Parent dashboard:** messages, special days, a shopping list from the kids' supplies, earn-back goals, reward approvals
 - **Alerts:** morning countdown, bedtime, bill reminders, grocery day, "your turn" in family games

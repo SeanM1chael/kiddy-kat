@@ -57,6 +57,8 @@
     #leaguePanel button { font-size: 14px; padding: 6px 12px; margin: 4px 4px 0 0; }
     .leagueCols { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 8px; }
     .leagueCols > div { background: #fff9db; border-radius: 12px; padding: 8px 10px; font-size: 14px; }
+    .wishKind { font-weight: bold; font-size: 14px; margin: 6px 0 2px; color: #495057; }
+    .wishItem { font-size: 15px; padding: 2px 0 2px 8px; }
     #sendPanel { background: white; border-radius: 20px; padding: 16px; margin-bottom: 14px; }
     #sendPanel h3 { margin: 0 0 4px; }
     #sendPanel h4 { margin: 10px 0 4px; }
@@ -763,6 +765,22 @@
         const face = (PET_STAGES[pet.type] || PET_STAGES.kitten)[stage];
         row(petBox, `${face} ${pet.name}`, `${pet.stars || 0} ⭐`);
         if (pets.length > 1) row(petBox, 'Pet House', `${pets.length} pets`);
+      }
+
+      // 💝 Wish list and Kat Town purchases: ideas for gifts, rewards and dinners
+      const town = read(data, 'kiddyKatTown', null);
+      if (town && ((town.wishes || []).length || (town.bought || []).length)) {
+        const wishBox = section('💝 Wish list');
+        const kinds = [['clothes', '👕 Clothes'], ['food', '🍔 Food ideas'], ['toys', '🧸 Toys'], ['other', '⭐ Their own ideas']];
+        kinds.forEach(([kind, label]) => {
+          const list = (town.wishes || []).filter(w => (w.kind || 'other') === kind);
+          if (!list.length) return;
+          add(wishBox, 'div', label, 'wishKind');
+          list.slice().reverse().forEach(w => add(wishBox, 'div', `${w.emoji || '⭐'} ${w.name}${w.note ? ` · "${w.note}"` : ''}`, 'wishItem'));
+        });
+        if (!(town.wishes || []).length) add(wishBox, 'div', 'Nothing wished for yet.', 'giftList');
+        const bought = (town.bought || []).slice(-5).reverse();
+        if (bought.length) add(wishBox, 'div', `🛍️ Bought in Kat Town: ${bought.map(b => `${b.emoji} ${b.name}`).join(', ')}`, 'giftList');
       }
 
       // Wallet
