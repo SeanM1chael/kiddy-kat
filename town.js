@@ -41,6 +41,8 @@ const TOWN_PLACES = [
 
 let townSpot = 'park';                 // where the character is standing
 let townCreating = null;               // the character being edited
+let townView = 'map';                  // which screen is showing: map, store, home, creator
+let townReturn = false;                // true while Practice or the Arcade was opened from town
 
 function townAllowed() { return typeof animal !== 'undefined' && animal && animal.theme !== 'eagle'; }
 
@@ -149,9 +151,31 @@ function openTown() {
   showTownMap();
 }
 
+// ✖ goes back one step: from a store, My House or My look back to the map; from the map, out of town
 function closeTown() {
+  if (townView !== 'map' && loadTown().avatar) { showTownMap(); return; }
+  leaveTown();
+}
+
+function leaveTown() {
   document.getElementById('town').style.display = 'none';
   showTownButton();
+}
+
+// Practice and the Arcade opened from town come back to the town map when closed
+function townComeBack() {
+  if (!townReturn) return;
+  townReturn = false;
+  document.getElementById('town').style.display = 'block';
+  showTownMap();
+}
+if (typeof closeGame === 'function') {
+  const closeGameBefore = closeGame;
+  closeGame = function () { closeGameBefore(); townComeBack(); };     // eslint-disable-line no-global-assign
+}
+if (typeof closeArcade === 'function') {
+  const closeArcadeBefore = closeArcade;
+  closeArcade = function () { closeArcadeBefore(); townComeBack(); };   // eslint-disable-line no-global-assign
 }
 
 function showTownButton() {
@@ -161,6 +185,7 @@ function showTownButton() {
 
 // ---------- 🎨 Character creator ----------
 function showTownCreator(first) {
+  townView = 'creator';
   const box = townBody(first ? '🎨 Make your character' : '🎨 My look');
   const t = loadTown();
   const a = townCreating;
@@ -204,6 +229,7 @@ function showTownCreator(first) {
 
 // ---------- 🗺️ The town map ----------
 function showTownMap() {
+  townView = 'map';
   const t = loadTown();
   const box = townBody('🏙️ Kat Town');
   townAdd(box, 'div', `⭐ ${townStars()} stars to spend · tap a place to walk there`, 'arcadeHint');
@@ -243,8 +269,8 @@ function townWalkTo(id, x, y) {
 function townEnter(id) {
   if (document.getElementById('town').style.display !== 'block') return;
   if (id === 'home') { showTownHome(); return; }
-  if (id === 'school') { closeTown(); if (typeof openPractice === 'function') openPractice(); return; }
-  if (id === 'arcade') { closeTown(); if (typeof openArcade === 'function') openArcade(); return; }
+  if (id === 'school') { leaveTown(); townReturn = true; if (typeof openPractice === 'function') openPractice(); return; }
+  if (id === 'arcade') { leaveTown(); townReturn = true; if (typeof openArcade === 'function') openArcade(); return; }
   showTownStore(id);
 }
 
@@ -252,6 +278,7 @@ function townEnter(id) {
 function showTownStore(id, message) {
   const store = TOWN_STORES[id];
   const t = loadTown();
+  townView = 'store';
   const box = townBody(`${store.emoji} ${store.name}`);
   townAdd(box, 'button', '← Town', 'arcadeBack').addEventListener('click', showTownMap);
   townAdd(box, 'div', store.hello, 'arcadeHint');
@@ -313,6 +340,7 @@ function townWish(storeId, itemId) {
 // ---------- 🏠 My House: my look, my stuff, my wish list ----------
 function showTownHome(message) {
   const t = loadTown();
+  townView = 'home';
   const box = townBody('🏠 My House');
   townAdd(box, 'button', '← Town', 'arcadeBack').addEventListener('click', showTownMap);
   const stage = townAdd(box, 'div', undefined, 'townStage');
