@@ -263,6 +263,9 @@ function processParentInbox() {
       messages.push(`💬 ${d.from || parentName()}: ${d.text}`);
     } else if (d.type === 'bought' && typeof receiveBought === 'function') {
       messages.push(receiveBought(d));                           // 🛒 a supply item was bought
+    } else if (d.type === 'tasks' && typeof receiveTasks === 'function') {
+      const said = receiveTasks(d);                              // 📋 a task list from the dashboard
+      if (said) messages.push(said);
     } else if (d.type === 'earnback' && typeof receiveEarnback === 'function') {
       const said = receiveEarnback(d);                           // 🎯 earn-back goal (earnback.js)
       if (said) messages.push(said);

@@ -79,6 +79,8 @@
     .groceryDay { margin-top: 12px; padding-top: 10px; border-top: 1px solid #f1f3f5; }
     .groceryRow { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
     .groceryRow select, .groceryRow input { font-size: 16px; padding: 6px 8px; border-radius: 10px; border: 2px solid #dee2e6; }
+    #sendPanel label.wrapLabel { display: block; white-space: normal; margin: 6px 0; }
+    #sendPanel textarea.taskPaste { font-family: inherit; width: 100%; box-sizing: border-box; font-size: 15px; padding: 8px; border: 2px solid #ffd8a8; border-radius: 10px; margin: 4px 0; }
     #sendPanel select { font-size: 15px; padding: 6px; border: 2px solid #ffd8a8; border-radius: 10px; margin: 4px 0; }
     #fans { background: white; border-radius: 20px; padding: 16px; margin-bottom: 14px; }
     #fans h3 { margin: 0 0 8px; }
@@ -326,6 +328,48 @@
       });
     }
 
+    // 📋 Send a task list: paste one task per line, replace that list on the kids' phones
+    function addTaskListBox(box, kids, add) {
+      add(box, 'h4', '📋 Send a task list');
+      add(box, 'div', 'Paste one task per line (emoji welcome). It replaces that list on the phones you pick.', 'pushNote');
+      const slot = add(box, 'select');
+      [['afternoon', '🎒 After School'], ['morning', '☀️ Morning'], ['bedtime', '🌙 Bedtime'],
+       ['wkMorning', '☀️ Weekend morning'], ['wkAfternoon', '🌤️ Weekend afternoon'], ['wkBedtime', '🌙 No-school bedtime (Fri & Sat)']]
+        .forEach(([v, l]) => slot.add(new Option(l, v)));
+      const text = add(box, 'textarea', undefined, 'taskPaste');
+      text.rows = 8;
+      text.placeholder = '📱 Turn in your phone to Dad\n📚 Do your homework\n🏃 Run around the park 5 times';
+      const who = add(box, 'div');
+      const checks = kids.map(kid => {
+        const label = add(who, 'label');
+        const c = add(label, 'input'); c.type = 'checkbox'; c.checked = false; c.value = kid.nickname;
+        label.append(' ' + kid.nickname);
+        return c;
+      });
+      const lockLabel = add(box, 'label', undefined, 'wrapLabel');
+      const lock = add(lockLabel, 'input'); lock.type = 'checkbox'; lock.checked = true;
+      lockLabel.append(' 🔒 Lock it (kids can\'t change it without the parent PIN)');
+      const send = add(box, 'button', '📋 Send list');
+      const note = add(box, 'div', '', 'pushNote');
+      send.addEventListener('click', async () => {
+        const picked = checks.filter(c => c.checked).map(c => c.value);
+        const items = text.value.split('\n').map(t => t.trim()).filter(Boolean);
+        if (!items.length) { note.textContent = 'Paste at least one task.'; return; }
+        if (!picked.length) { note.textContent = 'Pick at least one kid.'; return; }
+        const label = slot.options[slot.selectedIndex].text;
+        if (!confirm(`Replace the ${label} list for ${picked.join(', ')} with these ${items.length} tasks?`)) return;
+        const token = sessionStorage.getItem('kiddyKatDashToken');
+        let from = 'Dad';
+        try { from = localStorage.getItem('kiddyKatDashFrom') || 'Dad'; } catch (err) {}
+        note.textContent = '⏳ Sending...';
+        const r = await cloudCall('parent_set_tasks', { p_token: token, p_nicknames: picked, p_list: slot.value,
+                                                        p_items: items, p_lock: lock.checked, p_from: from });
+        if (!r.ok) { note.textContent = '⚠️ ' + r.error; return; }
+        picked.forEach(n => pushSend(token, 'note', `📋 New ${label.replace(/^\S+\s/, '')} list: ${items.length} tasks`, n));
+        note.textContent = `✅ Sent to ${picked.join(', ')}. It replaces the list when their app opens.`;
+      });
+    }
+
     // 🎯 Earn-back goal: "Earn 50 ⭐ to get Roblox for 1 hour"
     function addEarnbackBox(box, kids, add) {
       add(box, 'h4', '🎯 Earn-back goal');
@@ -435,6 +479,7 @@
       add(box, 'h3', '📣 Send to the kids');
       addMessageBox(box, kids, add);
       addEarnbackBox(box, kids, add);
+      addTaskListBox(box, kids, add);
       add(box, 'h4', '📅 Special day');
       add(box, 'div', 'Dress-up day, picture day, a field trip. It shows on their blue card that day, with a heads-up the afternoon before.', 'pushNote');
       const date = add(box, 'input'); date.type = 'date'; date.min = localDateKey(new Date());

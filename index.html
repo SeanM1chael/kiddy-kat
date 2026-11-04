@@ -258,6 +258,7 @@
     .townWishRemove { grid-column: 2; grid-row: 1 / span 2; border: none; background: #f1f3f5; border-radius: 8px; padding: 6px 10px; }
     .townWishAdd { display: flex; gap: 6px; max-width: 420px; margin: 8px auto; }
     .townWishAdd input { flex: 1; font-size: 15px; padding: 8px; border: 2px solid var(--soft); border-radius: 10px; }
+    textarea.lockedList { background: #f1f3f5; color: #495057; }
     #party { z-index: 20; }   /* the dancing screen shows on top of the shop */
 
     /* Challenge of the Day: a pretend live stream */
@@ -914,7 +915,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
 
   <!-- Problem reporter: if any file or step fails, show which one at the bottom of the screen (for testing) -->
   <script>
-    const APP_VERSION = '2026-11-04b';      // bump with the ?v= numbers below
+    const APP_VERSION = '2026-11-04c';      // bump with the ?v= numbers below
     function kkReport(where, message) {
       try { localStorage.setItem('kkLastError', new Date().toLocaleString() + ' · ' + where + ': ' + message); } catch (err) {}
       let bar = document.getElementById('kkError');
@@ -934,31 +935,31 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     window.addEventListener('unhandledrejection', e => kkReport('a background step', (e.reason && e.reason.message) || String(e.reason)));
   </script>
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-11-04b"></script>
-  <script src="push.js?v=2026-11-04b"></script>
-  <script src="sync.js?v=2026-11-04b"></script>
-  <script src="daily.js?v=2026-11-04b"></script>
-  <script src="pet.js?v=2026-11-04b"></script>
-  <script src="stickers.js?v=2026-11-04b"></script>
-  <script src="games.js?v=2026-11-04b"></script>
-  <script src="challenge.js?v=2026-11-04b"></script>
-  <script src="rewards.js?v=2026-11-04b"></script>
-  <script src="wallet.js?v=2026-11-04b"></script>
-  <script src="catchup.js?v=2026-11-04b"></script>
-  <script src="packs.js?v=2026-11-04b"></script>
-  <script src="league.js?v=2026-11-04b"></script>
-  <script src="uploads.js?v=2026-11-04b"></script>
-  <script src="weekend.js?v=2026-11-04b"></script>
-  <script src="streak.js?v=2026-11-04b"></script>
-  <script src="supplies.js?v=2026-11-04b"></script>
-  <script src="career.js?v=2026-11-04b"></script>
-  <script src="bills.js?v=2026-11-04b"></script>
-  <script src="money.js?v=2026-11-04b"></script>
-  <script src="arcade.js?v=2026-11-04b"></script>
-  <script src="earnback.js?v=2026-11-04b"></script>
-  <script src="familygames.js?v=2026-11-04b"></script>
-  <script src="town.js?v=2026-11-04b"></script>
-  <script src="tour.js?v=2026-11-04b"></script>
+  <script src="config.js?v=2026-11-04c"></script>
+  <script src="push.js?v=2026-11-04c"></script>
+  <script src="sync.js?v=2026-11-04c"></script>
+  <script src="daily.js?v=2026-11-04c"></script>
+  <script src="pet.js?v=2026-11-04c"></script>
+  <script src="stickers.js?v=2026-11-04c"></script>
+  <script src="games.js?v=2026-11-04c"></script>
+  <script src="challenge.js?v=2026-11-04c"></script>
+  <script src="rewards.js?v=2026-11-04c"></script>
+  <script src="wallet.js?v=2026-11-04c"></script>
+  <script src="catchup.js?v=2026-11-04c"></script>
+  <script src="packs.js?v=2026-11-04c"></script>
+  <script src="league.js?v=2026-11-04c"></script>
+  <script src="uploads.js?v=2026-11-04c"></script>
+  <script src="weekend.js?v=2026-11-04c"></script>
+  <script src="streak.js?v=2026-11-04c"></script>
+  <script src="supplies.js?v=2026-11-04c"></script>
+  <script src="career.js?v=2026-11-04c"></script>
+  <script src="bills.js?v=2026-11-04c"></script>
+  <script src="money.js?v=2026-11-04c"></script>
+  <script src="arcade.js?v=2026-11-04c"></script>
+  <script src="earnback.js?v=2026-11-04c"></script>
+  <script src="familygames.js?v=2026-11-04c"></script>
+  <script src="town.js?v=2026-11-04c"></script>
+  <script src="tour.js?v=2026-11-04c"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -1191,6 +1192,8 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     }
 
     function saveTasks() {
+      const before = tasks;
+      const keepLocked = !grownUpEditing() ? lockedLists() : [];
       tasks = {
         morning: linesOf('editMorning'),
         afternoon: linesOf('editAfternoon'),
@@ -1201,6 +1204,11 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
           bedtime: linesOf('editWkBedtime')
         }
       };
+      // A kid can't change a locked list: put the grown-up's version back
+      keepLocked.forEach(slot => {
+        if (slot.startsWith('wk')) { const k = slot.slice(2).toLowerCase(); tasks.weekend[k] = ((before && before.weekend) || weekendTasks())[k] || []; }
+        else tasks[slot] = (before && before[slot]) || [];
+      });
       localStorage.setItem('kiddyKatTasks', JSON.stringify(tasks));
       localStorage.removeItem('kiddyKatChecklist');   // lists changed, so start today's checkmarks fresh
       showTasks();
@@ -1274,9 +1282,53 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       box.scrollIntoView({ behavior: 'smooth' });
     }
 
+    // 📋 Lists sent from the dashboard can be locked: kids can't change them without the parent PIN
+    const TASK_SLOTS = { morning: 'editMorning', afternoon: 'editAfternoon', bedtime: 'editBedtime',
+                         wkMorning: 'editWkMorning', wkAfternoon: 'editWkAfternoon', wkBedtime: 'editWkBedtime' };
+    const TASK_SLOT_NAMES = { morning: 'Morning', afternoon: 'After School', bedtime: 'Bedtime',
+                              wkMorning: 'Weekend morning', wkAfternoon: 'Weekend afternoon', wkBedtime: 'No-school bedtime' };
+    function lockedLists() {
+      try { const l = JSON.parse(localStorage.getItem('kiddyKatTasksLocked') || '[]'); return Array.isArray(l) ? l : []; } catch (err) { return []; }
+    }
+    function grownUpEditing() { return document.getElementById('settings').style.display === 'block'; }
+
+    // Called by sync.js when the dashboard sends a list
+    function receiveTasks(d) {
+      const slot = d.list;
+      const items = (Array.isArray(d.items) ? d.items : []).map(t => String(t).slice(0, 80)).filter(Boolean).slice(0, 20);
+      if (!TASK_SLOTS[slot] || !items.length) return '';
+      const next = JSON.parse(JSON.stringify(tasks || DEFAULT_TASKS[animal.theme]));
+      if (slot.startsWith('wk')) {
+        next.weekend = next.weekend || JSON.parse(JSON.stringify(weekendTasks()));
+        next.weekend[slot.slice(2).toLowerCase()] = items;
+      } else {
+        next[slot] = items;
+      }
+      tasks = next;
+      localStorage.setItem('kiddyKatTasks', JSON.stringify(tasks));
+      localStorage.removeItem('kiddyKatChecklist');
+      const locked = lockedLists().filter(l => l !== slot);
+      if (d.lock !== false) locked.push(slot);
+      localStorage.setItem('kiddyKatTasksLocked', JSON.stringify(locked));
+      showTasks();
+      showTaskEditor();
+      return `📋 ${d.from || parentName()} updated your ${TASK_SLOT_NAMES[slot]} list (${items.length} tasks).`;
+    }
+
     function openTaskEditor() {
       showTaskEditor();
       document.getElementById('taskStatus').textContent = '';
+      // Locked lists: read-only for kids, editable by a grown-up in Grown-ups
+      const grownUp = grownUpEditing();
+      const locked = lockedLists();
+      Object.entries(TASK_SLOTS).forEach(([slot, id]) => {
+        const box = document.getElementById(id);
+        const lock = !grownUp && locked.includes(slot);
+        box.readOnly = lock;
+        box.classList.toggle('lockedList', lock);
+        box.title = lock ? `🔒 Set by ${parentName()}` : '';
+      });
+      if (!grownUp && locked.length) document.getElementById('taskStatus').textContent = `🔒 Lists set by ${parentName()} can't be changed here.`;
       const box = document.getElementById('taskEditor');
       box.style.display = 'block';
       box.scrollIntoView({ behavior: 'smooth' });
