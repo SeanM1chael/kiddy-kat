@@ -40,10 +40,18 @@ const TOWN_PLACES = [
   ['home', '🏠', 'My House', 'Home', 1, 1], ['closet', '👕', 'Kat Closet', 'Closet', 4, 1], ['burger', '🍔', 'Paw Burger', 'Burger', 6, 2],
   ['school', '🏫', 'Kat Academy', 'School', 1, 6], ['arcade', '🕹️', 'Arcade', 'Arcade', 4, 6], ['toys', '🧸', 'Toy Box', 'Toys', 6, 7],
   ['bank', '🏦', 'Kat Bank', 'Bank', 1, 3], ['kitchen', '🍳', 'Kat Kitchen', 'Kitchen', 5, 3],
-  ['safety', '🛡️', 'Safety HQ', 'Safety', 5, 8]
+  ['safety', '🛡️', 'Safety HQ', 'Safety', 5, 8], ['hall', '🏛️', 'Town Hall', 'Town Hall', 2, 3]
 ];
 function townIsRoad(c, r) { return c === TOWN_ROAD_COL || r === TOWN_ROAD_ROW; }
 function townPlaceAt(c, r) { return TOWN_PLACES.find(p => p[4] === c && p[5] === r); }
+// The first empty lot (not a road, a place, or something built), or null if the town is full
+function townFreeLot(t) {
+  for (let r = 0; r < TOWN_ROWS; r++) for (let c = 0; c < TOWN_COLS; c++) {
+    const lot = c + ',' + r;
+    if (!townPlaceAt(c, r) && !townIsRoad(c, r) && !t.built.some(b => b.lot === lot)) return lot;
+  }
+  return null;
+}
 
 let townSpot = [TOWN_ROAD_COL, TOWN_ROAD_ROW];   // the tile the character is standing on
 let townBuilding = false;              // 🔨 build mode on?
@@ -204,11 +212,13 @@ function openTown() {
   const t = loadTown();
   if (!t.avatar) { townCreating = townDefaultAvatar(); showTownCreator(true); return; }
   showTownMap();
+  if (typeof hallSyncQuiet === 'function') hallSyncQuiet();     // 🏛️ build any new family-vote winners
 }
 
 // ✖ goes back one step: from a store, My House or My look back to the map; from the map, out of town
 function closeTown() {
   if (String(townView).startsWith('bank:')) { showTownBank(); return; }
+  if (String(townView).startsWith('hall:')) { showTownHall(); return; }
   if (String(townView).startsWith('kitchen:')) { showTownKitchen(); return; }
   if (String(townView).startsWith('safety:')) { showTownSafety(); return; }
   if (String(townView).startsWith('toy:')) { if (typeof toyStop === 'function') toyStop(); showTownHome(); return; }
@@ -384,6 +394,11 @@ function townEnter(id) {
   if (id === 'home') { showTownHome(); return; }
   if (id === 'school') { leaveTown(); townReturn = true; if (typeof openPractice === 'function') openPractice(); return; }
   if (id === 'arcade') { leaveTown(); townReturn = true; if (typeof openArcade === 'function') openArcade(); return; }
+  if (id === 'hall') {
+    if (typeof showTownHall === 'function') showTownHall();
+    else showTownMap('🏛️ Town Hall is opening soon! Close the app all the way and open it again to finish updating.');
+    return;
+  }
   if (id === 'safety') {
     if (typeof showTownSafety === 'function') showTownSafety();
     else showTownMap('🛡️ Safety HQ is opening soon! Close the app all the way and open it again to finish updating.');
@@ -720,6 +735,11 @@ const TOWN_LEVELS = [[0, '🏕️', 'Tiny Town'], [5, '🏘️', 'Village'], [12
 
 function townBuildItem(id) {
   for (const cat of Object.values(TOWN_BUILDS)) { const it = cat.items.find(i => i[0] === id); if (it) return it; }
+  // 🏛️ Built by a family vote (hall.js): 'c-park', 'c-library'...
+  if (String(id).startsWith('c-') && typeof HALL_PROJECTS !== 'undefined' && HALL_PROJECTS[id.slice(2)]) {
+    const [emoji, name, , line] = HALL_PROJECTS[id.slice(2)];
+    return [id, emoji, name, 0, ['bounce', line]];
+  }
   return null;
 }
 
@@ -808,6 +828,10 @@ function townTapBuilt(lot, c, r) {
       const say = b.id === 'sign' ? `🪧 "${b.name}"` : b.id === 'shop' ? `Welcome to ${b.name}! 🛍️` : b.id === 'house' ? `🏡 ${b.name}'s house. Knock knock!` : line;
       townPop(emoji, say || name, [['😄 Cool!', null]], 'townPlay-' + anim);
     });
+    return;
+  }
+  if (b.community) {
+    townPop(emoji, `🏛️ Your family voted for the ${name}. It belongs to everyone, so it stays right here!`, [['👍 OK', null]], 'townBounceIn');
     return;
   }
   const buttons = [['🚚 Move', () => { townPick = { move: lot }; showTownMap(); }]];

@@ -95,3 +95,31 @@ test('a newer version on GitHub shows the update banner; the same version does n
   expect(await page.evaluate(() => checkForUpdate(true))).toBe(null);
   await expectNoProblems(page, errors);
 });
+
+// Nov 5 privacy review: the settings PIN was copied online as typed, and the birth year went online too
+test('privacy: the grown-up PIN, real name and birth year never go online', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatParentPin: '4821' });
+  const sent = await page.evaluate(() => cloudCollect());
+  expect(sent.kiddyKatParentPin).toBeUndefined();
+  expect(JSON.stringify(sent)).not.toContain('4821');
+  const profile = JSON.parse(sent.kiddyKatProfile);
+  expect(profile.name).toBeUndefined();
+  expect(profile.birthYear).toBeUndefined();
+  expect(profile.ageGroup).toBe('tiger');
+  await expectNoProblems(page, errors);
+});
+
+test('loading from online keeps this phone\'s PIN and birth year; a new phone gets an age from the group', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatParentPin: '4821' });
+  const year = new Date().getFullYear();
+  const mine = await page.evaluate(() => JSON.parse(localStorage.getItem('kiddyKatProfile')).birthYear);
+  await page.evaluate(() => cloudApply({ kiddyKatProfile: JSON.stringify({ ageGroup: 'tiger', nicknames: ['PJ Flash'] }) }));
+  expect(await page.evaluate(() => localStorage.getItem('kiddyKatParentPin'))).toBe('4821');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kiddyKatProfile')).birthYear)).toBe(mine);
+  // A brand-new phone (no profile yet)
+  await page.evaluate(() => { localStorage.removeItem('kiddyKatProfile'); cloudApply({ kiddyKatProfile: JSON.stringify({ ageGroup: 'lion', nicknames: ['Lele'] }) }); });
+  const fresh = await page.evaluate(() => JSON.parse(localStorage.getItem('kiddyKatProfile')));
+  expect(fresh.birthYear).toBe(year - 16);
+  expect(await page.evaluate(b => animalFor(new Date().getFullYear() - b).theme, fresh.birthYear)).toBe('lion');
+  await expectNoProblems(page, errors);
+});

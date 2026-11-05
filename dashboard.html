@@ -871,7 +871,8 @@
           const LESSON_NAMES = { coins: 'counting coins', needs: 'needs vs. wants', deal: 'finding the better deal', interest: 'interest math',
                                  paycheck: 'reading a paycheck', budget: '50/30/20 budget', goal: 'setting a savings goal' };
           const SAFETY_NAMES = { 'safety-safeornot': 'safe or not safe', 'safety-whatif': 'safety choices', 'safety-scam': 'spotting scams',
-                                 'safety-password': 'strong passwords', 'safety-footprint': 'online privacy' };
+                                 'safety-password': 'strong passwords', 'safety-footprint': 'online privacy',
+                                 vote: 'voting in the family election', 'hall-helpers': 'community helpers', 'hall-mayor': 'balancing a town budget', 'hall-taxes': 'how taxes work' };
           const actName = a => LESSON_NAMES[a] || SAFETY_NAMES[a] || (String(a).startsWith('cook-') ? 'cooking ' + a.slice(5) : String(a).startsWith('shop-') ? 'grocery budget' : a);
           const acts = [...new Set(recent.map(x => actName(x.act)))];
           row(townBox, '📚 Life skills this week', `${recent.length}× ${acts.join(', ')}`);
