@@ -10,7 +10,7 @@ test('first visit: make a character, then the town map shows', async ({ page }) 
   await expect(page.locator('#townTitle')).toContainText('Make your character');
   await page.click('.townChoice >> text=Curly');
   await page.click('text=✅ Done! Go to town');
-  await expect(page.locator('.townTile.place')).toHaveCount(6);
+  await expect(page.locator('.townTile.place')).toHaveCount(7);
   expect(await page.evaluate(() => loadTown().avatar.hair)).toBe('curly');
   await expectNoProblems(page, errors);
 });
@@ -447,4 +447,121 @@ test('toy games you can lose say try again', async ({ page }) => {
   await page.click('.townPop >> text=🏠 My House');
   await page.evaluate(() => openToy('game'));
   expect(await page.evaluate(() => [toyBoardMove(0, 3), toyBoardMove(4, 2), toyBoardMove(13, 6)])).toEqual([8, 2, 15]);
+});
+
+// Nov 5: 🏦 Kat Bank — a learning concept behind every action
+test('Kat Bank: saving moves stars out of the wallet, and saved stars are safe from shopping', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await page.click('[data-place=bank]');
+  await expect(page.locator('#townTitle')).toContainText('Kat Bank', { timeout: 5000 });
+  await page.click('text=➕ Save 10');
+  await page.click('text=➕ Save 5');
+  expect(await page.evaluate(() => [pet.stars, loadTown().bank.saved])).toEqual([15, 15]);
+  await expect(page.locator('.bankSaved')).toHaveText('15 ⭐');
+  await page.click('text=➖ Take out 1');
+  expect(await page.evaluate(() => [pet.stars, loadTown().bank.saved])).toEqual([16, 14]);
+  // Savings goal
+  await page.fill('.bankGoalInput', 'Real sneakers');
+  await page.fill('.bankGoalStars', '40');
+  await page.click('text=🎯 Set');
+  await expect(page.locator('.bankGoalName')).toContainText('Real sneakers: 14 of 40');
+  await expectNoProblems(page, errors);
+});
+
+test('Kat Bank interest: paid on Monday on the stars that stayed saved all week', async ({ page }) => {
+  // Last week: 50 saved, and it never dropped below 40
+  await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: { ...AVATAR, bank: { saved: 50, low: 40, week: '2020-01-06', history: [] } } });
+  await page.click('#townButton');
+  await page.click('[data-place=bank]');
+  await expect(page.locator('.townPopSay')).toContainText('paid you 4 ⭐', { timeout: 5000 });
+  const bank = await page.evaluate(() => loadTown().bank);
+  expect(bank.saved).toBe(54);
+  expect(bank.low).toBe(54);
+  // Opening again the same week doesn't pay twice
+  await page.click('.townPop >> text=🤑 Yay!');
+  await page.evaluate(() => showTownBank());
+  expect(await page.evaluate(() => loadTown().bank.saved)).toBe(54);
+  // A deposit this week doesn't count toward next interest until it stays a full week
+  await page.click('text=➕ Save 10');
+  expect(await page.evaluate(() => loadTown().bank.low)).toBe(54);
+  // Taking stars out lowers it
+  await page.evaluate(() => bankWithdraw(30));
+  expect(await page.evaluate(() => loadTown().bank.low)).toBe(34);
+});
+
+test('Kat Bank lessons match the age, and a win gives +1 ⭐ once a day', async ({ page }) => {
+  const errors = await openAppAs(page, 'kitten', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await page.evaluate(() => showTownBank());
+  await expect(page.locator('.bankLesson')).toHaveText(['🪙 Coin counter', '🛒 Needs or wants?']);
+  // 🪙 Coins: make each amount, biggest coins first
+  await page.click('.bankLesson >> text=Coin counter');
+  for (let round = 0; round < 3; round++) {
+    let left = await page.evaluate(() => bankCoinTarget());
+    for (const c of [25, 10, 5, 1]) while (left >= c) { await page.click(`.bankCoin[data-cents="${c}"]`); left -= c; }
+    await page.waitForTimeout(800);
+  }
+  await expect(page.locator('.townPopSay')).toContainText('+1 ⭐');
+  await expect(page.locator('.townPopSay')).toContainText('💡');
+  expect(await page.evaluate(() => pet.stars)).toBe(31);
+  await page.click('.townPop >> text=🏦 Kat Bank');
+  // 🛒 Needs or wants: answer all 8
+  await page.click('.bankLesson >> text=Needs or wants');
+  for (let i = 0; i < 8; i++) {
+    const a = await page.evaluate(() => bankRoundAnswer());
+    await page.click(`.bankOption[data-i="${a}"]`);
+    await page.click('.bankNext');
+  }
+  await expect(page.locator('.townPopSay')).toContainText('8 of 8');
+  expect(await page.evaluate(() => pet.stars)).toBe(32);
+  expect(await page.evaluate(() => loadTown().skills.map(s => s.act))).toEqual(['coins', 'needs']);
+  await expectNoProblems(page, errors);
+});
+
+test('Lele gets the grown-up money lessons: paycheck with taxes, and 50/30/20', async ({ page }) => {
+  const errors = await openAppAs(page, 'lion', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await page.evaluate(() => showTownBank());
+  await expect(page.locator('.bankLesson')).toHaveText(['🛒 Needs or wants?', '🏷️ The better deal', '💵 My first paycheck', '📊 Budget 50/30/20']);
+  await page.click('.bankLesson >> text=My first paycheck');
+  await expect(page.locator('.bankStub')).toContainText('Social Security (6.2%)');
+  for (let i = 0; i < 3; i++) {
+    // The right answer is the net pay: gross minus 20.65% in taxes
+    const [opts, a] = await page.evaluate(() => [[...document.querySelectorAll('.bankOption')].map(b => b.textContent), bankRoundAnswer()]);
+    const gross = Number((await page.locator('.bankStubGross').textContent()).replace(/[^0-9.]/g, ''));
+    expect(Number(opts[a].replace('$', ''))).toBeCloseTo(gross * (1 - 0.2065), 1);
+    await page.click(`.bankOption[data-i="${a}"]`);
+    await page.click('.bankNext');
+  }
+  await expect(page.locator('.townPopSay')).toContainText('pay stub');
+  await page.click('.townPop >> text=🏦 Kat Bank');
+  await page.click('.bankLesson >> text=Budget');
+  for (let i = 0; i < 8; i++) { await page.click(`.bankOption[data-i="${await page.evaluate(() => bankRoundAnswer())}"]`); await page.click('.bankNext'); }
+  await expect(page.locator('.townPopSay')).toContainText('50/30/20');
+  await expectNoProblems(page, errors);
+});
+
+test('the better deal and interest math always have one right answer', async ({ page }) => {
+  await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  for (let run = 0; run < 5; run++) {
+    for (const id of ['deal', 'interest']) {
+      await page.evaluate(i => openBankLesson(i), id);
+      const ok = await page.evaluate(() => {
+        const opts = [...document.querySelectorAll('.bankOption')].map(b => b.textContent);
+        return new Set(opts).size === opts.length && bankRoundAnswer() >= 0;
+      });
+      expect(ok).toBe(true);
+    }
+  }
+});
+
+test('something built where Kat Bank now stands moves to a free lot', async ({ page }) => {
+  await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: { ...AVATAR, built: [{ lot: '1,3', id: 'pool', name: '' }] } });
+  const lot = await page.evaluate(() => loadTown().built[0].lot);
+  expect(lot).not.toBe('1,3');
+  await page.click('#townButton');
+  await expect(page.locator('[data-place=bank]')).toBeVisible();
+  await expect(page.locator(`.townTile[data-lot="${lot}"]`)).toContainText('🏊');
 });

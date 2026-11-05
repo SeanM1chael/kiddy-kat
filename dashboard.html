@@ -863,6 +863,16 @@
         const spentToday = town.spent && town.spent.date === today ? town.spent.stars : 0;
         const limit = typeof town.limit === 'number' ? town.limit : 25;
         row(townBox, 'Spent in town today', `${spentToday} of ${limit} ⭐`);
+        if (town.bank) row(townBox, '🐷 Savings jar', `${town.bank.saved || 0} ⭐` + (town.bank.goal ? ` (goal: ${town.bank.goal.name}, ${town.bank.goal.stars} ⭐)` : ''));
+        // 📚 Life skills practiced this week
+        const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+        const recent = (town.skills || []).filter(x => x.at >= weekAgo);
+        if (recent.length) {
+          const LESSON_NAMES = { coins: 'counting coins', needs: 'needs vs. wants', deal: 'finding the better deal', interest: 'interest math',
+                                 paycheck: 'reading a paycheck', budget: '50/30/20 budget', goal: 'setting a savings goal' };
+          const acts = [...new Set(recent.map(x => LESSON_NAMES[x.act] || x.act))];
+          row(townBox, '📚 Life skills this week', `${recent.length}× ${acts.join(', ')}`);
+        }
         // Change the daily Kat Town spending limit
         const limitRow = add(townBox, 'div', undefined, 'groceryRow');
         add(limitRow, 'span', 'Daily limit');
