@@ -248,6 +248,11 @@ function showTownMap(message) {
   const bar = townAdd(box, 'div', undefined, 'codeTools');
   const toggle = townAdd(bar, 'button', townBuilding ? '✅ Done building' : '🔨 Build', townBuilding ? 'arcadeGo' : 'arcadeGo townBuildBtn');
   toggle.addEventListener('click', () => { townBuilding = !townBuilding; townPick = null; showTownMap(); });
+  if (!townBuilding) {
+    const jobs = townJobs(t);
+    const jb = townAdd(bar, 'button', jobs.ready.length ? `💼 Jobs (${jobs.ready.length} ready!)` : '💼 Jobs', 'arcadeGo townJobsBtn' + (jobs.ready.length ? ' ready' : ''));
+    jb.addEventListener('click', showTownJobs);
+  }
   if (message) townAdd(box, 'div', message, 'arcadeMessage');
 
   const map = townAdd(box, 'div', undefined, 'townMap' + (townBuilding ? ' building' : ''));
@@ -285,7 +290,7 @@ function showTownMap(message) {
       }
     }
   }
-  t.built.forEach(b => { delete b.fresh; });
+  if (t.built.some(b => b.fresh)) { t.built.forEach(b => { delete b.fresh; }); saveTown(t); }
   const me = townAdd(map, 'div', undefined, 'townMe');
   me.appendChild(townAvatarSvg(t.avatar || townDefaultAvatar(), 40));
   townPlaceMe(me, townSpot[0], townSpot[1]);
@@ -558,6 +563,7 @@ function showTownHome(message) {
     showTownCreator(false);
   });
   if (message) townAdd(box, 'div', message, 'arcadeMessage');
+  townRoomSection(box);
 
   // My stuff
   townAdd(box, 'h3', '🧸 My stuff', 'fgHead');
@@ -745,4 +751,258 @@ function townTapBuilt(lot, c, r) {
   }]);
   buttons.push(['Cancel', null]);
   townPop(emoji, b.name || name, buttons, 'townBounceIn');
+}
+
+// =====================================================================
+// 🛋️ Round 3a: decorate My House
+// =====================================================================
+const TOWN_ROOM_COLS = 5, TOWN_ROOM_ROWS = 4;
+const TOWN_WALLS = ['#fff3bf', '#d0ebff', '#ffdeeb', '#d3f9d8', '#e5dbff', '#ffe8cc', '#343a40'];
+const TOWN_FLOORS = ['#e8c39e', '#ced4da', '#a5d8ff', '#fcc2d7', '#b2f2bb', '#8d6e63'];
+// [id, emoji, name, price, animation, what it says when you tap it]
+const TOWN_DECOR = [
+  ['bed', '🛏️', 'Comfy bed', 6, 'hug', 'Zzz... so comfy! 😴'],
+  ['couch', '🛋️', 'Couch', 8, 'squish', 'Flop! Best seat in the house.'],
+  ['lamp', '💡', 'Lamp', 2, 'bounce', 'Click! Lights on ✨'],
+  ['plant', '🪴', 'Plant', 2, 'wiggle', 'Your plant grew a new leaf! 🌱'],
+  ['picture', '🖼️', 'Picture', 3, 'hug', 'What a beautiful picture!'],
+  ['mirror', '🪞', 'Mirror', 4, 'spin', 'Looking good! 😎'],
+  ['teddy', '🧸', 'Big teddy', 4, 'hug', 'Big teddy hug! 🤗'],
+  ['books', '📚', 'Bookshelf', 5, 'bounce', 'You read a chapter! 📖'],
+  ['desk', '🪑', 'Desk chair', 3, 'spin', 'Spinny chair! Wheee!'],
+  ['trophy', '🏆', 'Trophy shelf', 6, 'bounce', 'Champion of chores! 🏆'],
+  ['hoop', '🏀', 'Mini hoop', 8, 'bounce', 'Swish! Nothing but net! 🏀'],
+  ['fish', '🐠', 'Fish tank', 10, 'wiggle', 'Blub blub! The fish say hi 🫧'],
+  ['guitar', '🎸', 'Guitar', 10, 'wiggle', 'Strum strum! 🎶'],
+  ['tv', '📺', 'TV', 12, 'bounce', 'Your favorite show is on! 📺'],
+  ['disco', '🪩', 'Disco ball', 12, 'spin', 'Dance party! 🕺💃'],
+  ['computer', '💻', 'Computer', 14, 'bounce', 'You wrote some code! 👩‍💻'],
+  ['game', '🎮', 'Game console', 15, 'wiggle', 'Level up! 🎮']
+];
+let townDecorating = false;
+let townDecorPick = null;          // a decor id, or { move: spot }
+
+function townRoom(t) {
+  if (!t.room || typeof t.room !== 'object') t.room = {};
+  if (typeof t.room.wall !== 'number') t.room.wall = 0;
+  if (typeof t.room.floor !== 'number') t.room.floor = 0;
+  if (!Array.isArray(t.room.items)) t.room.items = [];
+  return t.room;
+}
+function townDecorItem(id) { return TOWN_DECOR.find(d => d[0] === id); }
+
+// The room picture inside My House
+function townRoomSection(box) {
+  const t = loadTown();
+  const room = townRoom(t);
+  townAdd(box, 'h3', '🛋️ My room', 'fgHead');
+  const toggle = townAdd(box, 'button', townDecorating ? '✅ Done decorating' : '🎨 Decorate my room', townDecorating ? 'arcadeGo' : 'arcadeGo townBuildBtn');
+  toggle.addEventListener('click', () => { townDecorating = !townDecorating; townDecorPick = null; showTownHome(); });
+  const grid = townAdd(box, 'div', undefined, 'townRoom' + (townDecorating ? ' building' : ''));
+  grid.style.background = `linear-gradient(${TOWN_WALLS[room.wall] || TOWN_WALLS[0]} 0 50%, ${TOWN_FLOORS[room.floor] || TOWN_FLOORS[0]} 50% 100%)`;
+  const at = {};
+  room.items.forEach(i => { at[i.spot] = i; });
+  for (let r = 0; r < TOWN_ROOM_ROWS; r++) {
+    for (let c = 0; c < TOWN_ROOM_COLS; c++) {
+      const spot = c + ',' + r;
+      const it = at[spot];
+      const d = it && townDecorItem(it.id);
+      const tile = townAdd(grid, 'button', d ? d[1] : '', 'townRoomSpot' + (d ? ' filled' : '') + (townDecorPick && townDecorPick.move === spot ? ' moving' : '') + (it && it.fresh ? ' townBounceIn' : ''));
+      tile.dataset.spot = spot;
+      tile.setAttribute('aria-label', d ? d[2] : 'Empty spot');
+      tile.addEventListener('click', () => d ? townTapDecor(spot, tile) : townTapSpot(spot));
+    }
+  }
+  if (room.items.some(i => i.fresh)) { room.items.forEach(i => { delete i.fresh; }); saveTown(t); }
+  if (!townDecorating) {
+    if (!room.items.length) townAdd(box, 'div', 'Your room is empty! Tap 🎨 Decorate to add a bed, a TV and more.', 'arcadeHint');
+    return;
+  }
+  // Decorate menu
+  const pal = townAdd(box, 'div', undefined, 'townPalette');
+  if (townDecorPick && townDecorPick.move) {
+    townAdd(pal, 'div', '🚚 Tap an empty spot to move it there.', 'arcadeMessage');
+    townAdd(pal, 'button', 'Cancel move', 'arcadeSmall').addEventListener('click', () => { townDecorPick = null; showTownHome(); });
+    return;
+  }
+  const row = townAdd(pal, 'div', undefined, 'townPaletteItems');
+  TOWN_DECOR.forEach(([id, emoji, name, price]) => {
+    const b = townAdd(row, 'button', undefined, 'townPaletteItem' + (townDecorPick === id ? ' picked' : '') + (townStars() < price ? ' pricey' : ''));
+    townAdd(b, 'span', emoji, 'townPaletteEmoji');
+    townAdd(b, 'span', name, 'townPaletteName');
+    townAdd(b, 'span', `⭐ ${price}`, 'townPalettePrice');
+    b.addEventListener('click', () => { townDecorPick = townDecorPick === id ? null : id; showTownHome(townDecorPick ? `${emoji} ${name} picked! Now tap a spot in your room.` : ''); });
+  });
+  [['🎨 Wall', TOWN_WALLS, 'wall'], ['🟫 Floor', TOWN_FLOORS, 'floor']].forEach(([label, colors, key]) => {
+    const line = townAdd(pal, 'div', undefined, 'townColorRow');
+    townAdd(line, 'span', label, 'townColorLabel');
+    colors.forEach((color, i) => {
+      const s = townAdd(line, 'button', '', 'townChoice swatch' + (room[key] === i ? ' picked' : ''));
+      s.style.background = color;
+      s.setAttribute('aria-label', `${key} color ${i + 1}`);
+      s.addEventListener('click', () => { const fresh = loadTown(); townRoom(fresh)[key] = i; saveTown(fresh); showTownHome(); });
+    });
+  });
+  townAdd(pal, 'div', 'Colors are free! Tap something in your room to move it or put it away (half the stars back).', 'arcadeHint');
+}
+
+function townTapSpot(spot) {
+  if (!townDecorating) return;
+  const t = loadTown();
+  const room = townRoom(t);
+  if (townDecorPick && townDecorPick.move) {
+    const it = room.items.find(i => i.spot === townDecorPick.move);
+    if (it) { it.spot = spot; it.fresh = true; saveTown(t); }
+    townDecorPick = null;
+    showTownHome('🚚 Moved!');
+    return;
+  }
+  if (!townDecorPick) { showTownHome('👆 First pick something from the menu below.'); return; }
+  const [id, emoji, name, price] = townDecorItem(townDecorPick);
+  if (typeof pet === 'undefined' || !pet) { showTownHome('🥚 Hatch a pet first to start earning stars!'); return; }
+  if (pet.stars < price) { showTownHome(`You need ${price - pet.stars} more ⭐ for the ${emoji} ${name}. Finish a list or do a 💼 town job!`); return; }
+  pet.stars -= price;
+  if (typeof savePet === 'function') savePet();
+  if (typeof showPet === 'function') showPet();
+  room.items.push({ spot: spot, id: id, fresh: true });
+  saveTown(t);
+  showTownHome(`✨ Your ${name.toLowerCase()} looks great!`);
+}
+
+function townTapDecor(spot, tile) {
+  const t = loadTown();
+  const it = townRoom(t).items.find(i => i.spot === spot);
+  const d = it && townDecorItem(it.id);
+  if (!d) return;
+  const [, emoji, name, price, anim, line] = d;
+  if (!townDecorating) { townPop(emoji, line, [['😄 Cool!', null]], 'townPlay-' + anim); return; }
+  townPop(emoji, name, [
+    ['🚚 Move', () => { townDecorPick = { move: spot }; showTownHome(); }],
+    [`📦 Put away (+${Math.floor(price / 2)} ⭐)`, () => {
+      const fresh = loadTown();
+      const room = townRoom(fresh);
+      room.items = room.items.filter(i => i.spot !== spot);
+      saveTown(fresh);
+      if (typeof addStars === 'function') addStars(Math.floor(price / 2));
+      showTownHome(`📦 Put away the ${name.toLowerCase()}.`);
+    }],
+    ['Cancel', null]
+  ], 'townBounceIn');
+}
+
+// =====================================================================
+// 💼 Round 3b: town jobs that match real chores
+// Finishing a real list unlocks one job shift in town that day.
+// =====================================================================
+// [id, emoji, job, what the list says (chore words), thing to tap, goal, building that gives a bonus]
+const TOWN_JOBS = [
+  ['trash', '🚛', 'Trash truck driver', /trash|garbage|recycl/i, '🗑️', 'Pick up 6 trash cans!', null],
+  ['dishes', '🍽️', 'Diner dish washer', /dish|kitchen|table|lunch/i, '🍽️', 'Wash 6 dirty plates!', 'bakery'],
+  ['vet', '🐾', 'Vet helper', /dog|cat|pet|feed|walk/i, '🐶', 'Give 6 puppies a checkup!', 'vet'],
+  ['laundry', '🧺', 'Laundromat helper', /laundry|clothes|socks|fold|shoes/i, '🧦', 'Match 6 lost socks!', null],
+  ['books', '📚', 'Library helper', /homework|read|study|book|backpack/i, '📕', 'Put 6 books back on the shelf!', null],
+  ['coach', '⚽', 'Soccer coach', /run|park|exercise|practice|play outside/i, '⚽', 'Kick 6 goals!', 'soccer'],
+  ['carwash', '🚗', 'Car wash', /shower|bath|wash|teeth|brush/i, '🚗', 'Wash 6 muddy cars!', null],
+  ['sweep', '🧹', 'Park cleaner', /clean|room|tidy|bed|toys/i, '🍂', 'Sweep up 6 leaf piles!', 'playground']
+];
+// When nothing on the list matches a chore word
+const TOWN_LIST_JOBS = {
+  morning: ['mail', '📬', 'Mail carrier', null, '✉️', 'Deliver 6 letters!', null],
+  afternoon: ['fire', '🚒', 'Firefighter', null, '🔥', 'Put out 6 fires!', 'fire'],
+  bedtime: ['night', '🌙', 'Night watch', null, '💡', 'Turn on 6 streetlights!', 'light']
+};
+const TOWN_JOB_PAY = 2;
+
+function townToday() { return new Date().toDateString(); }
+function townJobs(t) {
+  if (!t.jobs || t.jobs.date !== townToday()) t.jobs = { date: townToday(), ready: [], done: [] };
+  return t.jobs;
+}
+function townJobById(id) {
+  return TOWN_JOBS.find(j => j[0] === id) || Object.values(TOWN_LIST_JOBS).find(j => j[0] === id);
+}
+
+// Called by index.html when a whole list is checked off (once per list per day)
+function townJobUnlock(listId, taskTexts) {
+  if (!townAllowed() || !TOWN_LIST_JOBS[listId]) return null;
+  const t = loadTown();
+  if (!t.avatar) return null;                 // no character yet
+  const jobs = townJobs(t);
+  if (jobs.ready.some(r => r.list === listId) || jobs.done.some(d => d.list === listId)) return null;
+  const words = (taskTexts || []).join(' ');
+  const taken = [...jobs.ready, ...jobs.done].map(j => j.id);
+  const match = TOWN_JOBS.find(j => j[3].test(words) && !taken.includes(j[0]));
+  const job = match || TOWN_LIST_JOBS[listId];
+  jobs.ready.push({ list: listId, id: job[0] });
+  saveTown(t);
+  return job;
+}
+
+function showTownJobs() {
+  const t = loadTown();
+  const jobs = townJobs(t);
+  townView = 'jobs';
+  const box = townBody('💼 Town jobs');
+  townAdd(box, 'button', '← Town', 'arcadeBack').addEventListener('click', () => showTownMap());
+  townAdd(box, 'div', 'Finish a real list (Morning, After School or Bedtime) to get a job shift in town. Each shift pays ⭐ ' + TOWN_JOB_PAY + '. Built the matching place in your town? +1 bonus!', 'arcadeHint');
+  if (!jobs.ready.length && !jobs.done.length) {
+    townAdd(box, 'div', '📋 No shifts yet today. Go finish a list, then come back!', 'arcadeMessage');
+    return;
+  }
+  jobs.ready.forEach(r => {
+    const job = townJobById(r.id);
+    if (!job) return;
+    const card = townAdd(box, 'div', undefined, 'townJob');
+    townAdd(card, 'div', job[1], 'townJobEmoji');
+    const info = townAdd(card, 'div', undefined, 'townJobInfo');
+    townAdd(info, 'div', job[2], 'townJobName');
+    townAdd(info, 'div', job[5], 'townJobGoal');
+    townAdd(card, 'button', '▶️ Work', 'arcadeGo').addEventListener('click', () => townWork(r.id));
+  });
+  jobs.done.forEach(d => {
+    const job = townJobById(d.id);
+    if (job) townAdd(box, 'div', `✅ ${job[1]} ${job[2]}: done! +${d.paid} ⭐`, 'townJobDone');
+  });
+}
+
+// The job itself: tap 6 things that pop up around the screen
+function townWork(id) {
+  const job = townJobById(id);
+  if (!job) return;
+  const [, emoji, name, , target, goal, bonusBuild] = job;
+  const field = document.createElement('div');
+  field.className = 'townJobField';
+  const pop = townPop(field, `${emoji} ${goal}`, [['Stop', null]]);
+  let left = 6;
+  const next = () => {
+    field.innerHTML = '';
+    const thing = townAdd(field, 'button', target, 'townJobTarget townBounceIn');
+    thing.style.left = (8 + Math.random() * 72) + '%';
+    thing.style.top = (8 + Math.random() * 62) + '%';
+    thing.setAttribute('aria-label', 'Tap it');
+    thing.addEventListener('click', () => {
+      left -= 1;
+      if (left > 0) { pop.say.textContent = `${emoji} ${left} to go!`; next(); return; }
+      field.innerHTML = '';
+      townFinishJob(id, pop, emoji, name, bonusBuild);
+    });
+  };
+  next();
+}
+
+function townFinishJob(id, pop, emoji, name, bonusBuild) {
+  const t = loadTown();
+  const jobs = townJobs(t);
+  const r = jobs.ready.find(x => x.id === id);
+  if (!r) return;
+  const bonus = bonusBuild && t.built.some(b => b.id === bonusBuild) ? 1 : 0;
+  const paid = TOWN_JOB_PAY + bonus;
+  jobs.ready = jobs.ready.filter(x => x.id !== id);
+  jobs.done.push({ list: r.list, id: id, paid: paid });
+  t.workShifts = (t.workShifts || 0) + 1;
+  saveTown(t);
+  if (typeof addStars === 'function') addStars(paid);
+  townAdd(pop.stage, 'div', emoji, 'townPopEmoji townPlay-bounce');
+  pop.say.textContent = `🎉 Great work, ${name.toLowerCase()}! You earned ⭐ ${paid}` + (bonus ? ' (+1 for the place you built!)' : '') + '.';
+  townPopButtons(pop, [['💪 Yay!', () => showTownJobs()]]);
 }
