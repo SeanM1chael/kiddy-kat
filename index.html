@@ -246,6 +246,25 @@
     .townMe.walking svg { animation: townBounce 0.33s ease-in-out infinite; }
     @keyframes townBounce { 50% { transform: translateY(-4px); } }
     .townBuildBtn { background: #f08c00; }
+    .townRoom { display: grid; grid-template-columns: repeat(5, 1fr); max-width: 420px; margin: 8px auto; border-radius: 18px; overflow: hidden; padding: 6px; box-shadow: inset 0 0 0 4px rgba(0,0,0,0.08); }
+    .townRoomSpot { aspect-ratio: 1; border: none; background: transparent; font-size: clamp(26px, 8vw, 38px); padding: 0; font-family: inherit; }
+    .townRoom.building .townRoomSpot { outline: 2px dashed rgba(0,0,0,0.25); outline-offset: -4px; border-radius: 10px; }
+    .townRoom.building .townRoomSpot.filled { outline: 2px solid rgba(250, 176, 5, 0.8); }
+    .townRoomSpot.moving { animation: townWiggle 0.6s ease infinite; }
+    .townColorRow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
+    .townColorLabel { font-size: 13px; font-weight: bold; width: 64px; }
+    .townColorRow .townChoice.swatch { width: 30px; height: 30px; }
+    .townJobsBtn { background: #1c7ed6; }
+    .townJobsBtn.ready { animation: townGlow 1.2s ease-in-out infinite; }
+    @keyframes townGlow { 50% { box-shadow: 0 0 0 6px rgba(28, 126, 214, 0.35); } }
+    .townJob { display: flex; align-items: center; gap: 10px; max-width: 420px; margin: 8px auto; background: white; border-radius: 16px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+    .townJobEmoji { font-size: 40px; }
+    .townJobInfo { flex: 1; text-align: left; }
+    .townJobName { font-weight: bold; }
+    .townJobGoal { font-size: 14px; color: #495057; }
+    .townJobDone { max-width: 420px; margin: 6px auto; color: #2b8a3e; font-weight: bold; }
+    .townJobField { position: relative; width: min(280px, 72vw); height: 200px; background: #e7f5ff; border-radius: 16px; }
+    .townJobTarget { position: absolute; font-size: 42px; background: none; border: none; padding: 0; transform: translate(-0%, -0%); }
     .townPalette { max-width: 420px; margin: 6px auto; background: white; border-radius: 16px; padding: 8px; }
     .townTabs { display: flex; gap: 4px; overflow-x: auto; }
     .townTab { flex: 1; font-size: 13px; padding: 8px 4px; border: 2px solid var(--soft); border-radius: 10px; background: white; white-space: nowrap; }
@@ -972,7 +991,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
 
   <!-- Problem reporter: if any file or step fails, show which one at the bottom of the screen (for testing) -->
   <script>
-    const APP_VERSION = '2026-11-04e';      // bump with the ?v= numbers below
+    const APP_VERSION = '2026-11-04f';      // bump with the ?v= numbers below
     function kkReport(where, message) {
       try { localStorage.setItem('kkLastError', new Date().toLocaleString() + ' · ' + where + ': ' + message); } catch (err) {}
       let bar = document.getElementById('kkError');
@@ -992,31 +1011,31 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     window.addEventListener('unhandledrejection', e => kkReport('a background step', (e.reason && e.reason.message) || String(e.reason)));
   </script>
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-11-04e"></script>
-  <script src="push.js?v=2026-11-04e"></script>
-  <script src="sync.js?v=2026-11-04e"></script>
-  <script src="daily.js?v=2026-11-04e"></script>
-  <script src="pet.js?v=2026-11-04e"></script>
-  <script src="stickers.js?v=2026-11-04e"></script>
-  <script src="games.js?v=2026-11-04e"></script>
-  <script src="challenge.js?v=2026-11-04e"></script>
-  <script src="rewards.js?v=2026-11-04e"></script>
-  <script src="wallet.js?v=2026-11-04e"></script>
-  <script src="catchup.js?v=2026-11-04e"></script>
-  <script src="packs.js?v=2026-11-04e"></script>
-  <script src="league.js?v=2026-11-04e"></script>
-  <script src="uploads.js?v=2026-11-04e"></script>
-  <script src="weekend.js?v=2026-11-04e"></script>
-  <script src="streak.js?v=2026-11-04e"></script>
-  <script src="supplies.js?v=2026-11-04e"></script>
-  <script src="career.js?v=2026-11-04e"></script>
-  <script src="bills.js?v=2026-11-04e"></script>
-  <script src="money.js?v=2026-11-04e"></script>
-  <script src="arcade.js?v=2026-11-04e"></script>
-  <script src="earnback.js?v=2026-11-04e"></script>
-  <script src="familygames.js?v=2026-11-04e"></script>
-  <script src="town.js?v=2026-11-04e"></script>
-  <script src="tour.js?v=2026-11-04e"></script>
+  <script src="config.js?v=2026-11-04f"></script>
+  <script src="push.js?v=2026-11-04f"></script>
+  <script src="sync.js?v=2026-11-04f"></script>
+  <script src="daily.js?v=2026-11-04f"></script>
+  <script src="pet.js?v=2026-11-04f"></script>
+  <script src="stickers.js?v=2026-11-04f"></script>
+  <script src="games.js?v=2026-11-04f"></script>
+  <script src="challenge.js?v=2026-11-04f"></script>
+  <script src="rewards.js?v=2026-11-04f"></script>
+  <script src="wallet.js?v=2026-11-04f"></script>
+  <script src="catchup.js?v=2026-11-04f"></script>
+  <script src="packs.js?v=2026-11-04f"></script>
+  <script src="league.js?v=2026-11-04f"></script>
+  <script src="uploads.js?v=2026-11-04f"></script>
+  <script src="weekend.js?v=2026-11-04f"></script>
+  <script src="streak.js?v=2026-11-04f"></script>
+  <script src="supplies.js?v=2026-11-04f"></script>
+  <script src="career.js?v=2026-11-04f"></script>
+  <script src="bills.js?v=2026-11-04f"></script>
+  <script src="money.js?v=2026-11-04f"></script>
+  <script src="arcade.js?v=2026-11-04f"></script>
+  <script src="earnback.js?v=2026-11-04f"></script>
+  <script src="familygames.js?v=2026-11-04f"></script>
+  <script src="town.js?v=2026-11-04f"></script>
+  <script src="tour.js?v=2026-11-04f"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -1330,7 +1349,13 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
       showParentStreak();
       if (typeof showTourButton === 'function') showTourButton();
       const lastProblem = (() => { try { return localStorage.getItem('kkLastError'); } catch (err) { return null; } })();
-      document.getElementById('appVersionLine').textContent = `Kiddy Kat version ${APP_VERSION}` + (lastProblem ? ` · Last problem: ${lastProblem}` : '');
+      const versionLine = document.getElementById('appVersionLine');
+      versionLine.textContent = `Kiddy Kat version ${APP_VERSION}` + (lastProblem ? ` · Last problem: ${lastProblem} (tap to clear)` : '');
+      versionLine.onclick = lastProblem ? () => {
+        try { localStorage.removeItem('kkLastError'); } catch (err) {}
+        versionLine.textContent = `Kiddy Kat version ${APP_VERSION} · ✅ Cleared`;
+        versionLine.onclick = null;
+      } : null;
       showEvents();
       showProofPhotos();
       showCloud();
@@ -1547,8 +1572,12 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
         const pay = earnMoney('list', list.id);       // pays into the wallet (once per list per day)
         leagueRecord('list', list.id);                // 2 league points (once per list per day)
         const streak = list.id === 'morning' && typeof markStreakDay === 'function' ? markStreakDay() : '';   // 🔥 streak.js
+        // 💼 Kat Town: a finished real list unlocks a matching town job (town.js)
+        let job = null;
+        try { if (typeof townJobUnlock === 'function') job = townJobUnlock(list.id, [...list.querySelectorAll('.task')].map(t => t.textContent)); } catch (err) {}
+        const jobNote = job ? ` 💼 New Kat Town job: ${job[1]} ${job[2]}!` : '';
         // Stickers only the first time each list is finished today (when the pet gets cared for)
-        celebrate((petMessage ? 'You did it! ' + petMessage : 'You did it!') + (pay ? ' ' + pay : '') + streak, animal.emoji, petMessage !== null);
+        celebrate((petMessage ? 'You did it! ' + petMessage : 'You did it!') + (pay ? ' ' + pay : '') + streak + jobNote, animal.emoji, petMessage !== null);
       }
     }
 

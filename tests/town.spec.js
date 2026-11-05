@@ -175,3 +175,69 @@ test('outside build mode, tapping something you built makes it do its thing', as
   await expect(page.locator('.townPopSay')).toContainText('Welcome to Slime Spot', { timeout: 5000 });
   await expectNoProblems(page, errors);
 });
+
+// Round 3: decorate My House
+test('decorate my room: buy, place, recolor, move, put away', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...RICH, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await page.click('[data-place=home]');
+  await page.click('text=🎨 Decorate my room', { timeout: 5000 });
+  await page.click('.townRoomSpot[data-spot="0,0"]');
+  await expect(page.locator('#townBody .arcadeMessage')).toContainText('First pick');
+  await paletteItem(page, 'TV').click();
+  await page.click('.townRoomSpot[data-spot="2,1"]');
+  await paletteItem(page, 'Comfy bed').click();
+  await page.click('.townRoomSpot[data-spot="0,3"]');
+  expect(await page.evaluate(() => pet.stars)).toBe(200 - 12 - 6);
+  await page.click('[aria-label="wall color 3"]');
+  // Move the TV, then put the bed away for half back
+  await page.click('.townRoomSpot[data-spot="2,1"]');
+  await page.click('.townPop >> text=🚚 Move');
+  await page.click('.townRoomSpot[data-spot="4,1"]');
+  await page.click('.townRoomSpot[data-spot="0,3"]');
+  await page.click('.townPop >> text=Put away');
+  const room = await page.evaluate(() => loadTown().room);
+  expect(room.wall).toBe(2);
+  expect(room.items).toEqual([{ spot: '4,1', id: 'tv' }]);
+  expect(await page.evaluate(() => pet.stars)).toBe(182 + 3);
+  // Done decorating: tapping the TV makes it do its thing
+  await page.click('text=✅ Done decorating');
+  await page.click('.townRoomSpot[data-spot="4,1"]');
+  await expect(page.locator('.townPopSay')).toContainText('favorite show');
+  await expectNoProblems(page, errors);
+});
+
+// Round 3: real chores unlock town jobs
+test('finishing a real list unlocks a matching town job that pays stars', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: { ...AVATAR, built: [{ lot: '0,0', id: 'fire', name: '' }] } });
+  // Nothing finished yet: no shifts
+  await page.evaluate(() => { openTown(); showTownJobs(); });
+  await expect(page.locator('#townBody .arcadeMessage')).toContainText('No shifts yet');
+  await page.evaluate(() => leaveTown());
+  // The job matches a chore word on the list ("clothes" -> laundromat), once per list per day
+  const job = await page.evaluate(() => townJobUnlock('bedtime', ['👕 Lay out clothes', '📖 Read']));
+  expect(job[0]).toBe('laundry');
+  expect(await page.evaluate(() => townJobUnlock('bedtime', ['👕 Lay out clothes']))).toBeNull();
+  // No chore words: the list's own job (After School -> firefighter, +1 for the fire station they built)
+  expect(await page.evaluate(() => townJobUnlock('afternoon', ['🎵 Piano'])[0])).toBe('fire');
+  await page.click('#townButton');
+  await expect(page.locator('.townJobsBtn')).toContainText('2 ready');
+  await page.click('.townJobsBtn');
+  await page.locator('.townJob', { hasText: 'Firefighter' }).locator('text=▶️ Work').click();
+  for (let i = 0; i < 6; i++) await page.click('.townJobTarget');
+  await expect(page.locator('.townPopSay')).toContainText('You earned ⭐ 3');
+  expect(await page.evaluate(() => pet.stars)).toBe(30 + 3);
+  await page.click('text=💪 Yay!');
+  await expect(page.locator('.townJobDone')).toContainText('Firefighter');
+  await expect(page.locator('.townJob')).toHaveCount(1);
+  await expectNoProblems(page, errors);
+});
+
+test('the version line can clear an old problem note', async ({ page }) => {
+  await openAppAs(page, 'tiger', PET);
+  await page.evaluate(() => { localStorage.setItem('kkLastError', '10/29 old bug'); openSettings(true); });
+  await expect(page.locator('#appVersionLine')).toContainText('tap to clear');
+  await page.click('#appVersionLine');
+  await expect(page.locator('#appVersionLine')).toContainText('Cleared');
+  expect(await page.evaluate(() => localStorage.getItem('kkLastError'))).toBeNull();
+});
