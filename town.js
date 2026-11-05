@@ -39,7 +39,8 @@ const TOWN_COLS = 7, TOWN_ROWS = 9, TOWN_ROAD_COL = 3, TOWN_ROAD_ROW = 4;
 const TOWN_PLACES = [
   ['home', '🏠', 'My House', 'Home', 1, 1], ['closet', '👕', 'Kat Closet', 'Closet', 4, 1], ['burger', '🍔', 'Paw Burger', 'Burger', 6, 2],
   ['school', '🏫', 'Kat Academy', 'School', 1, 6], ['arcade', '🕹️', 'Arcade', 'Arcade', 4, 6], ['toys', '🧸', 'Toy Box', 'Toys', 6, 7],
-  ['bank', '🏦', 'Kat Bank', 'Bank', 1, 3], ['kitchen', '🍳', 'Kat Kitchen', 'Kitchen', 5, 3]
+  ['bank', '🏦', 'Kat Bank', 'Bank', 1, 3], ['kitchen', '🍳', 'Kat Kitchen', 'Kitchen', 5, 3],
+  ['safety', '🛡️', 'Safety HQ', 'Safety', 5, 8]
 ];
 function townIsRoad(c, r) { return c === TOWN_ROAD_COL || r === TOWN_ROAD_ROW; }
 function townPlaceAt(c, r) { return TOWN_PLACES.find(p => p[4] === c && p[5] === r); }
@@ -209,6 +210,7 @@ function openTown() {
 function closeTown() {
   if (String(townView).startsWith('bank:')) { showTownBank(); return; }
   if (String(townView).startsWith('kitchen:')) { showTownKitchen(); return; }
+  if (String(townView).startsWith('safety:')) { showTownSafety(); return; }
   if (String(townView).startsWith('toy:')) { if (typeof toyStop === 'function') toyStop(); showTownHome(); return; }
   if (townView !== 'map' && loadTown().avatar) { showTownMap(); return; }
   leaveTown();
@@ -382,6 +384,11 @@ function townEnter(id) {
   if (id === 'home') { showTownHome(); return; }
   if (id === 'school') { leaveTown(); townReturn = true; if (typeof openPractice === 'function') openPractice(); return; }
   if (id === 'arcade') { leaveTown(); townReturn = true; if (typeof openArcade === 'function') openArcade(); return; }
+  if (id === 'safety') {
+    if (typeof showTownSafety === 'function') showTownSafety();
+    else showTownMap('🛡️ Safety HQ is opening soon! Close the app all the way and open it again to finish updating.');
+    return;
+  }
   if (id === 'kitchen') {
     if (typeof showTownKitchen === 'function') showTownKitchen();
     else showTownMap('🍳 Kat Kitchen is opening soon! Close the app all the way and open it again to finish updating.');

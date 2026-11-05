@@ -206,7 +206,8 @@ function bankLessonRetry(id, text, tip) {
 }
 
 // A run of multiple-choice rounds. rounds: [{ show(area), options: [text], answer, why }]
-function bankRounds(id, area, say, rounds, pass, winText, tip) {
+// finish(right, total): optional; other places (like 🛡️ Safety HQ) use it to show their own win screen
+function bankRounds(id, area, say, rounds, pass, winText, tip, finish) {
   let r = 0, right = 0;
   const q = townAdd(area, 'div', undefined, 'bankQuestion');
   const opts = townAdd(area, 'div', undefined, 'bankOptions');
@@ -241,6 +242,7 @@ function bankRounds(id, area, say, rounds, pass, winText, tip) {
   next.addEventListener('click', () => {
     r++;
     if (r < rounds.length) { show(); return; }
+    if (finish) { finish(right, rounds.length); return; }
     if (right >= pass) bankLessonWin(id, `${right} of ${rounds.length} right! ${winText}`, tip);
     else bankLessonRetry(id, `${right} of ${rounds.length}. You need ${pass} to win.`, tip);
   });
