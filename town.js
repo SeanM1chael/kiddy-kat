@@ -252,6 +252,7 @@ function showTownMap(message) {
     const jobs = townJobs(t);
     const jb = townAdd(bar, 'button', jobs.ready.length ? `💼 Jobs (${jobs.ready.length} ready!)` : '💼 Jobs', 'arcadeGo townJobsBtn' + (jobs.ready.length ? ' ready' : ''));
     jb.addEventListener('click', showTownJobs);
+    townAdd(bar, 'button', '👨‍👩‍👧 Family', 'arcadeGo townFamilyBtn').addEventListener('click', () => showTownFamily());
   }
   if (message) townAdd(box, 'div', message, 'arcadeMessage');
 
@@ -299,6 +300,8 @@ function showTownMap(message) {
   else {
     const wishes = t.wishes.length;
     townAdd(box, 'div', wishes ? `💝 ${wishes} thing${wishes === 1 ? '' : 's'} on your wish list (see 🏠 Home)` : '💝 Tap ❤️ on anything in a store to add it to your wish list.', 'arcadeHint');
+    const visit = (t.visits || []).slice(-1)[0];
+    if (visit && TOWN_REACTIONS[visit.reaction]) townAdd(box, 'div', `📬 ${visit.from} visited your town: ${TOWN_REACTIONS[visit.reaction].join(' ')}`, 'arcadeHint townVisitNote');
     townAdd(box, 'div', `🏗️ You've built ${t.built.length} thing${t.built.length === 1 ? '' : 's'}.` + (level.next ? ` ${level.next - t.built.length} more to become a ${level.nextName}!` : ''), 'arcadeHint');
   }
 }
@@ -798,21 +801,7 @@ function townRoomSection(box) {
   townAdd(box, 'h3', '🛋️ My room', 'fgHead');
   const toggle = townAdd(box, 'button', townDecorating ? '✅ Done decorating' : '🎨 Decorate my room', townDecorating ? 'arcadeGo' : 'arcadeGo townBuildBtn');
   toggle.addEventListener('click', () => { townDecorating = !townDecorating; townDecorPick = null; showTownHome(); });
-  const grid = townAdd(box, 'div', undefined, 'townRoom' + (townDecorating ? ' building' : ''));
-  grid.style.background = `linear-gradient(${TOWN_WALLS[room.wall] || TOWN_WALLS[0]} 0 50%, ${TOWN_FLOORS[room.floor] || TOWN_FLOORS[0]} 50% 100%)`;
-  const at = {};
-  room.items.forEach(i => { at[i.spot] = i; });
-  for (let r = 0; r < TOWN_ROOM_ROWS; r++) {
-    for (let c = 0; c < TOWN_ROOM_COLS; c++) {
-      const spot = c + ',' + r;
-      const it = at[spot];
-      const d = it && townDecorItem(it.id);
-      const tile = townAdd(grid, 'button', d ? d[1] : '', 'townRoomSpot' + (d ? ' filled' : '') + (townDecorPick && townDecorPick.move === spot ? ' moving' : '') + (it && it.fresh ? ' townBounceIn' : ''));
-      tile.dataset.spot = spot;
-      tile.setAttribute('aria-label', d ? d[2] : 'Empty spot');
-      tile.addEventListener('click', () => d ? townTapDecor(spot, tile) : townTapSpot(spot));
-    }
-  }
+  townRoomGrid(box, room, townDecorating, (spot, tile, d) => d ? townTapDecor(spot, tile) : townTapSpot(spot));
   if (room.items.some(i => i.fresh)) { room.items.forEach(i => { delete i.fresh; }); saveTown(t); }
   if (!townDecorating) {
     if (!room.items.length) townAdd(box, 'div', 'Your room is empty! Tap 🎨 Decorate to add a bed, a TV and more.', 'arcadeHint');
@@ -844,6 +833,26 @@ function townRoomSection(box) {
     });
   });
   townAdd(pal, 'div', 'Colors are free! Tap something in your room to move it or put it away (half the stars back).', 'arcadeHint');
+}
+
+// Draws a room (mine, or a brother's or sister's when visiting). onTap(spot, tile, decorItem or undefined)
+function townRoomGrid(box, room, editing, onTap) {
+  const grid = townAdd(box, 'div', undefined, 'townRoom' + (editing ? ' building' : ''));
+  grid.style.background = `linear-gradient(${TOWN_WALLS[room.wall] || TOWN_WALLS[0]} 0 50%, ${TOWN_FLOORS[room.floor] || TOWN_FLOORS[0]} 50% 100%)`;
+  const at = {};
+  (room.items || []).forEach(i => { at[i.spot] = i; });
+  for (let r = 0; r < TOWN_ROOM_ROWS; r++) {
+    for (let c = 0; c < TOWN_ROOM_COLS; c++) {
+      const spot = c + ',' + r;
+      const it = at[spot];
+      const d = it && townDecorItem(it.id);
+      const tile = townAdd(grid, 'button', d ? d[1] : '', 'townRoomSpot' + (d ? ' filled' : '') + (editing && townDecorPick && townDecorPick.move === spot ? ' moving' : '') + (it && it.fresh ? ' townBounceIn' : ''));
+      tile.dataset.spot = spot;
+      tile.setAttribute('aria-label', d ? d[2] : 'Empty spot');
+      tile.addEventListener('click', () => onTap(spot, tile, d));
+    }
+  }
+  return grid;
 }
 
 function townTapSpot(spot) {
@@ -1005,4 +1014,144 @@ function townFinishJob(id, pop, emoji, name, bonusBuild) {
   townAdd(pop.stage, 'div', emoji, 'townPopEmoji townPlay-bounce');
   pop.say.textContent = `🎉 Great work, ${name.toLowerCase()}! You earned ⭐ ${paid}` + (bonus ? ' (+1 for the place you built!)' : '') + '.';
   townPopButtons(pop, [['💪 Yay!', () => showTownJobs()]]);
+}
+
+// =====================================================================
+// 👨‍👩‍👧 Round 4: visit your brothers' and sisters' towns
+// Look only (nothing can be changed), preset reactions only, one per
+// town per day. A grown-up turns it on in the dashboard. Siblings only.
+// =====================================================================
+const TOWN_REACTIONS = { love: ['❤️', 'Love it!'], wow: ['🤩', 'Wow!'], fun: ['😂', 'So fun!'], best: ['🏆', 'Best town!'] };
+let townVisiting = null;          // the sibling town being visited
+
+function townFamilyToken() { return typeof cloudGet === 'function' && typeof CLOUD !== 'undefined' ? cloudGet(CLOUD.token) : null; }
+
+async function showTownFamily(message) {
+  townView = 'family';
+  townVisiting = null;
+  const box = townBody('👨‍👩‍👧 Family towns');
+  townAdd(box, 'button', '← Town', 'arcadeBack').addEventListener('click', () => showTownMap());
+  if (message) townAdd(box, 'div', message, 'arcadeMessage');
+  const token = townFamilyToken();
+  if (!token) {
+    townAdd(box, 'div', '☁️ This phone isn\'t in the online family yet. Ask a grown-up to set it up in ⚙️ Grown-ups.', 'arcadeMessage');
+    return;
+  }
+  const wait = townAdd(box, 'div', '⏳ Looking for family towns...', 'arcadeHint');
+  const r = await cloudCall('family_towns', { p_token: token });
+  if (townView !== 'family') return;               // they left while it loaded
+  wait.remove();
+  if (!r || !r.ok) { townAdd(box, 'div', '📡 ' + ((r && r.error) || 'Could not reach the family towns. Try again soon.'), 'arcadeMessage'); return; }
+  if (!r.on) {
+    townAdd(box, 'div', `🔒 Family visits are off. Ask ${typeof parentName === 'function' ? parentName() : 'a grown-up'} to turn them on in the dashboard.`, 'arcadeMessage');
+    return;
+  }
+  if (!r.towns.length) { townAdd(box, 'div', '🏗️ Nobody else has made a character yet. Tell your brother or sister to open 🏙️ Kat Town!', 'arcadeMessage'); return; }
+  townAdd(box, 'div', 'Tap a town to visit. You can look around and send a reaction, but you can\'t change anything.', 'arcadeHint');
+  r.towns.forEach(o => {
+    const card = townAdd(box, 'div', undefined, 'townJob townFamilyCard');
+    card.appendChild(townAvatarSvg(Object.assign(townDefaultAvatar(), o.avatar || {}), 56));
+    const info = townAdd(card, 'div', undefined, 'townJobInfo');
+    const level = townLevel({ built: o.built || [] });
+    townAdd(info, 'div', `${o.nickname}'s town`, 'townJobName');
+    townAdd(info, 'div', `${level.emoji} ${level.name} · ${(o.built || []).length} built`, 'townJobGoal');
+    townAdd(card, 'button', '🚶 Visit', 'arcadeGo').addEventListener('click', () => showTownVisit(o));
+  });
+}
+
+function showTownVisit(o, message) {
+  townView = 'visit';
+  townVisiting = o;
+  const level = townLevel({ built: o.built || [] });
+  const box = townBody(`🏙️ ${o.nickname}'s town`);
+  townAdd(box, 'button', '← Family', 'arcadeBack').addEventListener('click', () => showTownFamily());
+  townAdd(box, 'div', `${level.emoji} ${level.name} · ${(o.built || []).length} built · just looking 👀`, 'arcadeHint townTop');
+  if (message) townAdd(box, 'div', message, 'arcadeMessage');
+  const map = townAdd(box, 'div', undefined, 'townMap visiting');
+  map.style.gridTemplateColumns = `repeat(${TOWN_COLS}, 1fr)`;
+  const built = {};
+  (o.built || []).forEach(b => { if (b && typeof b.lot === 'string') built[b.lot] = b; });
+  for (let r = 0; r < TOWN_ROWS; r++) {
+    for (let c = 0; c < TOWN_COLS; c++) {
+      const lot = c + ',' + r;
+      const place = townPlaceAt(c, r);
+      if (townIsRoad(c, r)) {
+        townAdd(map, 'div', '', 'townTile road' + (c === TOWN_ROAD_COL && r === TOWN_ROAD_ROW ? ' cross' : c === TOWN_ROAD_COL ? ' down' : ' across'));
+      } else if (place) {
+        const tile = townAdd(map, 'div', undefined, 'townTile place');
+        tile.dataset.place = place[0];
+        townAdd(tile, 'span', place[1], 'townPlaceEmoji');
+        townAdd(tile, 'span', place[3], 'townPlaceName');
+      } else if (built[lot] && townBuildItem(built[lot].id)) {
+        const b = built[lot];
+        const [, emoji, name, , [anim, line]] = townBuildItem(b.id);
+        const label = String(b.name || '').slice(0, 18);
+        const tile = townAdd(map, 'button', undefined, 'townTile built');
+        tile.dataset.lot = lot;
+        tile.setAttribute('aria-label', label || name);
+        townAdd(tile, 'span', emoji, 'townBuiltEmoji');
+        if (label) townAdd(tile, 'span', label, 'townPlaceName');
+        tile.addEventListener('click', () => townPop(emoji, label ? `${label} ${emoji}` : line || name, [['😄 Cool!', null]], 'townPlay-' + anim));
+      } else {
+        townAdd(map, 'div', '', 'townTile');
+      }
+    }
+  }
+  const me = townAdd(map, 'div', undefined, 'townMe');
+  me.appendChild(townAvatarSvg(Object.assign(townDefaultAvatar(), o.avatar || {}), 40));
+  townPlaceMe(me, TOWN_ROAD_COL, TOWN_ROAD_ROW);
+
+  townAdd(box, 'button', `🏠 See ${o.nickname}'s room`, 'arcadeGo').addEventListener('click', () => showTownVisitRoom(o));
+  townReactionRow(box, o);
+}
+
+function showTownVisitRoom(o) {
+  townView = 'visitroom';
+  const box = townBody(`🛋️ ${o.nickname}'s room`);
+  townAdd(box, 'button', `← ${o.nickname}'s town`, 'arcadeBack').addEventListener('click', () => showTownVisit(o));
+  const room = o.room && typeof o.room === 'object' ? o.room : {};
+  const items = Array.isArray(room.items) ? room.items.filter(i => i && townDecorItem(i.id)) : [];
+  townRoomGrid(box, { wall: room.wall | 0, floor: room.floor | 0, items: items }, false, (spot, tile, d) => {
+    if (d) townPop(d[1], d[5], [['😄 Cool!', null]], 'townPlay-' + d[4]);
+  });
+  if (!items.length) townAdd(box, 'div', `${o.nickname} hasn't decorated yet.`, 'arcadeHint');
+  townReactionRow(box, o);
+}
+
+// The four preset reactions (no typing, so visits stay kind and safe)
+function townReactionRow(box, o) {
+  townAdd(box, 'h3', `Send ${o.nickname} a reaction`, 'fgHead');
+  const row = townAdd(box, 'div', undefined, 'townReactions');
+  if (o.reacted) { townAdd(box, 'div', '✅ You sent a reaction today. Come back tomorrow!', 'arcadeHint'); return; }
+  Object.entries(TOWN_REACTIONS).forEach(([key, [emoji, words]]) => {
+    const b = townAdd(row, 'button', `${emoji} ${words}`, 'townReaction');
+    b.addEventListener('click', async () => {
+      row.querySelectorAll('button').forEach(x => { x.disabled = true; });
+      const r = await cloudCall('town_react', { p_token: townFamilyToken(), p_to: o.nickname, p_reaction: key });
+      if (r && r.ok) {
+        o.reacted = true;
+        townFly(emoji, b, null);
+        const view = townView;
+        if (view === 'visit') showTownVisit(o, `${emoji} Sent! ${o.nickname} will see it next time they open the app.`);
+        else showTownVisitRoom(o);
+      } else {
+        row.querySelectorAll('button').forEach(x => { x.disabled = false; });
+        townToast('⚠️ ' + ((r && r.error) || 'Could not send. Try again.'));
+        if (r && /already/.test(r.error || '')) { o.reacted = true; }
+      }
+    });
+  });
+}
+
+// A brother or sister visited my town (from the parent inbox, sync.js)
+function receiveTownVisit(d) {
+  const reaction = TOWN_REACTIONS[d.reaction];
+  if (!reaction) return '';
+  const from = String(d.from || 'Someone').slice(0, 30);
+  const t = loadTown();
+  if (!Array.isArray(t.visits)) t.visits = [];
+  t.visits.push({ from: from, reaction: d.reaction, at: new Date().toISOString().slice(0, 10) });
+  t.visits = t.visits.slice(-10);
+  saveTown(t);
+  return `🏙️ ${from} visited your Kat Town: ${reaction[0]} ${reaction[1]}`;
 }
