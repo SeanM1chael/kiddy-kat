@@ -255,6 +255,31 @@
     .townColorLabel { font-size: 13px; font-weight: bold; width: 64px; }
     .townColorRow .townChoice.swatch { width: 30px; height: 30px; }
     .townJobsBtn { background: #1c7ed6; }
+    .kitchenItem { font-size: 16px; padding: 10px 4px; border-radius: 14px; border: 2px solid #e9ecef; background: white; white-space: pre-line; font-family: inherit; line-height: 1.3; }
+    .kitchenItem { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .kitchenItemEmoji { font-size: 34px; line-height: 1.1; }
+    .kitchenItem.right { border-color: #40c057; background: #ebfbee; }
+    .kitchenCounter { font-size: 34px; min-height: 44px; }
+    .kitchenRecipeSays { font-size: 18px; font-weight: bold; }
+    .kitchenBowl { font-size: 28px; }
+    .kitchenTool { font-size: 16px; padding: 12px; }
+    .kitchenDone { text-align: left; max-width: 340px; margin: 0; padding-left: 26px; color: #2b8a3e; font-weight: bold; }
+    .kitchenDone li { margin: 3px 0; }
+    .kitchenSteps { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 340px; }
+    .kitchenStep { font-size: 16px; padding: 12px 10px; border-radius: 14px; border: 2px solid #dee2e6; background: white; font-family: inherit; text-align: left; }
+    .kitchenMeter { position: relative; width: 100%; max-width: 320px; height: 34px; border-radius: 17px; overflow: hidden;
+                    background: linear-gradient(90deg, #fff3bf 0 55%, #b2f2bb 55% 78%, #ffa8a8 78% 100%); border: 2px solid #dee2e6; }
+    .kitchenZone { position: absolute; left: 55%; width: 23%; top: 0; bottom: 0; border-left: 2px solid #2b8a3e; border-right: 2px solid #2b8a3e; }
+    .kitchenFill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(232, 89, 12, 0.45); }
+    .kitchenWords { font-size: 20px; font-weight: bold; }
+    .kitchenBudget { max-width: 420px; margin: 8px auto; background: #e7f5ff; border-radius: 12px; padding: 10px; font-weight: bold; text-align: center; }
+    .kitchenBudget.over { background: #ffe3e3; color: #c92a2a; }
+    .kitchenShelf { display: flex; flex-direction: column; gap: 6px; max-width: 420px; margin: 0 auto; }
+    .kitchenShelfRow { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 6px; align-items: center; background: white; border-radius: 12px; padding: 6px; }
+    .kitchenShelfName { font-weight: bold; text-align: left; font-size: 15px; }
+    .kitchenPrice { font-size: 13px; padding: 8px 4px; border-radius: 10px; border: 2px solid #dee2e6; background: #f8f9fa; white-space: pre-line; font-family: inherit; }
+    .kitchenPrice.picked { border-color: #2b8a3e; background: #d3f9d8; font-weight: bold; }
+    .kitchenTreat.picked { border-color: #e8590c; background: #fff4e6; }
     .townPopSay { white-space: pre-line; }
     .bankAccounts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 420px; margin: 8px auto; }
     .bankAccount { background: white; border-radius: 16px; padding: 12px 8px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
@@ -1063,7 +1088,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
 
   <!-- Problem reporter: if any file or step fails, show which one at the bottom of the screen (for testing) -->
   <script>
-    const APP_VERSION = '2026-11-05a';      // bump with the ?v= numbers below
+    const APP_VERSION = '2026-11-05b';      // bump with the ?v= numbers below
     function kkReport(where, message) {
       try { localStorage.setItem('kkLastError', new Date().toLocaleString() + ' · ' + where + ': ' + message); } catch (err) {}
       let bar = document.getElementById('kkError');
@@ -1083,33 +1108,34 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     window.addEventListener('unhandledrejection', e => kkReport('a background step', (e.reason && e.reason.message) || String(e.reason)));
   </script>
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-11-05a"></script>
-  <script src="push.js?v=2026-11-05a"></script>
-  <script src="sync.js?v=2026-11-05a"></script>
-  <script src="daily.js?v=2026-11-05a"></script>
-  <script src="pet.js?v=2026-11-05a"></script>
-  <script src="stickers.js?v=2026-11-05a"></script>
-  <script src="games.js?v=2026-11-05a"></script>
-  <script src="challenge.js?v=2026-11-05a"></script>
-  <script src="rewards.js?v=2026-11-05a"></script>
-  <script src="wallet.js?v=2026-11-05a"></script>
-  <script src="catchup.js?v=2026-11-05a"></script>
-  <script src="packs.js?v=2026-11-05a"></script>
-  <script src="league.js?v=2026-11-05a"></script>
-  <script src="uploads.js?v=2026-11-05a"></script>
-  <script src="weekend.js?v=2026-11-05a"></script>
-  <script src="streak.js?v=2026-11-05a"></script>
-  <script src="supplies.js?v=2026-11-05a"></script>
-  <script src="career.js?v=2026-11-05a"></script>
-  <script src="bills.js?v=2026-11-05a"></script>
-  <script src="money.js?v=2026-11-05a"></script>
-  <script src="arcade.js?v=2026-11-05a"></script>
-  <script src="earnback.js?v=2026-11-05a"></script>
-  <script src="familygames.js?v=2026-11-05a"></script>
-  <script src="town.js?v=2026-11-05a"></script>
-  <script src="toys.js?v=2026-11-05a"></script>
-  <script src="bank.js?v=2026-11-05a"></script>
-  <script src="tour.js?v=2026-11-05a"></script>
+  <script src="config.js?v=2026-11-05b"></script>
+  <script src="push.js?v=2026-11-05b"></script>
+  <script src="sync.js?v=2026-11-05b"></script>
+  <script src="daily.js?v=2026-11-05b"></script>
+  <script src="pet.js?v=2026-11-05b"></script>
+  <script src="stickers.js?v=2026-11-05b"></script>
+  <script src="games.js?v=2026-11-05b"></script>
+  <script src="challenge.js?v=2026-11-05b"></script>
+  <script src="rewards.js?v=2026-11-05b"></script>
+  <script src="wallet.js?v=2026-11-05b"></script>
+  <script src="catchup.js?v=2026-11-05b"></script>
+  <script src="packs.js?v=2026-11-05b"></script>
+  <script src="league.js?v=2026-11-05b"></script>
+  <script src="uploads.js?v=2026-11-05b"></script>
+  <script src="weekend.js?v=2026-11-05b"></script>
+  <script src="streak.js?v=2026-11-05b"></script>
+  <script src="supplies.js?v=2026-11-05b"></script>
+  <script src="career.js?v=2026-11-05b"></script>
+  <script src="bills.js?v=2026-11-05b"></script>
+  <script src="money.js?v=2026-11-05b"></script>
+  <script src="arcade.js?v=2026-11-05b"></script>
+  <script src="earnback.js?v=2026-11-05b"></script>
+  <script src="familygames.js?v=2026-11-05b"></script>
+  <script src="town.js?v=2026-11-05b"></script>
+  <script src="toys.js?v=2026-11-05b"></script>
+  <script src="bank.js?v=2026-11-05b"></script>
+  <script src="kitchen.js?v=2026-11-05b"></script>
+  <script src="tour.js?v=2026-11-05b"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {

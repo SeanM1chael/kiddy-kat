@@ -39,7 +39,7 @@ const TOWN_COLS = 7, TOWN_ROWS = 9, TOWN_ROAD_COL = 3, TOWN_ROAD_ROW = 4;
 const TOWN_PLACES = [
   ['home', '🏠', 'My House', 'Home', 1, 1], ['closet', '👕', 'Kat Closet', 'Closet', 4, 1], ['burger', '🍔', 'Paw Burger', 'Burger', 6, 2],
   ['school', '🏫', 'Kat Academy', 'School', 1, 6], ['arcade', '🕹️', 'Arcade', 'Arcade', 4, 6], ['toys', '🧸', 'Toy Box', 'Toys', 6, 7],
-  ['bank', '🏦', 'Kat Bank', 'Bank', 1, 3]
+  ['bank', '🏦', 'Kat Bank', 'Bank', 1, 3], ['kitchen', '🍳', 'Kat Kitchen', 'Kitchen', 5, 3]
 ];
 function townIsRoad(c, r) { return c === TOWN_ROAD_COL || r === TOWN_ROAD_ROW; }
 function townPlaceAt(c, r) { return TOWN_PLACES.find(p => p[4] === c && p[5] === r); }
@@ -208,6 +208,7 @@ function openTown() {
 // ✖ goes back one step: from a store, My House or My look back to the map; from the map, out of town
 function closeTown() {
   if (String(townView).startsWith('bank:')) { showTownBank(); return; }
+  if (String(townView).startsWith('kitchen:')) { showTownKitchen(); return; }
   if (String(townView).startsWith('toy:')) { if (typeof toyStop === 'function') toyStop(); showTownHome(); return; }
   if (townView !== 'map' && loadTown().avatar) { showTownMap(); return; }
   leaveTown();
@@ -381,8 +382,17 @@ function townEnter(id) {
   if (id === 'home') { showTownHome(); return; }
   if (id === 'school') { leaveTown(); townReturn = true; if (typeof openPractice === 'function') openPractice(); return; }
   if (id === 'arcade') { leaveTown(); townReturn = true; if (typeof openArcade === 'function') openArcade(); return; }
-  if (id === 'bank' && typeof showTownBank === 'function') { showTownBank(); return; }
-  showTownStore(id);
+  if (id === 'kitchen') {
+    if (typeof showTownKitchen === 'function') showTownKitchen();
+    else showTownMap('🍳 Kat Kitchen is opening soon! Close the app all the way and open it again to finish updating.');
+    return;
+  }
+  if (id === 'bank') {
+    if (typeof showTownBank === 'function') showTownBank();
+    else showTownMap('🏦 Kat Bank is opening soon! Close the app all the way and open it again to finish updating.');
+    return;
+  }
+  if (TOWN_STORES[id]) showTownStore(id);
 }
 
 // ---------- 🛍️ A store ----------
@@ -401,6 +411,7 @@ function townWearing(a, itemId) {
 
 function showTownStore(id, message) {
   const store = TOWN_STORES[id];
+  if (!store) { showTownMap(); return; }
   const t = loadTown();
   townView = 'store';
   const box = townBody(`${store.emoji} ${store.name}`);
