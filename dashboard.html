@@ -537,6 +537,32 @@
     }
 
     // ---------- Family settings: privacy and Delete my family ----------
+    // 🏙️ Kat Town family visits: brothers and sisters can look at each other's towns (off until a grown-up turns it on)
+    async function showTownVisitsSwitch(box, add) {
+      const token = sessionStorage.getItem('kiddyKatDashToken');
+      const wrap = add(box, 'div', undefined, 'groceryDay townVisits');
+      const label = add(wrap, 'label');
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.id = 'townVisitsOn';
+      label.appendChild(check);
+      label.appendChild(document.createTextNode(' 🏙️ Let my kids visit each other\'s Kat Town'));
+      add(wrap, 'div', 'Brothers and sisters in this family only. They can look around and send a ❤️ 🤩 😂 or 🏆, once a day. No typing, and nothing can be changed.', 'who');
+      const note = add(wrap, 'div', '', 'who');
+      check.disabled = true;
+      const got = await cloudCall('parent_get_town_visits', { p_token: token });
+      if (!got.ok) { note.textContent = '⚠️ ' + (got.error || 'Could not load this setting'); return; }
+      check.checked = !!got.on;
+      check.disabled = false;
+      check.addEventListener('change', async () => {
+        check.disabled = true;
+        const r = await cloudCall('parent_set_town_visits', { p_token: token, p_on: check.checked });
+        check.disabled = false;
+        if (!r.ok) { check.checked = !check.checked; note.textContent = '⚠️ ' + r.error; return; }
+        note.textContent = r.on ? '✅ Family visits are on.' : '🔒 Family visits are off.';
+      });
+    }
+
     function showFamilyPanel(familyName) {
       const box = document.getElementById('familyPanel');
       box.textContent = '';
@@ -545,6 +571,7 @@
       const policy = add(box, 'a', 'Privacy policy');
       policy.href = 'privacy.html';
       policy.target = '_blank';
+      showTownVisitsSwitch(box, add);
       const open = add(add(box, 'div'), 'button', '🗑️ Delete my family', 'plain');
       const form = add(box, 'div', undefined, 'dangerBox');
       form.style.display = 'none';
@@ -826,6 +853,13 @@
         if (!(town.wishes || []).length) add(wishBox, 'div', 'Nothing wished for yet.', 'giftList');
         const bought = (town.bought || []).slice(-5).reverse();
         if (bought.length) add(wishBox, 'div', `🛍️ Bought in Kat Town: ${bought.map(b => `${b.emoji} ${b.name}`).join(', ')}`, 'giftList');
+      }
+      if (town && town.avatar) {
+        const townBox = section('🏙️ Kat Town');
+        row(townBox, 'Built in town', `${(town.built || []).length}`);
+        row(townBox, 'Job shifts worked', `${town.workShifts || 0}`);
+        const visit = (town.visits || []).slice(-1)[0];
+        if (visit) row(townBox, 'Last family visit', `${visit.from}`);
       }
 
       // Wallet

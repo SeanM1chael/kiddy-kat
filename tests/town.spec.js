@@ -241,3 +241,79 @@ test('the version line can clear an old problem note', async ({ page }) => {
   await expect(page.locator('#appVersionLine')).toContainText('Cleared');
   expect(await page.evaluate(() => localStorage.getItem('kkLastError'))).toBeNull();
 });
+
+// Round 4: visit brothers' and sisters' towns (look only, preset reactions)
+const LINKED = { kiddyKatCloudToken: 'test-token' };
+const JUJU_TOWN = { nickname: 'Juju', animal: 'kitten', avatar: { hair: 'puffs' }, reacted: false,
+  built: [{ lot: '2,7', id: 'shop', name: 'Slime Spot' }, { lot: '0,0', id: 'tree', name: '' }],
+  room: { wall: 2, floor: 1, items: [{ spot: '1,1', id: 'tv' }] } };
+
+// Pretend server: answers family_towns and town_react, and remembers what was sent
+async function fakeFamily(page, answer) {
+  await page.evaluate(a => {
+    window.sentToServer = [];
+    window.cloudCall = async (name, args) => {
+      window.sentToServer.push([name, args]);
+      if (name === 'family_towns') return a;
+      if (name === 'town_react') return { ok: true };
+      return { ok: false, error: 'not in this test' };
+    };
+  }, answer);
+}
+
+test('family visits are off until a grown-up turns them on', async ({ page }) => {
+  await openAppAs(page, 'tiger', { ...PET, ...LINKED, kiddyKatTown: AVATAR });
+  await fakeFamily(page, { ok: true, on: false, towns: [] });
+  await page.click('#townButton');
+  await page.click('.townFamilyBtn');
+  await expect(page.locator('#townBody .arcadeMessage')).toContainText('Family visits are off');
+});
+
+test('a phone not in the online family is told so', async ({ page }) => {
+  await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await page.click('.townFamilyBtn');
+  await expect(page.locator('#townBody .arcadeMessage')).toContainText('online family');
+});
+
+test('visit a sister\'s town and room, look only, and send one reaction', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, ...LINKED, kiddyKatTown: AVATAR });
+  await fakeFamily(page, { ok: true, on: true, towns: [JUJU_TOWN] });
+  await page.click('#townButton');
+  await page.click('.townFamilyBtn');
+  await expect(page.locator('.townFamilyCard')).toContainText("Juju's town");
+  await page.click('.townFamilyCard >> text=🚶 Visit');
+  await expect(page.locator('#townTitle')).toContainText("Juju's town");
+  // Her things are there, and tapping one shows it off; there's no Build button and no empty lots to build on
+  await expect(page.locator('.townTile[data-lot="2,7"]')).toContainText('Slime Spot');
+  await expect(page.locator('text=🔨 Build')).toHaveCount(0);
+  await expect(page.locator('.townTile.lot')).toHaveCount(0);
+  await page.click('.townTile[data-lot="2,7"]');
+  await expect(page.locator('.townPopSay')).toContainText('Slime Spot');
+  await page.click('.townPop >> text=😄 Cool!');
+  // Her room, look only
+  await page.click("text=🏠 See Juju's room");
+  await expect(page.locator('.townRoomSpot[data-spot="1,1"]')).toHaveText('📺');
+  await expect(page.locator('.townPaletteItem')).toHaveCount(0);
+  // Only the 4 preset reactions, no typing
+  await expect(page.locator('.townReaction')).toHaveCount(4);
+  await expect(page.locator('#townBody input, #townBody textarea')).toHaveCount(0);
+  await page.click('.townReaction >> text=Wow!');
+  await expect(page.locator('.townReaction')).toHaveCount(0);
+  await expect(page.locator('#townBody')).toContainText('Come back tomorrow');
+  const sent = await page.evaluate(() => window.sentToServer.filter(s => s[0] === 'town_react'));
+  expect(sent).toEqual([['town_react', { p_token: 'test-token', p_to: 'Juju', p_reaction: 'wow' }]]);
+  // Nothing in my own town changed
+  expect(await page.evaluate(() => loadTown().built)).toEqual([]);
+  await expectNoProblems(page, errors);
+});
+
+test('a visit from family shows up in my town', async ({ page }) => {
+  const errors = await openAppAs(page, 'kitten', { ...PET, kiddyKatTown: AVATAR,
+    kiddyKatParentInbox: [{ type: 'townvisit', from: 'PJ Flash', reaction: 'best', id: 'v-1' }] });
+  await page.evaluate(() => { processParentInbox(); document.getElementById('party').style.display = 'none'; });
+  expect(await page.evaluate(() => loadTown().visits.map(v => [v.from, v.reaction]))).toEqual([['PJ Flash', 'best']]);
+  await page.click('#townButton');
+  await expect(page.locator('.townVisitNote')).toContainText('PJ Flash visited your town: 🏆 Best town!');
+  await expectNoProblems(page, errors);
+});
