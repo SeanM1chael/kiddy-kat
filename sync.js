@@ -13,7 +13,10 @@
 // =====================================================================
 
 const CLOUD_ANIMALS = { kitten: '🐱', tiger: '🐯', lion: '🦁', eagle: '🦅' };
-const LOCAL_ONLY = ['kiddyKatProofPhotos', 'kiddyKatParentPhone', 'kiddyKatPlace', 'kiddyKatSpoken', 'kiddyKatBills', 'kiddyKatMoneyGoals'];   // never sent online
+// Never sent online. kiddyKatParentPin = the grown-up PIN that locks settings on this phone (Nov 5: it used to be copied online as typed)
+const LOCAL_ONLY = ['kiddyKatProofPhotos', 'kiddyKatParentPhone', 'kiddyKatPlace', 'kiddyKatSpoken', 'kiddyKatBills', 'kiddyKatMoneyGoals', 'kiddyKatParentPin'];
+// Online, a profile carries only the age group, not the birth year. A new phone gets a birth year from the group's middle age.
+const CLOUD_GROUP_AGE = { kitten: 8, tiger: 12, lion: 16, eagle: 40 };
 
 // Cloud bookkeeping (these stay on this device)
 const CLOUD = {
@@ -102,7 +105,9 @@ function cloudCollect() {
   }
   if (data.kiddyKatProfile) {
     const profile = JSON.parse(data.kiddyKatProfile);
-    delete profile.name;
+    if (profile.birthYear && typeof animalFor === 'function') profile.ageGroup = animalFor(new Date().getFullYear() - profile.birthYear).theme;
+    delete profile.name;                 // the real name stays on this device
+    delete profile.birthYear;            // so does the exact age
     data.kiddyKatProfile = JSON.stringify(profile);
   }
   // For the parent dashboard: the task lists this kid sees right now (including the starting lists)
@@ -138,6 +143,9 @@ function cloudApply(data) {
   if (data.kiddyKatProfile) {
     const profile = JSON.parse(data.kiddyKatProfile);
     profile.name = (localProfile && localProfile.name) || cloudGet(CLOUD.nick) || 'Kiddo';
+    // Keep this phone's birth year; a new phone works one out from the age group
+    if (localProfile && localProfile.birthYear) profile.birthYear = localProfile.birthYear;
+    else if (!profile.birthYear && CLOUD_GROUP_AGE[profile.ageGroup]) profile.birthYear = new Date().getFullYear() - CLOUD_GROUP_AGE[profile.ageGroup];
     cloudSet('kiddyKatProfile', JSON.stringify(profile));
   }
 }

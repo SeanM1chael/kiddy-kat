@@ -10,7 +10,7 @@ test('first visit: make a character, then the town map shows', async ({ page }) 
   await expect(page.locator('#townTitle')).toContainText('Make your character');
   await page.click('.townChoice >> text=Curly');
   await page.click('text=✅ Done! Go to town');
-  await expect(page.locator('.townTile.place')).toHaveCount(9);
+  await expect(page.locator('.townTile.place')).toHaveCount(10);
   expect(await page.evaluate(() => loadTown().avatar.hair)).toBe('curly');
   await expectNoProblems(page, errors);
 });
@@ -781,4 +781,115 @@ test('Password builder: personal info is weak, a long random passphrase wins', a
   await page.click('.safetyLock');
   await expect(page.locator('.townPopSay')).toContainText('millions of years');
   await expectNoProblems(page, errors);
+});
+
+// Nov 5: 🏛️ Town Hall — family vote, budget, civics
+function ballot(extra) {
+  return { ok: true, week: '2026-11-02', options: ['library', 'dogpark', 'skatepark'], counts: {}, mine: null, voted: [], kids: 2, final: false, winner: null, winners: [], ...extra };
+}
+async function fakeHall(page, first, afterVote) {
+  await page.evaluate(([a, b]) => {
+    window.sentToServer = [];
+    window.cloudCall = async (name, args) => {
+      window.sentToServer.push([name, args]);
+      if (name === 'town_ballot') return window.hallAnswer || a;
+      if (name === 'town_vote') { window.hallAnswer = b; return b; }
+      return { ok: false, error: 'not in this test' };
+    };
+  }, [first, afterVote]);
+}
+
+test('Town Hall: vote with a reason, see the count, then the winner gets built in my town', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, ...LINKED, kiddyKatTown: AVATAR });
+  await fakeHall(page, ballot(), ballot({ mine: 'dogpark', counts: { dogpark: 1 }, voted: ['PJ Flash'] }));
+  await page.click('#townButton');
+  await page.click('[data-place=hall]');
+  await expect(page.locator('.hallOption')).toHaveCount(3, { timeout: 5000 });
+  await page.locator('.hallOption[data-project="dogpark"] .hallVoteBtn').click();
+  await expect(page.locator('.hallReason')).toHaveCount(5);                 // preset reasons only, no typing
+  await page.click('.hallReason[data-reason="healthy"]');
+  expect(await page.evaluate(() => window.sentToServer.find(s => s[0] === 'town_vote')[1]))
+    .toEqual({ p_token: 'test-token', p_choice: 'dogpark', p_reason: 'healthy' });
+  await expect(page.locator('.hallOption[data-project="dogpark"]')).toHaveClass(/mine/);
+  await expect(page.locator('.hallVoted')).toContainText('1 of 2 kids voted: PJ Flash');
+  // Juju votes too (on her phone): the result is final, and the winner is built here
+  await page.evaluate(() => { window.hallAnswer = { ok: true, week: '2026-11-02', options: ['library', 'dogpark', 'skatepark'], counts: { dogpark: 2 },
+    mine: 'dogpark', voted: ['PJ Flash', 'Juju'], kids: 2, final: true, winner: 'dogpark', winners: [{ week: '2026-11-02', choice: 'dogpark' }] }; });
+  await page.evaluate(() => showTownHall());
+  await expect(page.locator('.hallResult')).toContainText('Dog park wins');
+  await expect(page.locator('.hallVoteBtn')).toHaveCount(0);
+  const built = await page.evaluate(() => loadTown().built);
+  expect(built.map(b => [b.id, b.community])).toEqual([['c-dogpark', true]]);
+  // On the map it shows up, does its thing, and can't be moved or taken down
+  await page.evaluate(() => showTownMap());
+  const lot = built[0].lot;
+  await expect(page.locator(`.townTile[data-lot="${lot}"]`)).toContainText('🦮');
+  await page.evaluate(() => { townBuilding = true; showTownMap(); });
+  await page.click(`.townTile[data-lot="${lot}"]`);
+  await expect(page.locator('.townPopSay')).toContainText('belongs to everyone');
+  await expect(page.locator('.townPop >> text=Take down')).toHaveCount(0);
+  // Opening the hall again doesn't build a second one
+  await page.evaluate(() => showTownHall());
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => loadTown().built.length)).toBe(1);
+  await expectNoProblems(page, errors);
+});
+
+test('Town Hall: a tie is explained, and a phone not online can still do the lessons', async ({ page }) => {
+  await openAppAs(page, 'tiger', { ...PET, ...LINKED, kiddyKatTown: AVATAR });
+  await fakeHall(page, ballot({ counts: { library: 1, skatepark: 1 }, mine: 'skatepark', voted: ['PJ Flash', 'Juju'], final: true, winner: 'library',
+                                winners: [{ week: '2026-11-02', choice: 'library' }] }), null);
+  await page.click('#townButton');
+  await page.evaluate(() => showTownHall());
+  await expect(page.locator('#townBody')).toContainText('compromise');
+  // Not in the online family
+  await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await page.evaluate(() => showTownHall());
+  await expect(page.locator('.hallVote')).toContainText('online family');
+  await expect(page.locator('.hallLesson')).toHaveCount(2);
+});
+
+test('a family-vote winner shows up when Kat Town opens, even without visiting Town Hall', async ({ page }) => {
+  await openAppAs(page, 'kitten', { ...PET, ...LINKED, kiddyKatTown: AVATAR });
+  await fakeHall(page, ballot({ winners: [{ week: '2026-10-26', choice: 'zoo' }] }), null);
+  await page.click('#townButton');
+  await expect(page.locator('#townBody .arcadeMessage')).toContainText('Petting zoo was just built');
+  expect(await page.evaluate(() => loadTown().built.map(b => b.id))).toEqual(['c-zoo']);
+});
+
+test('Mayor for a day: unbalanced or short-changed budgets fail, a good one wins', async ({ page }) => {
+  const errors = await openAppAs(page, 'lion', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await page.evaluate(() => openHallLesson('mayor'));
+  await expect(page.locator('.hallLeft')).toContainText('$400K');        // 6 × $100K planned of $1M
+  await page.click('.hallPass');
+  await expect(page.locator('.toySay')).toContainText('still have');
+  // Balanced, but parks get nothing
+  await page.evaluate(() => { hallSet('safety', 30); hallSet('schools', 30); hallSet('roads', 20); hallSet('trash', 10); hallSet('parks', 0); hallSet('library', 10); });
+  await expect(page.locator('.hallLeft')).toContainText('Balanced');
+  await page.click('.hallPass');
+  await expect(page.locator('.townPopSay')).toContainText('playground broke');
+  await page.click('.townPop >> text=🔁 Try again');
+  await page.evaluate(() => { hallSet('safety', 30); hallSet('schools', 25); hallSet('roads', 15); hallSet('trash', 10); hallSet('parks', 15); hallSet('library', 5); });
+  // The + and − buttons work too
+  await page.locator('.hallDept[data-dept="parks"] .hallMinus').click();
+  await page.locator('.hallDept[data-dept="safety"] .hallPlus').click();
+  expect(await page.evaluate(() => hallPlan())).toMatchObject({ parks: 10, safety: 35 });
+  await page.click('.hallPass');
+  await expect(page.locator('.townPopSay')).toContainText('Great year, Mayor');
+  await expect(page.locator('.townPopSay')).toContainText('+1 ⭐');
+  await expectNoProblems(page, errors);
+});
+
+test('Town Hall lessons can be won at every age', async ({ page }) => {
+  test.setTimeout(60000);
+  for (const [who, id] of [['kitten', 'helpers'], ['tiger', 'taxes'], ['lion', 'taxes']]) {
+    const errors = await openAppAs(page, who, { ...PET, kiddyKatTown: AVATAR });
+    await page.click('#townButton');
+    await page.evaluate(i => openHallLesson(i), id);
+    await answerAllRight(page);
+    await expect(page.locator('.townPopSay')).toContainText('6 of 6');
+    await expectNoProblems(page, errors);
+  }
 });
