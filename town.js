@@ -20,9 +20,9 @@ const TOWN_EXTRAS = [['none', 'None', null], ['bow', 'Bow', null], ['cap', 'Cap'
 
 const TOWN_STORES = {
   closet: { name: 'Kat Closet', emoji: '👕', color: '#fce7f3', kind: 'clothes', hello: 'New looks for your character, and wish-list ideas for real life!',
-    items: [['hoodie', '🧥', 'Cozy hoodie', 15], ['jersey', '🎽', 'Team jersey', 15], ['dress', '👗', 'Party dress', 15], ['pajamas', '🛌', 'Pajama set', 10],
+    items: [['hoodie', '🧥', 'Cozy hoodie', 15], ['jersey', '🎽', 'Team jersey', 15], ['dress', '👗', 'Party dress', 15], ['pajamas', '😴', 'Pajama set', 10],
             ['cap', '🧢', 'Baseball cap', 8], ['sunglasses', '🕶️', 'Cool sunglasses', 8], ['headphones', '🎧', 'Headphones', 12], ['crown', '👑', 'Royal crown', 30],
-            ['sneakers', '👟', 'Sparkly sneakers', 12], ['backpack', '🎒', 'New backpack', 12]] },
+            ['sneakers', '👟', 'Cool sneakers', 12], ['backpack', '🎒', 'New backpack', 12]] },
   burger: { name: 'Paw Burger', emoji: '🍔', color: '#fef3c7', kind: 'food', hello: 'What sounds yummy? Tap ❤️ to tell your grown-up for dinner ideas.',
     items: [['burger', '🍔', 'Cheeseburger', 4], ['tacos', '🌮', 'Tacos', 4], ['pizza', '🍕', 'Pizza slice', 4], ['nuggets', '🍗', 'Chicken nuggets', 4],
             ['mac', '🧀', 'Mac and cheese', 3], ['spaghetti', '🍝', 'Spaghetti', 4], ['pancakes', '🥞', 'Pancakes', 3], ['sushi', '🍣', 'Sushi', 5],
@@ -96,7 +96,7 @@ function townAvatarSvg(a, size = 120) {
   // Hair that sits behind the head
   if (a.hair === 'long') el('path', { d: 'M22 44 Q22 18 50 16 Q78 18 78 44 L80 86 Q66 80 50 80 Q34 80 20 86 Z', fill: hair });
   if (a.hair === 'ponytail') el('ellipse', { cx: 80, cy: 46, rx: 9, ry: 20, fill: hair });
-  if (a.outfit === 'hoodie') el('path', { d: 'M26 52 Q26 20 50 20 Q74 20 74 52 L74 74 L26 74 Z', fill: cloth, opacity: 0.85 });
+  if (a.outfit === 'hoodie') el('circle', { cx: 50, cy: 46, r: 31, fill: cloth });      // the hood, around the head
 
   // Body and outfit
   if (a.outfit === 'dress') {
@@ -105,7 +105,11 @@ function townAvatarSvg(a, size = 120) {
     el('rect', { x: 28, y: 74, width: 44, height: 40, rx: 12, fill: cloth });
     if (a.outfit === 'pajamas') [84, 96, 108].forEach(y => el('line', { x1: 30, y1: y, x2: 70, y2: y, stroke: '#ffffff', 'stroke-width': 2, opacity: 0.6 }));
     if (a.outfit === 'jersey') { el('text', { x: 50, y: 104, 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 700, fill: '#ffffff', 'font-family': 'Arial, sans-serif' }).textContent = '7'; }
-    if (a.outfit === 'hoodie') el('rect', { x: 38, y: 96, width: 24, height: 10, rx: 4, fill: '#000000', opacity: 0.12 });
+    if (a.outfit === 'hoodie') {
+      el('rect', { x: 37, y: 96, width: 26, height: 11, rx: 5, fill: '#ffffff', opacity: 0.18 });        // front pocket
+      el('line', { x1: 45, y1: 76, x2: 44, y2: 88, stroke: '#ffffff', 'stroke-width': 1.6, opacity: 0.7 }); // strings
+      el('line', { x1: 55, y1: 76, x2: 56, y2: 88, stroke: '#ffffff', 'stroke-width': 1.6, opacity: 0.7 });
+    }
   }
   // Arms and hands
   el('rect', { x: 18, y: 78, width: 12, height: 26, rx: 6, fill: a.outfit === 'dress' ? skin : cloth });
@@ -275,39 +279,91 @@ function townEnter(id) {
 }
 
 // ---------- 🛍️ A store ----------
+// Clothes you can wear: which part of the character they change
+const TOWN_WEAR = { hoodie: ['outfit', 'hoodie'], jersey: ['outfit', 'jersey'], dress: ['outfit', 'dress'], pajamas: ['outfit', 'pajamas'],
+                    cap: ['extra', 'cap'], sunglasses: ['extra', 'sunglasses'], headphones: ['extra', 'headphones'], crown: ['extra', 'crown'] };
+// How each toy plays: [animation, little extras that pop out]
+const TOWN_PLAY = { soccer: ['bounce', '⚡'], slime: ['squish', '💚'], rccar: ['zoom', '💨'], blocks: ['stack', '🧱🧱'], puzzle: ['spin', '✨'],
+                    plush: ['hug', '💕'], books: ['flip', '📖'], game: ['roll', '🎲'], art: ['wiggle', '🌈'], science: ['wiggle', '🫧🫧'] };
+let townPreview = null;           // Kat Closet: the outfit being tried on
+
+function townWearing(a, itemId) {
+  const w = TOWN_WEAR[itemId];
+  return !!(w && a && a[w[0]] === w[1]);
+}
+
 function showTownStore(id, message) {
   const store = TOWN_STORES[id];
   const t = loadTown();
   townView = 'store';
   const box = townBody(`${store.emoji} ${store.name}`);
-  townAdd(box, 'button', '← Town', 'arcadeBack').addEventListener('click', showTownMap);
-  townAdd(box, 'div', store.hello, 'arcadeHint');
+  townAdd(box, 'button', '← Town', 'arcadeBack').addEventListener('click', () => { townPreview = null; showTownMap(); });
+  townAdd(box, 'div', id === 'closet' ? 'Tap anything to try it on! Buy it with ⭐, or tap 🤍 to wish for the real one.' : store.hello, 'arcadeHint');
+
+  // Kat Closet: a mirror that shows the character trying things on
+  if (id === 'closet') {
+    const mirror = townAdd(box, 'div', undefined, 'townMirror');
+    const a = Object.assign({}, t.avatar || townDefaultAvatar());
+    if (townPreview && TOWN_WEAR[townPreview]) a[TOWN_WEAR[townPreview][0]] = TOWN_WEAR[townPreview][1];
+    const fig = townAvatarSvg(a, 96);
+    if (townPreview) fig.classList.add('townSpin');
+    mirror.appendChild(fig);
+  }
   townAdd(box, 'div', `⭐ ${townStars()} stars`, 'townWallet');
   if (message) townAdd(box, 'div', message, 'arcadeMessage');
+
   const grid = townAdd(box, 'div', undefined, 'townShelf');
   store.items.forEach(([itemId, emoji, name, price]) => {
-    const card = townAdd(grid, 'div', undefined, 'townItem');
+    const card = townAdd(grid, 'div', undefined, 'townItem' + (townPreview === itemId ? ' trying' : ''));
     card.style.background = store.color;
-    townAdd(card, 'div', emoji, 'townItemEmoji');
+    // Clothes show the character wearing them; everything else shows its picture
+    const pic = townAdd(card, 'div', undefined, 'townItemEmoji');
+    if (TOWN_WEAR[itemId]) {
+      const a = Object.assign({}, t.avatar || townDefaultAvatar());
+      a[TOWN_WEAR[itemId][0]] = TOWN_WEAR[itemId][1];
+      pic.appendChild(townAvatarSvg(a, 44));
+    } else pic.textContent = emoji;
     townAdd(card, 'div', name, 'townItemName');
     const owned = store.kind !== 'food' && t.owned.includes(itemId);
     const wished = t.wishes.some(w => w.id === itemId);
     const buttons = townAdd(card, 'div', undefined, 'townItemButtons');
-    const buy = townAdd(buttons, 'button', owned ? '✅ Got it' : `⭐ ${price}`, 'townBuy');
-    buy.disabled = owned;
-    buy.addEventListener('click', () => townBuy(id, itemId));
+    let main;
+    if (owned && TOWN_WEAR[itemId]) {
+      const on = townWearing(t.avatar, itemId);
+      main = townAdd(buttons, 'button', on ? '✅ Wearing' : '👕 Wear', 'townBuy' + (on ? ' owned' : ''));
+      main.addEventListener('click', e => { e.stopPropagation(); townWear(itemId, !on); });
+    } else if (owned && TOWN_PLAY[itemId]) {
+      main = townAdd(buttons, 'button', '▶️ Play', 'townBuy owned');
+      main.addEventListener('click', e => { e.stopPropagation(); townPlay(itemId); });
+    } else if (owned) {
+      main = townAdd(buttons, 'button', '✅ Got it', 'townBuy owned');
+      main.disabled = true;
+    } else {
+      main = townAdd(buttons, 'button', `⭐ ${price}`, 'townBuy');
+      main.addEventListener('click', e => { e.stopPropagation(); townBuy(id, itemId, main); });
+    }
     const heart = townAdd(buttons, 'button', wished ? '❤️' : '🤍', 'townHeart' + (wished ? ' on' : ''));
     heart.setAttribute('aria-label', wished ? 'On your wish list' : 'Add to wish list');
-    heart.addEventListener('click', () => townWish(id, itemId));
+    heart.addEventListener('click', e => { e.stopPropagation(); townWish(id, itemId, heart); });
+    // Tapping the card itself: try clothes on, wiggle everything else
+    card.addEventListener('click', () => {
+      if (id === 'closet' && TOWN_WEAR[itemId]) { townPreview = townPreview === itemId ? null : itemId; showTownStore(id); return; }
+      pic.classList.remove('townWiggle'); void pic.offsetWidth; pic.classList.add('townWiggle');
+    });
   });
 }
 
-function townBuy(storeId, itemId) {
+function townBuy(storeId, itemId, button) {
   const store = TOWN_STORES[storeId];
   const [, emoji, name, price] = store.items.find(i => i[0] === itemId);
   if (typeof pet === 'undefined' || !pet) { showTownStore(storeId, '🥚 Hatch a pet first to start earning stars!'); return; }
-  if (pet.stars < price) { showTownStore(storeId, `You need ${price - pet.stars} more ⭐ for ${name}. Finish a list or play in 🎮 Practice!`); return; }
+  if (pet.stars < price) {
+    if (button) { button.classList.remove('townNope'); void button.offsetWidth; button.classList.add('townNope'); }
+    showTownStore(storeId, `You need ${price - pet.stars} more ⭐ for ${name}. Finish a list or play in 🎮 Practice!`);
+    return;
+  }
   if (!confirm(`Buy ${emoji} ${name} for ${price} ⭐?`)) return;
+  if (button) townFly('⭐', button, document.querySelector('#townBody .townWallet'));
   pet.stars -= price;
   if (typeof savePet === 'function') savePet();
   if (typeof showPet === 'function') showPet();
@@ -315,13 +371,112 @@ function townBuy(storeId, itemId) {
   if (store.kind !== 'food' && !t.owned.includes(itemId)) t.owned.push(itemId);
   t.bought.push({ id: itemId, emoji: emoji, name: name, store: store.name, at: new Date().toISOString().slice(0, 10) });
   saveTown(t);
-  let say = `${emoji} You got ${name}!`;
-  if (store.kind === 'food') say = `${emoji} Yum! That ${name.toLowerCase()} was delicious!`;
-  if (TOWN_OUTFITS.some(o => o[2] === itemId) || TOWN_EXTRAS.some(o => o[2] === itemId)) say += ' Wear it from 🏠 My House → 🎨 My look.';
-  showTownStore(storeId, say);
+  townPreview = null;
+  showTownStore(storeId, store.kind === 'food' ? '' : `${emoji} You got ${name}!`);
+  // What happens next: eat it, put it on, or play with it
+  if (store.kind === 'food') townEat(emoji, name);
+  else if (TOWN_WEAR[itemId]) townPop(townAvatarWith(itemId), `${emoji} ${name} is yours!`, [['👕 Put it on', () => townWear(itemId, true)], ['Later', null]], 'townSpin');
+  else if (TOWN_PLAY[itemId]) townPop(emoji, `${name} is yours! It's in your room in 🏠 My House.`, [['▶️ Play now', () => townPlay(itemId)], ['Later', null]], 'townBounceIn');
+  else townPop(emoji, `${name} is yours!`, [['👍 Nice!', null]], 'townBounceIn');
 }
 
-function townWish(storeId, itemId) {
+function townAvatarWith(itemId) {
+  const a = Object.assign({}, loadTown().avatar || townDefaultAvatar());
+  if (TOWN_WEAR[itemId]) a[TOWN_WEAR[itemId][0]] = TOWN_WEAR[itemId][1];
+  return townAvatarSvg(a, 110);
+}
+
+// Put clothes on (or take them off: back to the T-shirt / no extra)
+function townWear(itemId, on) {
+  const w = TOWN_WEAR[itemId];
+  if (!w) return;
+  const t = loadTown();
+  t.avatar = Object.assign(townDefaultAvatar(), t.avatar || {});
+  t.avatar[w[0]] = on ? w[1] : (w[0] === 'outfit' ? 'tee' : 'none');
+  saveTown(t);
+  if (townView === 'store') showTownStore('closet', on ? '✨ Looking good!' : 'Took it off.');
+  if (on) townPop(townAvatarSvg(t.avatar, 110), '✨ Looking good!', [['😎 Thanks!', null]], 'townSpin');
+  else townToast('👕 Took it off');
+}
+
+// 🍔 Eat it: three bites, then yum
+function townEat(emoji, name) {
+  const t = loadTown();
+  const pop = townPop(townAvatarSvg(t.avatar || townDefaultAvatar(), 90), '', [], '');
+  const food = townAdd(pop.stage, 'div', emoji, 'townFood');
+  const say = pop.say;
+  const bites = ['😋 Nom...', '😋 Nom nom...', '😋 Nom nom nom...'];
+  let n = 0;
+  const bite = () => {
+    if (!pop.box.isConnected) return;
+    if (n < 3) {
+      say.textContent = bites[n];
+      food.style.transform = `scale(${1 - (n + 1) * 0.28})`;
+      n += 1;
+      setTimeout(bite, 550);
+      return;
+    }
+    food.textContent = '';
+    say.textContent = `🤤 Yum! ${name}: so delicious!`;
+    townPopButtons(pop, [['😄 So good!', null]]);
+  };
+  setTimeout(bite, 400);
+}
+
+// 🧸 Play with a toy
+function townPlay(itemId) {
+  const item = TOWN_STORES.toys.items.find(i => i[0] === itemId);
+  if (!item) return;
+  const [anim, extra] = TOWN_PLAY[itemId] || ['bounce', '✨'];
+  const lines = { bounce: 'Kick! Bounce! GOAL! ⚽', squish: 'Squish... squish... so squishy!', zoom: 'Vroom vroom! 🏁', stack: 'Stack it higher... higher!',
+                  spin: 'Click! The last piece fits!', hug: 'Big squeezy hug!', flip: 'Turning the pages...', roll: 'Roll the dice... you rolled a 6!', wiggle: 'So much fun!' };
+  const pop = townPop(item[1], lines[anim] || 'So much fun!', [['🔁 Again', () => townPlay(itemId)], ['Done', null]], 'townPlay-' + anim);
+  townAdd(pop.stage, 'div', extra, 'townExtra');
+}
+
+// A little pop-up scene in the middle of the screen
+function townPop(picture, text, buttons, anim) {
+  document.querySelectorAll('.townPop').forEach(p => p.remove());
+  const box = townAdd(document.getElementById('town'), 'div', undefined, 'townPop');
+  const card = townAdd(box, 'div', undefined, 'townPopCard');
+  const stage = townAdd(card, 'div', undefined, 'townPopStage');
+  const fig = typeof picture === 'string' ? townAdd(stage, 'div', picture, 'townPopEmoji') : stage.appendChild(picture);
+  if (anim && fig.classList) fig.classList.add(anim);
+  const say = townAdd(card, 'div', text, 'townPopSay');
+  const pop = { box, card, stage, say };
+  townPopButtons(pop, buttons);
+  box.addEventListener('click', e => { if (e.target === box) box.remove(); });     // tap outside to close
+  return pop;
+}
+
+function townPopButtons(pop, buttons) {
+  const old = pop.card.querySelector('.townPopButtons');
+  if (old) old.remove();
+  if (!buttons.length) return;
+  const row = townAdd(pop.card, 'div', undefined, 'townPopButtons');
+  buttons.forEach(([label, action], i) => {
+    townAdd(row, 'button', label, i === 0 ? 'arcadeGo' : 'arcadeSmall').addEventListener('click', () => { pop.box.remove(); if (action) action(); });
+  });
+}
+
+// A ⭐ (or ❤️) that flies from one place to another
+function townFly(symbol, from, to) {
+  if (!from) return;
+  const a = from.getBoundingClientRect();
+  const b = to ? to.getBoundingClientRect() : { left: a.left, top: a.top - 120, width: 0, height: 0 };
+  const el = townAdd(document.body, 'div', symbol, 'townFly');
+  el.style.left = (a.left + a.width / 2) + 'px';
+  el.style.top = (a.top + a.height / 2) + 'px';
+  requestAnimationFrame(() => {
+    el.style.left = (b.left + b.width / 2) + 'px';
+    el.style.top = (b.top + b.height / 2) + 'px';
+    el.style.opacity = '0';
+    el.style.transform = 'translate(-50%, -50%) scale(1.6)';
+  });
+  setTimeout(() => el.remove(), 800);
+}
+
+function townWish(storeId, itemId, heart) {
   const store = TOWN_STORES[storeId];
   const [, emoji, name] = store.items.find(i => i[0] === itemId);
   const t = loadTown();
@@ -332,6 +487,7 @@ function townWish(storeId, itemId) {
     showTownStore(storeId, `Took ${name} off your wish list.`);
     return;
   }
+  if (heart) for (let i = 0; i < 3; i++) setTimeout(() => townFly('❤️', heart, null), i * 120);
   t.wishes.push({ id: itemId, emoji: emoji, name: name, store: store.name, kind: store.kind, note: '', at: new Date().toISOString().slice(0, 10) });
   saveTown(t);
   showTownStore(storeId, `❤️ ${name} is on your wish list! ${typeof parentName === 'function' ? parentName() : 'Your grown-up'} can see it.`);
@@ -355,7 +511,19 @@ function showTownHome(message) {
   townAdd(box, 'h3', '🧸 My stuff', 'fgHead');
   const things = Object.values(TOWN_STORES).filter(s => s.kind !== 'food').flatMap(s => s.items).filter(i => t.owned.includes(i[0]));
   if (!things.length) townAdd(box, 'div', 'Nothing yet. Visit 👕 Kat Closet and 🧸 Toy Box!', 'arcadeHint');
-  else townAdd(box, 'div', things.map(i => i[1]).join(' '), 'townStuff');
+  else {
+    townAdd(box, 'div', 'Tap a toy to play, or tap clothes to put them on.', 'arcadeHint');
+    const shelf = townAdd(box, 'div', undefined, 'townStuff');
+    things.forEach(([id, emoji, name]) => {
+      const b = townAdd(shelf, 'button', emoji, 'townStuffItem');
+      b.setAttribute('aria-label', name);
+      b.addEventListener('click', () => {
+        if (TOWN_PLAY[id]) townPlay(id);
+        else if (TOWN_WEAR[id]) { townWear(id, !townWearing(loadTown().avatar, id)); showTownHome(); }
+        else townPop(emoji, `Your ${name.toLowerCase()}!`, [['👍', null]], 'townBounceIn');
+      });
+    });
+  }
 
   // Wish list
   townAdd(box, 'h3', `💝 My wish list (${t.wishes.length})`, 'fgHead');
