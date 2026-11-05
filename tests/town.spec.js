@@ -347,6 +347,7 @@ test('Kat Town spending stops at the daily limit, and a grown-up can change it',
 // Nov 4: "every item would have some kind of interactive level"
 const ALL_TOYS = ['puzzle', 'blocks', 'soccer', 'art', 'plush', 'rccar', 'science', 'books', 'game', 'slime'];
 test('every toy opens its own game, and ✖ goes back to My House', async ({ page }) => {
+  test.setTimeout(60000);                                  // opens all ten toys; slow on GitHub's iPhone tester
   const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: { ...AVATAR, owned: ALL_TOYS } });
   await page.click('#townButton');
   for (const id of ALL_TOYS) {
@@ -362,6 +363,7 @@ test('every toy opens its own game, and ✖ goes back to My House', async ({ pag
 });
 
 test('toy games can be won: first win of the day gives +1 ⭐, the second is for fun', async ({ page }) => {
+  test.setTimeout(90000);                                  // plays seven games in a row; slow on GitHub's iPhone tester
   const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: { ...AVATAR, owned: ALL_TOYS } });
   await page.click('#townButton');
   const won = async () => { await expect(page.locator('.townPopSay')).toContainText('🎉', { timeout: 8000 }); await page.click('.townPop >> text=🏠 My House'); };
