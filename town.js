@@ -38,7 +38,8 @@ const TOWN_COLS = 7, TOWN_ROWS = 9, TOWN_ROAD_COL = 3, TOWN_ROAD_ROW = 4;
 // Places on the map: [id, emoji, name, short label, column, row]
 const TOWN_PLACES = [
   ['home', '🏠', 'My House', 'Home', 1, 1], ['closet', '👕', 'Kat Closet', 'Closet', 4, 1], ['burger', '🍔', 'Paw Burger', 'Burger', 6, 2],
-  ['school', '🏫', 'Kat Academy', 'School', 1, 6], ['arcade', '🕹️', 'Arcade', 'Arcade', 4, 6], ['toys', '🧸', 'Toy Box', 'Toys', 6, 7]
+  ['school', '🏫', 'Kat Academy', 'School', 1, 6], ['arcade', '🕹️', 'Arcade', 'Arcade', 4, 6], ['toys', '🧸', 'Toy Box', 'Toys', 6, 7],
+  ['bank', '🏦', 'Kat Bank', 'Bank', 1, 3]
 ];
 function townIsRoad(c, r) { return c === TOWN_ROAD_COL || r === TOWN_ROAD_ROW; }
 function townPlaceAt(c, r) { return TOWN_PLACES.find(p => p[4] === c && p[5] === r); }
@@ -61,6 +62,16 @@ function loadTown() {
   if (!Array.isArray(t.wishes)) t.wishes = [];       // { id, emoji, name, store, note, at }
   if (!Array.isArray(t.bought)) t.bought = [];       // recent purchases, for the dashboard
   if (!Array.isArray(t.built)) t.built = [];         // 🔨 things built in town: { lot: 'col,row', id, name }
+  // A new place (like 🏦 Kat Bank) may sit where something was built: move that thing to a free lot
+  t.built.forEach(b => {
+    const [c, r] = String(b.lot).split(',').map(Number);
+    if (!townPlaceAt(c, r)) return;
+    for (let rr = 0; rr < TOWN_ROWS; rr++) for (let cc = 0; cc < TOWN_COLS; cc++) {
+      const lot = cc + ',' + rr;
+      if (townPlaceAt(cc, rr) || townIsRoad(cc, rr) || t.built.some(x => x.lot === lot)) continue;
+      if (townPlaceAt(c, r)) { b.lot = lot; return; }
+    }
+  });
   return t;
 }
 function saveTown(t) {
@@ -196,6 +207,7 @@ function openTown() {
 
 // ✖ goes back one step: from a store, My House or My look back to the map; from the map, out of town
 function closeTown() {
+  if (String(townView).startsWith('bank:')) { showTownBank(); return; }
   if (String(townView).startsWith('toy:')) { if (typeof toyStop === 'function') toyStop(); showTownHome(); return; }
   if (townView !== 'map' && loadTown().avatar) { showTownMap(); return; }
   leaveTown();
@@ -369,6 +381,7 @@ function townEnter(id) {
   if (id === 'home') { showTownHome(); return; }
   if (id === 'school') { leaveTown(); townReturn = true; if (typeof openPractice === 'function') openPractice(); return; }
   if (id === 'arcade') { leaveTown(); townReturn = true; if (typeof openArcade === 'function') openArcade(); return; }
+  if (id === 'bank' && typeof showTownBank === 'function') { showTownBank(); return; }
   showTownStore(id);
 }
 
