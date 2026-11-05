@@ -43,7 +43,8 @@ function openToy(id) {
   townView = 'toy:' + id;
   const box = townBody(game.title);
   townAdd(box, 'button', '← My House', 'arcadeBack').addEventListener('click', () => { toyStop(); showTownHome(); });
-  townAdd(box, 'div', game.how, 'arcadeHint');
+  const how = townAdd(box, 'div', game.how, 'arcadeHint');
+  if (typeof kkSpeakButton === 'function') { kkSpeakButton(how, game.how, 'How to play'); kkAutoSpeak(game.how); }
   const say = townAdd(box, 'div', '', 'arcadeMessage toySay');
   const area = townAdd(box, 'div', undefined, 'toyArea toy-' + id);
   game.start(area, say);

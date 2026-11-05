@@ -218,6 +218,8 @@ function bankRounds(id, area, say, rounds, pass, winText, tip, finish) {
     const round = rounds[r];
     q.textContent = '';
     round.show(q);
+    const readQuestion = () => `${q.textContent}. ${round.options.join('. Or, ')}.`;
+    if (typeof kkSpeakButton === 'function') { kkSpeakButton(q, readQuestion, 'Read the question'); kkAutoSpeak(readQuestion()); }
     opts.textContent = '';
     why.textContent = '';
     next.style.display = 'none';
@@ -233,6 +235,8 @@ function bankRounds(id, area, say, rounds, pass, winText, tip, finish) {
         b.classList.add(ok ? 'right' : 'wrong');
         if (!ok) opts.children[round.answer].classList.add('right');
         why.textContent = (ok ? '✅ ' : '❌ ') + round.why;
+        if (typeof kkAutoSpeak === 'function') kkAutoSpeak((ok ? 'Right! ' : 'Not quite. ') + round.why);
+        if (typeof kkSpeakButton === 'function') kkSpeakButton(why, () => why.textContent, 'Read why');
         say.textContent = `Question ${r + 1} of ${rounds.length} · ✅ ${right}`;
         next.style.display = '';
       });
@@ -261,6 +265,7 @@ function bankCoins(area, say) {
   const row = townAdd(area, 'div', undefined, 'toyGrid2');
   const show = () => {
     goal.textContent = `Make ${targets[round]}¢`;
+    if (total === 0 && typeof kkAutoSpeak === 'function') kkAutoSpeak(`Make ${targets[round]} cents`);
     jar.textContent = `🫙 ${total}¢`;
     say.textContent = `Round ${round + 1} of ${targets.length}`;
   };
