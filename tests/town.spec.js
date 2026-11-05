@@ -21,7 +21,9 @@ test('buying spends stars, unlocks the outfit, and needs enough stars', async ({
   await page.evaluate(() => { openTown(); showTownStore('closet'); });
   await page.locator('.townItem', { hasText: 'Cozy hoodie' }).locator('.townBuy').click();
   expect(await page.evaluate(() => pet.stars)).toBe(30 - 15);
-  await expect(page.locator('.townItem', { hasText: 'Cozy hoodie' }).locator('.townBuy')).toHaveText('✅ Got it');
+  await expect(page.locator('.townPop')).toContainText('Cozy hoodie is yours');      // the "put it on" scene
+  await page.click('.townPop >> text=Later');
+  await expect(page.locator('.townItem', { hasText: 'Cozy hoodie' }).locator('.townBuy')).toHaveText('👕 Wear');
   // Too expensive: the crown costs 30, only 15 left
   await page.locator('.townItem', { hasText: 'Royal crown' }).locator('.townBuy').click();
   await expect(page.locator('#townBody .arcadeMessage')).toContainText('more ⭐');
@@ -77,4 +79,34 @@ test('Practice and the Arcade opened from town come back to the town map', async
   await page.click('text=🎮 Practice');
   await page.click('#game .closeGame');
   await expect(page.locator('#town')).toBeHidden();
+});
+
+// Nov 4: "nothing happens when you select things"
+test('things you buy do something: put on clothes, eat food, play with toys', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: { avatar: { skin: 1, hair: 'short', hairColor: 0, outfit: 'tee', color: 0, extra: 'none' } } });
+  page.on('dialog', d => d.accept());
+  await page.evaluate(() => { openTown(); showTownStore('closet'); });
+  // Tap a card to try it on in the mirror (free)
+  await page.locator('.townItem', { hasText: 'Baseball cap' }).click();
+  await expect(page.locator('.townItem.trying')).toContainText('Baseball cap');
+  // Buy and put it on
+  await page.locator('.townItem', { hasText: 'Baseball cap' }).locator('.townBuy').click();
+  await page.click('.townPop >> text=👕 Put it on');
+  expect(await page.evaluate(() => loadTown().avatar.extra)).toBe('cap');
+  await page.click('.townPop >> text=😎 Thanks!');
+  // Food: three bites, then yum
+  await page.evaluate(() => showTownStore('burger'));
+  await page.locator('.townItem', { hasText: 'Tacos' }).locator('.townBuy').click();
+  await expect(page.locator('.townPopSay')).toContainText('Yum', { timeout: 5000 });
+  await page.click('.townPop >> text=😄 So good!');
+  // Toys: play right away, and again from My House
+  await page.evaluate(() => showTownStore('toys'));
+  await page.locator('.townItem', { hasText: 'Soccer ball' }).locator('.townBuy').click();
+  await page.click('.townPop >> text=▶️ Play now');
+  await expect(page.locator('.townPopSay')).toContainText('GOAL');
+  await page.click('.townPop >> text=Done');
+  await page.evaluate(() => showTownHome());
+  await page.locator('.townStuffItem[aria-label="Soccer ball"]').click();
+  await expect(page.locator('.townPop')).toBeVisible();
+  await expectNoProblems(page, errors);
 });
