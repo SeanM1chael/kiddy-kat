@@ -257,6 +257,13 @@
     #updateBanner { position: fixed; left: 12px; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 10px); z-index: 60; background: #7048e8; color: white;
                     border: none; border-radius: 16px; padding: 14px 16px; font-size: 17px; font-weight: bold; font-family: inherit; box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
     .townJobsBtn { background: #1c7ed6; }
+    .kkSpeakBtn { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin: 4px 6px; vertical-align: middle;
+                  border-radius: 50%; border: 2px solid #d0bfff; background: #f3f0ff; font-size: 20px; padding: 0; }
+    .kkPopSpeak { position: absolute; top: 8px; right: 8px; margin: 0; }
+    .townPopCard { position: relative; }
+    .kkReadRow { text-align: center; margin: 6px 0; }
+    .kkReadToggle { font-size: 15px; padding: 8px 14px; border-radius: 20px; border: 2px solid #d0bfff; background: white; font-family: inherit; font-weight: bold; }
+    .kkReadToggle.on { background: #7048e8; color: white; border-color: #7048e8; }
     .hallOption { display: flex; align-items: center; gap: 10px; max-width: 420px; margin: 8px auto; background: white; border-radius: 16px; padding: 10px;
                   border: 3px solid transparent; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
     .hallOption.mine { border-color: #1c7ed6; }
@@ -1115,7 +1122,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
 
   <!-- Problem reporter: if any file or step fails, show which one at the bottom of the screen (for testing) -->
   <script>
-    const APP_VERSION = '2026-11-05d';      // bump with the ?v= numbers below
+    const APP_VERSION = '2026-11-05e';      // bump with the ?v= numbers below
     function kkReport(where, message) {
       try { localStorage.setItem('kkLastError', new Date().toLocaleString() + ' · ' + where + ': ' + message); } catch (err) {}
       let bar = document.getElementById('kkError');
@@ -1135,36 +1142,37 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     window.addEventListener('unhandledrejection', e => kkReport('a background step', (e.reason && e.reason.message) || String(e.reason)));
   </script>
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-11-05d"></script>
-  <script src="push.js?v=2026-11-05d"></script>
-  <script src="sync.js?v=2026-11-05d"></script>
-  <script src="daily.js?v=2026-11-05d"></script>
-  <script src="pet.js?v=2026-11-05d"></script>
-  <script src="stickers.js?v=2026-11-05d"></script>
-  <script src="games.js?v=2026-11-05d"></script>
-  <script src="challenge.js?v=2026-11-05d"></script>
-  <script src="rewards.js?v=2026-11-05d"></script>
-  <script src="wallet.js?v=2026-11-05d"></script>
-  <script src="catchup.js?v=2026-11-05d"></script>
-  <script src="packs.js?v=2026-11-05d"></script>
-  <script src="league.js?v=2026-11-05d"></script>
-  <script src="uploads.js?v=2026-11-05d"></script>
-  <script src="weekend.js?v=2026-11-05d"></script>
-  <script src="streak.js?v=2026-11-05d"></script>
-  <script src="supplies.js?v=2026-11-05d"></script>
-  <script src="career.js?v=2026-11-05d"></script>
-  <script src="bills.js?v=2026-11-05d"></script>
-  <script src="money.js?v=2026-11-05d"></script>
-  <script src="arcade.js?v=2026-11-05d"></script>
-  <script src="earnback.js?v=2026-11-05d"></script>
-  <script src="familygames.js?v=2026-11-05d"></script>
-  <script src="town.js?v=2026-11-05d"></script>
-  <script src="toys.js?v=2026-11-05d"></script>
-  <script src="bank.js?v=2026-11-05d"></script>
-  <script src="kitchen.js?v=2026-11-05d"></script>
-  <script src="safety.js?v=2026-11-05d"></script>
-  <script src="hall.js?v=2026-11-05d"></script>
-  <script src="tour.js?v=2026-11-05d"></script>
+  <script src="config.js?v=2026-11-05e"></script>
+  <script src="push.js?v=2026-11-05e"></script>
+  <script src="sync.js?v=2026-11-05e"></script>
+  <script src="daily.js?v=2026-11-05e"></script>
+  <script src="pet.js?v=2026-11-05e"></script>
+  <script src="stickers.js?v=2026-11-05e"></script>
+  <script src="games.js?v=2026-11-05e"></script>
+  <script src="challenge.js?v=2026-11-05e"></script>
+  <script src="rewards.js?v=2026-11-05e"></script>
+  <script src="wallet.js?v=2026-11-05e"></script>
+  <script src="catchup.js?v=2026-11-05e"></script>
+  <script src="packs.js?v=2026-11-05e"></script>
+  <script src="league.js?v=2026-11-05e"></script>
+  <script src="uploads.js?v=2026-11-05e"></script>
+  <script src="weekend.js?v=2026-11-05e"></script>
+  <script src="streak.js?v=2026-11-05e"></script>
+  <script src="supplies.js?v=2026-11-05e"></script>
+  <script src="career.js?v=2026-11-05e"></script>
+  <script src="bills.js?v=2026-11-05e"></script>
+  <script src="money.js?v=2026-11-05e"></script>
+  <script src="arcade.js?v=2026-11-05e"></script>
+  <script src="earnback.js?v=2026-11-05e"></script>
+  <script src="familygames.js?v=2026-11-05e"></script>
+  <script src="town.js?v=2026-11-05e"></script>
+  <script src="toys.js?v=2026-11-05e"></script>
+  <script src="bank.js?v=2026-11-05e"></script>
+  <script src="kitchen.js?v=2026-11-05e"></script>
+  <script src="safety.js?v=2026-11-05e"></script>
+  <script src="hall.js?v=2026-11-05e"></script>
+  <script src="speak.js?v=2026-11-05e"></script>
+  <script src="tour.js?v=2026-11-05e"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {

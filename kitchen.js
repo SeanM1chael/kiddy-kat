@@ -187,6 +187,7 @@ function openKitchenCook(id) {
     const stage = stages[s];
     window.kitchenStage = () => stage;                        // for the tests
     const label = `Step ${s + 1} of ${stages.length}: `;
+    setTimeout(() => { if (typeof kkAutoSpeak === 'function' && stage !== 'safety' && stage !== 'scale') kkAutoSpeak(say.textContent); }, 0);
     if (stage === 'gather') kitchenGather(area, say, r, label, next);
     else if (stage === 'measure') kitchenMeasure(area, say, r, label, next);
     else if (stage === 'steps') kitchenSteps(area, say, r, label, next);
@@ -262,6 +263,7 @@ function kitchenSteps(area, say, r, label, next) {
   say.textContent = `${label}📝 Put the steps in order`;
   const done = townAdd(area, 'ol', undefined, 'kitchenDone');
   const pile = townAdd(area, 'div', undefined, 'kitchenSteps');
+  if (typeof kkSpeakButton === 'function') kkSpeakButton(area, () => 'The steps left are: ' + [...pile.querySelectorAll('.kitchenStep')].map(b => b.textContent).join('. '), 'Read the steps');
   let at = 0;
   toyShuffle(r.steps.map((text, i) => [text, i])).forEach(([text, i]) => {
     const b = townAdd(pile, 'button', text, 'kitchenStep');
@@ -279,8 +281,9 @@ function kitchenSteps(area, say, r, label, next) {
 
 function kitchenQuestion(area, say, q, title, next) {
   say.textContent = title;
-  townAdd(area, 'div', q.q, 'bankItemName');
+  const qBox = townAdd(area, 'div', q.q, 'bankItemName');
   const opts = townAdd(area, 'div', undefined, 'bankOptions');
+  const readQ = () => `${q.q} ${[...opts.querySelectorAll('button')].map(b => b.textContent).join('. Or, ')}.`;
   const why = townAdd(area, 'div', '', 'bankWhy');
   toyShuffle(q.options.map((text, i) => [text, i])).forEach(([text, i]) => {
     const b = townAdd(opts, 'button', text, 'bankOption kitchenOption');
@@ -289,10 +292,12 @@ function kitchenQuestion(area, say, q, title, next) {
       if (i !== q.answer) { b.classList.add('wrong'); why.textContent = '❌ Not quite. Try again!'; return; }
       b.classList.add('right');
       why.textContent = '✅ ' + q.why;
+      if (typeof kkAutoSpeak === 'function') kkAutoSpeak('Right! ' + q.why);
       opts.querySelectorAll('button').forEach(x => { x.disabled = true; });
       townAdd(area, 'button', 'Next ➡️', 'arcadeGo bankNext').addEventListener('click', next);
     });
   });
+  if (typeof kkSpeakButton === 'function') { kkSpeakButton(qBox, readQ, 'Read the question'); kkAutoSpeak(readQ()); }
 }
 
 // Cooking: the heat bar fills. Tap when it's in the golden zone.

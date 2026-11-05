@@ -893,3 +893,42 @@ test('Town Hall lessons can be won at every age', async ({ page }) => {
     await expectNoProblems(page, errors);
   }
 });
+
+// Nov 5: 🔊 read-aloud, so Juju (7) can do the lessons on her own
+test('read-aloud: on by default for kittens, it reads each question and then why', async ({ page }) => {
+  const errors = await openAppAs(page, 'kitten', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await expect(page.locator('.kkReadToggle')).toContainText('On');
+  await page.evaluate(() => openBankLesson('needs'));
+  const first = await page.evaluate(() => window.kkLastSpoken);
+  expect(first).toContain('Need. Or, Want');
+  expect(first).not.toMatch(/\p{Extended_Pictographic}/u);           // emojis are skipped
+  const a = await page.evaluate(() => bankRoundAnswer());
+  await page.click(`.bankOption[data-i="${a}"]`);
+  expect(await page.evaluate(() => window.kkLastSpoken)).toMatch(/^Right!/);
+  // Every pop-up has a 🔊 button
+  await page.evaluate(() => townPop('🎉', 'You won +1 ⭐ and 26¢!', [['OK', null]]));
+  await expect(page.locator('.townPop .kkSpeakBtn')).toBeVisible();
+  expect(await page.evaluate(() => window.kkLastSpoken)).toBe('You won +1 star and 26 cents!');
+  await expectNoProblems(page, errors);
+});
+
+test('read-aloud: off by default for older kids, the 🔊 button still reads, and the switch turns it on', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await expect(page.locator('.kkReadToggle')).toContainText('Off');
+  await page.evaluate(() => openSafetyLesson('scam'));
+  expect(await page.evaluate(() => window.kkLastSpoken)).toBeUndefined();
+  await page.click('.bankQuestion .kkSpeakBtn');
+  expect(await page.evaluate(() => window.kkLastSpoken)).toContain('Is this message a scam?');
+  // Turn it on from the map; it stays on
+  await page.evaluate(() => showTownMap());
+  await page.click('.kkReadToggle');
+  await expect(page.locator('.kkReadToggle')).toContainText('On');
+  await page.evaluate(() => openToy('puzzle'));
+  expect(await page.evaluate(() => window.kkLastSpoken)).toContain('Tap two pieces');
+  await page.evaluate(() => openKitchenCook('pancakes'));
+  await page.waitForTimeout(50);
+  expect(await page.evaluate(() => window.kkLastSpoken)).toContain('Get the ingredients');
+  await expectNoProblems(page, errors);
+});

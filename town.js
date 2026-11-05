@@ -228,6 +228,7 @@ function closeTown() {
 
 function leaveTown() {
   if (typeof toyStop === 'function') toyStop();
+  if (typeof kkStopSpeaking === 'function') kkStopSpeaking();
   document.getElementById('town').style.display = 'none';
   showTownButton();
 }
@@ -355,6 +356,7 @@ function showTownMap(message) {
   me.appendChild(townAvatarSvg(t.avatar || townDefaultAvatar(), 40));
   townPlaceMe(me, townSpot[0], townSpot[1]);
 
+  if (typeof kkReadAloudToggle === 'function' && !townBuilding) kkReadAloudToggle(townAdd(box, 'div', undefined, 'kkReadRow'));
   if (townBuilding) { townAdd(box, 'div', townSpendLine(), 'arcadeHint townSpendLine'); showTownPalette(box); }
   else {
     const wishes = t.wishes.length;
@@ -589,6 +591,10 @@ function townPop(picture, text, buttons, anim) {
   if (anim && fig.classList) fig.classList.add(anim);
   const say = townAdd(card, 'div', text, 'townPopSay');
   const pop = { box, card, stage, say };
+  if (typeof kkSpeakButton === 'function' && text) {
+    kkSpeakButton(card, () => say.textContent).classList.add('kkPopSpeak');
+    kkAutoSpeak(text);
+  }
   townPopButtons(pop, buttons);
   box.addEventListener('click', e => { if (e.target === box) box.remove(); });     // tap outside to close
   return pop;
