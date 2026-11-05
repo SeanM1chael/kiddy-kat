@@ -10,7 +10,7 @@ test('first visit: make a character, then the town map shows', async ({ page }) 
   await expect(page.locator('#townTitle')).toContainText('Make your character');
   await page.click('.townChoice >> text=Curly');
   await page.click('text=✅ Done! Go to town');
-  await expect(page.locator('.townTile.place')).toHaveCount(8);
+  await expect(page.locator('.townTile.place')).toHaveCount(9);
   expect(await page.evaluate(() => loadTown().avatar.hair)).toBe('curly');
   await expectNoProblems(page, errors);
 });
@@ -695,4 +695,90 @@ test('every shopping trip can be done within budget using store brands', async (
     const ok = await page.evaluate(() => kitchenRecipes().every(r => r.shop.reduce((s, i) => s + i[3], 0) <= r.budget && r.shop.reduce((s, i) => s + i[2], 0) > r.budget));
     expect(ok).toBe(true);           // store brands fit, but all name brands don't: there's a real choice to make
   }
+});
+
+// Nov 5: 🛡️ Safety HQ — real-life and online safety, by age
+async function answerAllRight(page) {
+  for (let i = 0; i < 12; i++) {
+    if (await page.locator('.townPop').count()) return;
+    const a = await page.evaluate(() => bankRoundAnswer());
+    await page.click(`.bankOption[data-i="${a}"]`);
+    await page.click('.bankNext');
+  }
+}
+
+test('Safety HQ: each age gets its own lessons', async ({ page }) => {
+  for (const [who, lessons] of [['kitten', ['🚦 Safe or not safe?', '🤔 What would you do?']],
+                                ['tiger', ['🤔 What would you do?', '🎣 Spot the scam', '🔐 Password builder']],
+                                ['lion', ['🎣 Spot the scam', '🔐 Password builder', '👣 Privacy & digital footprint']]]) {
+    await openAppAs(page, who, { ...PET, kiddyKatTown: AVATAR });
+    await page.click('#townButton');
+    await page.click('[data-place=safety]');
+    await expect(page.locator('.safetyLesson')).toHaveText(lessons, { timeout: 5000 });
+  }
+});
+
+test('Safety HQ: every quiz lesson can be won, gives +1 ⭐ once, and logs the skill', async ({ page }) => {
+  test.setTimeout(90000);
+  const errors = await openAppAs(page, 'kitten', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  for (const id of ['safeornot', 'whatif']) {
+    await page.evaluate(i => openSafetyLesson(i), id);
+    await answerAllRight(page);
+    await expect(page.locator('.townPopSay')).toContainText('+1 ⭐');
+    await page.click('.townPop >> text=🛡️ Safety HQ');
+  }
+  expect(await page.evaluate(() => pet.stars)).toBe(32);
+  expect(await page.evaluate(() => loadTown().skills.map(s => s.act))).toEqual(['safety-safeornot', 'safety-whatif']);
+  await expectNoProblems(page, errors);
+  for (const who of ['tiger', 'lion']) {
+    const errs = await openAppAs(page, who, { ...PET, kiddyKatTown: AVATAR });
+    await page.click('#townButton');
+    for (const id of (who === 'tiger' ? ['whatif', 'scam'] : ['scam', 'footprint'])) {
+      await page.evaluate(i => openSafetyLesson(i), id);
+      await answerAllRight(page);
+      await expect(page.locator('.townPopSay')).toContainText('🎉');
+      await page.click('.townPop >> text=🛡️ Safety HQ');
+    }
+    await expectNoProblems(page, errs);
+  }
+});
+
+test('Spot the scam: a wrong answer shows the red flag, and too many wrong means try again', async ({ page }) => {
+  await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await page.evaluate(() => openSafetyLesson('scam'));
+  await expect(page.locator('.safetyPhone')).toBeVisible();
+  for (let i = 0; i < 6; i++) {
+    const a = await page.evaluate(() => bankRoundAnswer());
+    await page.click(`.bankOption[data-i="${1 - a}"]`);                // always wrong
+    await expect(page.locator('.bankWhy')).toContainText('❌');
+    await page.click('.bankNext');
+  }
+  await expect(page.locator('.townPopSay')).toContainText('You need 5 to win');
+  expect(await page.evaluate(() => pet.stars)).toBe(30);
+});
+
+test('Password builder: personal info is weak, a long random passphrase wins', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await page.evaluate(() => openSafetyLesson('password'));
+  const tiles = await page.evaluate(() => safetyTiles());
+  const tap = text => page.click(`.safetyTile[data-text="${text}"]`);
+  // The kid's own name (from the profile) is a trap
+  await tap('PJ');
+  await expect(page.locator('.safetyStrength')).toContainText('Weak');
+  await expect(page.locator('.bankWhy')).toContainText('Never use your name');
+  await page.click('text=⌫ Undo');
+  // Random words + a number + a symbol = very strong
+  const words = tiles.filter(t => !t.trap && /^[A-Z][a-z]+$/.test(t.text)).map(t => t.text);
+  await tap(words[0]); await tap(words[1]);
+  await expect(page.locator('.safetyStrength')).not.toContainText('Very strong');
+  await page.click('.safetyLock');
+  await expect(page.locator('.toySay')).toContainText('Not yet');
+  await tap(words[2]); await tap('42'); await tap('!');
+  await expect(page.locator('.safetyStrength')).toContainText('Very strong');
+  await page.click('.safetyLock');
+  await expect(page.locator('.townPopSay')).toContainText('millions of years');
+  await expectNoProblems(page, errors);
 });

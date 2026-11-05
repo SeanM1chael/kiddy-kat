@@ -71,3 +71,27 @@ test('a task list from the dashboard replaces the list, and a lock stops kid edi
   expect(await page.evaluate(() => tasks.afternoon)).toEqual(['📱 Turn in your phone to Dad', '📚 Do your homework']);
   await expectNoProblems(page, errors);
 });
+
+// Nov 5: phones kept showing the old version for up to 10 minutes after a release
+test('a newer version on GitHub shows the update banner; the same version does not', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', PET);
+  await page.waitForTimeout(1800);                                    // the check runs 1.5 seconds after opening
+  await expect(page.locator('#updateBanner')).toHaveCount(0);         // the test server has this same version
+  // Pretend GitHub has a newer version
+  await page.evaluate(() => {
+    const real = window.fetch;
+    window.fetch = (url, opts) => String(url).startsWith('index.html?check=')
+      ? Promise.resolve(new Response("const APP_VERSION = '2099-01-01a';"))
+      : real(url, opts);
+  });
+  expect(await page.evaluate(() => checkForUpdate(true))).toBe('2099-01-01a');
+  await expect(page.locator('#updateBanner')).toContainText('new version');
+  // An older or equal version never shows it
+  await page.evaluate(() => { document.getElementById('updateBanner').remove(); window.fetch = () => Promise.resolve(new Response("const APP_VERSION = '2020-01-01a';")); });
+  expect(await page.evaluate(() => checkForUpdate(true))).toBe(null);
+  await expect(page.locator('#updateBanner')).toHaveCount(0);
+  // Offline never breaks anything
+  await page.evaluate(() => { window.fetch = () => Promise.reject(new Error('offline')); });
+  expect(await page.evaluate(() => checkForUpdate(true))).toBe(null);
+  await expectNoProblems(page, errors);
+});
