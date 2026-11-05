@@ -33,13 +33,19 @@ const TOWN_STORES = {
             ['books', '📚', 'Book set', 8], ['game', '🎲', 'Board game', 10]] }
 };
 
-// Places on the map: [id, emoji, name, where on the map (% left, % top)]
+// The town is a grid of tiles: 7 across, 9 down. Column 3 and row 4 are roads.
+const TOWN_COLS = 7, TOWN_ROWS = 9, TOWN_ROAD_COL = 3, TOWN_ROAD_ROW = 4;
+// Places on the map: [id, emoji, name, short label, column, row]
 const TOWN_PLACES = [
-  ['home', '🏠', 'My House', 18, 22], ['closet', '👕', 'Kat Closet', 50, 18], ['burger', '🍔', 'Paw Burger', 82, 22],
-  ['school', '🏫', 'Kat Academy', 18, 70], ['arcade', '🕹️', 'Arcade', 50, 76], ['toys', '🧸', 'Toy Box', 82, 70]
+  ['home', '🏠', 'My House', 'Home', 1, 1], ['closet', '👕', 'Kat Closet', 'Closet', 4, 1], ['burger', '🍔', 'Paw Burger', 'Burger', 6, 2],
+  ['school', '🏫', 'Kat Academy', 'School', 1, 6], ['arcade', '🕹️', 'Arcade', 'Arcade', 4, 6], ['toys', '🧸', 'Toy Box', 'Toys', 6, 7]
 ];
+function townIsRoad(c, r) { return c === TOWN_ROAD_COL || r === TOWN_ROAD_ROW; }
+function townPlaceAt(c, r) { return TOWN_PLACES.find(p => p[4] === c && p[5] === r); }
 
-let townSpot = 'park';                 // where the character is standing
+let townSpot = [TOWN_ROAD_COL, TOWN_ROAD_ROW];   // the tile the character is standing on
+let townBuilding = false;              // 🔨 build mode on?
+let townPick = null;                   // build mode: what's picked in the menu, or { move: lot }
 let townCreating = null;               // the character being edited
 let townView = 'map';                  // which screen is showing: map, store, home, creator
 let townReturn = false;                // true while Practice or the Arcade was opened from town
@@ -54,6 +60,7 @@ function loadTown() {
   if (!Array.isArray(t.owned)) t.owned = [];         // ids of things bought
   if (!Array.isArray(t.wishes)) t.wishes = [];       // { id, emoji, name, store, note, at }
   if (!Array.isArray(t.bought)) t.bought = [];       // recent purchases, for the dashboard
+  if (!Array.isArray(t.built)) t.built = [];         // 🔨 things built in town: { lot: 'col,row', id, name }
   return t;
 }
 function saveTown(t) {
@@ -232,42 +239,87 @@ function showTownCreator(first) {
 }
 
 // ---------- 🗺️ The town map ----------
-function showTownMap() {
+function showTownMap(message) {
   townView = 'map';
   const t = loadTown();
+  const level = townLevel(t);
   const box = townBody('🏙️ Kat Town');
-  townAdd(box, 'div', `⭐ ${townStars()} stars to spend · tap a place to walk there`, 'arcadeHint');
-  const map = townAdd(box, 'div', undefined, 'townMap');
-  townAdd(map, 'div', '', 'townRoad across');
-  townAdd(map, 'div', '', 'townRoad down');
-  townAdd(map, 'div', '🌳', 'townTree t1');
-  townAdd(map, 'div', '🌳', 'townTree t2');
-  townAdd(map, 'div', '⛲', 'townTree t3');
-  TOWN_PLACES.forEach(([id, emoji, name, x, y]) => {
-    const b = townAdd(map, 'button', undefined, 'townPlace');
-    b.style.left = x + '%';
-    b.style.top = y + '%';
-    townAdd(b, 'span', emoji, 'townPlaceEmoji');
-    townAdd(b, 'span', name, 'townPlaceName');
-    b.addEventListener('click', () => townWalkTo(id, x, y));
-  });
+  townAdd(box, 'div', `${level.emoji} ${level.name} · ⭐ ${townStars()} stars · ${townBuilding ? 'tap a green lot to build' : 'tap a place to walk there'}`, 'arcadeHint townTop');
+  const bar = townAdd(box, 'div', undefined, 'codeTools');
+  const toggle = townAdd(bar, 'button', townBuilding ? '✅ Done building' : '🔨 Build', townBuilding ? 'arcadeGo' : 'arcadeGo townBuildBtn');
+  toggle.addEventListener('click', () => { townBuilding = !townBuilding; townPick = null; showTownMap(); });
+  if (message) townAdd(box, 'div', message, 'arcadeMessage');
+
+  const map = townAdd(box, 'div', undefined, 'townMap' + (townBuilding ? ' building' : ''));
+  map.style.gridTemplateColumns = `repeat(${TOWN_COLS}, 1fr)`;
+  const built = {};
+  t.built.forEach(b => { built[b.lot] = b; });
+  for (let r = 0; r < TOWN_ROWS; r++) {
+    for (let c = 0; c < TOWN_COLS; c++) {
+      const lot = c + ',' + r;
+      const place = townPlaceAt(c, r);
+      let tile;
+      if (townIsRoad(c, r)) {
+        tile = townAdd(map, 'div', '', 'townTile road' + (c === TOWN_ROAD_COL && r === TOWN_ROAD_ROW ? ' cross' : c === TOWN_ROAD_COL ? ' down' : ' across'));
+      } else if (place) {
+        tile = townAdd(map, 'button', undefined, 'townTile place');
+        tile.dataset.place = place[0];
+        tile.setAttribute('aria-label', place[2]);
+        townAdd(tile, 'span', place[1], 'townPlaceEmoji');
+        townAdd(tile, 'span', place[3], 'townPlaceName');
+        tile.addEventListener('click', () => { if (!townBuilding) townWalkTo(c, r, () => townEnter(place[0])); });
+      } else if (built[lot]) {
+        const b = built[lot];
+        const item = townBuildItem(b.id);
+        tile = townAdd(map, 'button', undefined, 'townTile built' + (townPick && townPick.move === lot ? ' moving' : '') + (b.fresh ? ' townBounceIn' : ''));
+        tile.dataset.lot = lot;
+        tile.setAttribute('aria-label', b.name || (item ? item[2] : 'Build'));
+        townAdd(tile, 'span', item ? item[1] : '❓', 'townBuiltEmoji');
+        if (b.name) townAdd(tile, 'span', b.name, 'townPlaceName');
+        tile.addEventListener('click', () => townTapBuilt(lot, c, r));
+      } else {
+        tile = townAdd(map, 'button', '', 'townTile lot');
+        tile.dataset.lot = lot;
+        tile.setAttribute('aria-label', 'Empty lot');
+        tile.addEventListener('click', () => townTapLot(lot, c, r));
+      }
+    }
+  }
+  t.built.forEach(b => { delete b.fresh; });
   const me = townAdd(map, 'div', undefined, 'townMe');
-  me.appendChild(townAvatarSvg(t.avatar || townDefaultAvatar(), 46));
-  const here = TOWN_PLACES.find(p => p[0] === townSpot);
-  me.style.left = (here ? here[3] : 50) + '%';
-  me.style.top = (here ? here[4] + 14 : 47) + '%';
-  const wishes = t.wishes.length;
-  townAdd(box, 'div', wishes ? `💝 ${wishes} thing${wishes === 1 ? '' : 's'} on your wish list (see 🏠 My House)` : '💝 Tap ❤️ on anything in a store to add it to your wish list.', 'arcadeHint');
+  me.appendChild(townAvatarSvg(t.avatar || townDefaultAvatar(), 40));
+  townPlaceMe(me, townSpot[0], townSpot[1]);
+
+  if (townBuilding) showTownPalette(box);
+  else {
+    const wishes = t.wishes.length;
+    townAdd(box, 'div', wishes ? `💝 ${wishes} thing${wishes === 1 ? '' : 's'} on your wish list (see 🏠 Home)` : '💝 Tap ❤️ on anything in a store to add it to your wish list.', 'arcadeHint');
+    townAdd(box, 'div', `🏗️ You've built ${t.built.length} thing${t.built.length === 1 ? '' : 's'}.` + (level.next ? ` ${level.next - t.built.length} more to become a ${level.nextName}!` : ''), 'arcadeHint');
+  }
 }
 
-function townWalkTo(id, x, y) {
+// Puts the character on a tile (its feet near the bottom of the tile)
+function townPlaceMe(me, c, r) {
+  me.style.left = ((c + 0.5) / TOWN_COLS * 100) + '%';
+  me.style.top = ((r + 0.45) / TOWN_ROWS * 100) + '%';
+}
+
+// Walk along the roads: to the main road, along it, then over to the place
+function townWalkTo(c, r, then) {
   const me = document.querySelector('#townBody .townMe');
-  if (!me) return;
-  me.style.left = x + '%';
-  me.style.top = (y + 14) + '%';
+  if (!me) { if (then) then(); return; }
+  const [c0, r0] = townSpot;
+  const steps = [[TOWN_ROAD_COL, r0], [TOWN_ROAD_COL, r], [c, r]]
+    .filter((p, i, all) => i === 0 ? !(p[0] === c0 && p[1] === r0) : !(p[0] === all[i - 1][0] && p[1] === all[i - 1][1]));
   me.classList.add('walking');
-  townSpot = id;
-  setTimeout(() => townEnter(id), 750);       // let the walk finish
+  let i = 0;
+  const next = () => {
+    if (i >= steps.length) { me.classList.remove('walking'); townSpot = [c, r]; if (then) then(); return; }
+    townPlaceMe(me, steps[i][0], steps[i][1]);
+    i += 1;
+    setTimeout(next, 330);
+  };
+  next();
 }
 
 function townEnter(id) {
@@ -564,4 +616,133 @@ function showTownHome(message) {
 
 function townToast(text) {
   if (typeof careerToast === 'function') careerToast(text);
+}
+
+// =====================================================================
+// 🔨 Build mode: build your own town with stars
+// =====================================================================
+// [id, emoji, name, price, what happens when you tap it, needs a name?]
+const TOWN_BUILDS = {
+  nature: { label: '🌳 Nature', items: [['tree', '🌳', 'Tree', 3, ['wiggle', 'A bird is singing in the tree! 🐦']], ['pine', '🌲', 'Pine tree', 3, ['wiggle', 'It smells like a forest! 🌲']],
+    ['flowers', '🌷', 'Flower bed', 2, ['bounce', 'The flowers smell so sweet! 🐝']], ['garden', '🌻', 'Sunflower garden', 4, ['bounce', 'The sunflowers are growing tall! 🌞']],
+    ['pond', '🦆', 'Duck pond', 10, ['wiggle', 'Quack quack! 🦆🦆']]] },
+  fun: { label: '🎡 Fun', items: [['playground', '🛝', 'Playground', 15, ['bounce', 'Wheee! Down the slide! 🛝']], ['pool', '🏊', 'Pool', 20, ['wiggle', 'SPLASH! 💦💦']],
+    ['fountain', '⛲', 'Fountain', 12, ['bounce', 'You tossed a coin in and made a wish! ✨']], ['soccer', '⚽', 'Soccer field', 18, ['bounce', 'GOOOAL! ⚽🥅']],
+    ['ferris', '🎡', 'Ferris wheel', 40, ['spin', 'Round and round, way up high! 🎡']], ['castle', '🏰', 'Castle', 60, ['bounce', 'You are the ruler of Kat Town! 👑']]] },
+  buildings: { label: '🏡 Buildings', items: [['house', '🏡', 'House', 20, ['bounce', 'Knock knock! Who lives here?'], 'Whose house is it? (like "Grandma")'],
+    ['shop', '🏪', 'My own shop', 25, ['bounce', 'Welcome to my shop! 🛍️'], 'Name your shop (like "Slime Spot")'],
+    ['fire', '🚒', 'Fire station', 25, ['wiggle', 'Wee-oo wee-oo! 🚒 The firefighters are ready!']], ['vet', '🏥', 'Pet vet', 22, ['bounce', 'All the pets are healthy and happy! 🐾']],
+    ['bakery', '🧁', 'Bakery', 18, ['bounce', 'Fresh cupcakes! Mmm! 🧁']]] },
+  extras: { label: '✨ Extras', items: [['light', '💡', 'Street light', 2, ['bounce', 'Click! The light is on. 💡']], ['sign', '🪧', 'Sign', 3, ['bounce', ''], 'What does your sign say?'],
+    ['car', '🚗', 'Car', 6, ['zoom', 'Beep beep! 🚗💨']], ['dog', '🐶', 'Dog', 8, ['bounce', 'Woof woof! 🐶']], ['cat', '🐈', 'Cat', 8, ['wiggle', 'Meow! 🐈']], ['bench', '🪑', 'Bench', 3, ['bounce', 'A nice place to rest.']]] }
+};
+// Town levels: how many things you've built
+const TOWN_LEVELS = [[0, '🏕️', 'Tiny Town'], [5, '🏘️', 'Village'], [12, '🏡', 'Town'], [20, '🏙️', 'City'], [30, '🌆', 'Big City'], [42, '🌟', 'Mega City']];
+
+function townBuildItem(id) {
+  for (const cat of Object.values(TOWN_BUILDS)) { const it = cat.items.find(i => i[0] === id); if (it) return it; }
+  return null;
+}
+
+function townLevel(t) {
+  const n = (t.built || []).length;
+  let i = 0;
+  TOWN_LEVELS.forEach(([min], k) => { if (n >= min) i = k; });
+  const next = TOWN_LEVELS[i + 1];
+  return { emoji: TOWN_LEVELS[i][1], name: TOWN_LEVELS[i][2], index: i, next: next ? next[0] : null, nextName: next ? next[2] : null };
+}
+
+let townCategory = 'nature';
+
+function showTownPalette(box) {
+  const pal = townAdd(box, 'div', undefined, 'townPalette');
+  if (townPick && townPick.move) {
+    townAdd(pal, 'div', '🚚 Tap an empty lot to move it there.', 'arcadeMessage');
+    townAdd(pal, 'button', 'Cancel move', 'arcadeSmall').addEventListener('click', () => { townPick = null; showTownMap(); });
+    return;
+  }
+  const tabs = townAdd(pal, 'div', undefined, 'townTabs');
+  Object.entries(TOWN_BUILDS).forEach(([key, cat]) => {
+    townAdd(tabs, 'button', cat.label, 'townTab' + (townCategory === key ? ' picked' : '')).addEventListener('click', () => { townCategory = key; showTownMap(); });
+  });
+  const row = townAdd(pal, 'div', undefined, 'townPaletteItems');
+  TOWN_BUILDS[townCategory].items.forEach(([id, emoji, name, price]) => {
+    const b = townAdd(row, 'button', undefined, 'townPaletteItem' + (townPick === id ? ' picked' : '') + (townStars() < price ? ' pricey' : ''));
+    townAdd(b, 'span', emoji, 'townPaletteEmoji');
+    townAdd(b, 'span', name, 'townPaletteName');
+    townAdd(b, 'span', `⭐ ${price}`, 'townPalettePrice');
+    b.addEventListener('click', () => { townPick = townPick === id ? null : id; showTownMap(townPick ? `${emoji} ${name} picked! Now tap a green lot.` : ''); });
+  });
+  townAdd(pal, 'div', 'Tap something you built to move it, rename it, or take it down (you get half the stars back).', 'arcadeHint');
+}
+
+function townTapLot(lot, c, r) {
+  if (!townBuilding) { townWalkTo(c, r); return; }
+  // Moving something here
+  if (townPick && townPick.move) {
+    const t = loadTown();
+    const b = t.built.find(x => x.lot === townPick.move);
+    if (b) { b.lot = lot; b.fresh = true; saveTown(t); }
+    townPick = null;
+    showTownMap('🚚 Moved!');
+    return;
+  }
+  if (!townPick) { showTownMap('👆 First pick something to build from the menu below.'); return; }
+  const item = townBuildItem(townPick);
+  const [id, emoji, name, price, , ask] = item;
+  if (typeof pet === 'undefined' || !pet) { showTownMap('🥚 Hatch a pet first to start earning stars!'); return; }
+  if (pet.stars < price) { showTownMap(`You need ${price - pet.stars} more ⭐ to build ${emoji} ${name}. Finish a list or play in 🎮 Practice!`); return; }
+  let label = '';
+  if (ask) {
+    label = (prompt(ask, '') || '').trim().slice(0, 18);
+    if (!label) return;                                   // cancelled
+  }
+  pet.stars -= price;
+  if (typeof savePet === 'function') savePet();
+  if (typeof showPet === 'function') showPet();
+  const t = loadTown();
+  const before = townLevel(t);
+  t.built.push({ lot: lot, id: id, name: label, fresh: true, at: new Date().toISOString().slice(0, 10) });
+  saveTown(t);
+  const after = townLevel(t);
+  showTownMap(`🔨 Bonk bonk! You built ${emoji} ${label || name}!`);
+  const tile = document.querySelector(`#townBody .townTile[data-lot="${lot}"]`);
+  if (tile) townFly('🔨', tile, null);
+  if (after.index > before.index) {
+    setTimeout(() => townPop(after.emoji, `🎉 Your town grew into a ${after.name}!`, [['🥳 Yay!', null]], 'townBounceIn'), 500);
+    if (typeof addStars === 'function') addStars(2);
+  }
+}
+
+function townTapBuilt(lot, c, r) {
+  const t = loadTown();
+  const b = t.built.find(x => x.lot === lot);
+  if (!b) return;
+  const item = townBuildItem(b.id) || [b.id, '❓', 'Build', 0, ['bounce', '']];
+  const [, emoji, name, price, [anim, line], ask] = item;
+  if (!townBuilding) {
+    // Use it: walk next to it, then it does its thing
+    townWalkTo(c, r, () => {
+      const say = b.id === 'sign' ? `🪧 "${b.name}"` : b.id === 'shop' ? `Welcome to ${b.name}! 🛍️` : b.id === 'house' ? `🏡 ${b.name}'s house. Knock knock!` : line;
+      townPop(emoji, say || name, [['😄 Cool!', null]], 'townPlay-' + anim);
+    });
+    return;
+  }
+  const buttons = [['🚚 Move', () => { townPick = { move: lot }; showTownMap(); }]];
+  if (ask) buttons.push(['✏️ Rename', () => {
+    const fresh = loadTown();
+    const it = fresh.built.find(x => x.lot === lot);
+    const label = (prompt(ask, it ? it.name : '') || '').trim().slice(0, 18);
+    if (it && label) { it.name = label; saveTown(fresh); }
+    showTownMap();
+  }]);
+  buttons.push([`🧹 Take down (+${Math.floor(price / 2)} ⭐)`, () => {
+    const fresh = loadTown();
+    fresh.built = fresh.built.filter(x => x.lot !== lot);
+    saveTown(fresh);
+    if (typeof pet !== 'undefined' && pet && price > 1) { pet.stars += Math.floor(price / 2); if (typeof savePet === 'function') savePet(); if (typeof showPet === 'function') showPet(); }
+    showTownMap(`🧹 Took down ${emoji} ${b.name || name}.`);
+  }]);
+  buttons.push(['Cancel', null]);
+  townPop(emoji, b.name || name, buttons, 'townBounceIn');
 }

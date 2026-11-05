@@ -228,19 +228,36 @@
     .townChoice.picked { border-color: var(--main); box-shadow: 0 0 0 2px var(--main); font-weight: bold; }
     .townChoice.locked { opacity: 0.55; }
     .townSave { margin-top: 16px; }
-    .townMap { position: relative; max-width: 420px; height: 360px; margin: 8px auto; background: #b2f2bb; border-radius: 20px; overflow: hidden; }
-    .townRoad { position: absolute; background: #dee2e6; }
-    .townRoad.across { left: 0; right: 0; top: 46%; height: 30px; border-top: 3px dashed #fff; border-bottom: 3px dashed #fff; }
-    .townRoad.down { top: 0; bottom: 0; left: 50%; width: 30px; transform: translateX(-50%); }
-    .townTree { position: absolute; font-size: 26px; }
-    .townTree.t1 { left: 4%; top: 44%; } .townTree.t2 { right: 4%; top: 44%; } .townTree.t3 { left: 30%; top: 46%; }
-    .townPlace { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; border: none;
-                 background: rgba(255,255,255,0.92); border-radius: 16px; padding: 6px 8px; min-width: 84px; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
-    .townPlaceEmoji { font-size: 32px; }
-    .townPlaceName { font-size: 12px; font-weight: bold; color: #343a40; }
-    .townMe { position: absolute; transform: translate(-50%, -50%); transition: left 0.7s ease, top 0.7s ease; pointer-events: none; z-index: 2; }
-    .townMe.walking svg { animation: townBounce 0.25s ease-in-out 3; }
-    @keyframes townBounce { 50% { transform: translateY(-5px); } }
+    .townMap { display: grid; position: relative; max-width: 420px; margin: 8px auto; background: #b2f2bb; border-radius: 20px; overflow: hidden; padding: 4px; }
+    .townTile { aspect-ratio: 1; border: none; background: transparent; padding: 0; margin: 0; display: flex; flex-direction: column; align-items: center;
+                justify-content: center; min-width: 0; font-family: inherit; color: inherit; }
+    .townTile.road { background: #ced4da; }
+    .townTile.road.across { background: linear-gradient(#ced4da 46%, #fff 46%, #fff 54%, #ced4da 54%); background-size: 100% 100%; }
+    .townTile.road.down { background: linear-gradient(90deg, #ced4da 46%, #fff 46%, #fff 54%, #ced4da 54%); }
+    .townTile.place { background: rgba(255,255,255,0.95); border-radius: 12px; margin: 3px; box-shadow: 0 2px 5px rgba(0,0,0,0.15); aspect-ratio: auto; }
+    .townPlaceEmoji { font-size: clamp(20px, 6.5vw, 30px); line-height: 1.1; }
+    .townPlaceName { font-size: clamp(8.5px, 2.4vw, 11px); font-weight: bold; color: #343a40; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .townTile.built { cursor: pointer; }
+    .townBuiltEmoji { font-size: clamp(22px, 7vw, 32px); line-height: 1.1; }
+    .townMap.building .townTile.lot { outline: 2px dashed rgba(43, 138, 62, 0.6); outline-offset: -4px; border-radius: 10px; }
+    .townMap.building .townTile.built { outline: 2px solid rgba(250, 176, 5, 0.6); outline-offset: -4px; border-radius: 10px; }
+    .townTile.moving { animation: townWiggle 0.6s ease infinite; }
+    .townMe { position: absolute; transform: translate(-50%, -50%); transition: left 0.32s linear, top 0.32s linear; pointer-events: none; z-index: 2; }
+    .townMe.walking svg { animation: townBounce 0.33s ease-in-out infinite; }
+    @keyframes townBounce { 50% { transform: translateY(-4px); } }
+    .townBuildBtn { background: #f08c00; }
+    .townPalette { max-width: 420px; margin: 6px auto; background: white; border-radius: 16px; padding: 8px; }
+    .townTabs { display: flex; gap: 4px; overflow-x: auto; }
+    .townTab { flex: 1; font-size: 13px; padding: 8px 4px; border: 2px solid var(--soft); border-radius: 10px; background: white; white-space: nowrap; }
+    .townTab.picked { border-color: var(--main); background: var(--soft); font-weight: bold; }
+    .townPaletteItems { display: flex; gap: 6px; overflow-x: auto; padding: 8px 2px; }
+    .townPaletteItem { flex: none; width: 78px; display: flex; flex-direction: column; align-items: center; border: 2px solid #e9ecef; border-radius: 14px; background: #f8f9fa; padding: 6px 2px; }
+    .townPaletteItem.picked { border-color: #f08c00; background: #fff4e6; box-shadow: 0 0 0 2px #f08c00; }
+    .townPaletteItem.pricey { opacity: 0.55; }
+    .townPaletteEmoji { font-size: 30px; }
+    .townPaletteName { font-size: 11px; font-weight: bold; text-align: center; line-height: 1.2; }
+    .townPalettePrice { font-size: 12px; color: #e8590c; font-weight: bold; }
+    .townPopButtons { flex-wrap: wrap; }
     .townWallet { font-size: 18px; font-weight: bold; margin: 4px 0; }
     .townShelf { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-width: 420px; margin: 8px auto; }
     .townItem { border-radius: 16px; padding: 10px 8px; }
@@ -955,7 +972,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
 
   <!-- Problem reporter: if any file or step fails, show which one at the bottom of the screen (for testing) -->
   <script>
-    const APP_VERSION = '2026-11-04d';      // bump with the ?v= numbers below
+    const APP_VERSION = '2026-11-04e';      // bump with the ?v= numbers below
     function kkReport(where, message) {
       try { localStorage.setItem('kkLastError', new Date().toLocaleString() + ' · ' + where + ': ' + message); } catch (err) {}
       let bar = document.getElementById('kkError');
@@ -975,31 +992,31 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     window.addEventListener('unhandledrejection', e => kkReport('a background step', (e.reason && e.reason.message) || String(e.reason)));
   </script>
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-11-04d"></script>
-  <script src="push.js?v=2026-11-04d"></script>
-  <script src="sync.js?v=2026-11-04d"></script>
-  <script src="daily.js?v=2026-11-04d"></script>
-  <script src="pet.js?v=2026-11-04d"></script>
-  <script src="stickers.js?v=2026-11-04d"></script>
-  <script src="games.js?v=2026-11-04d"></script>
-  <script src="challenge.js?v=2026-11-04d"></script>
-  <script src="rewards.js?v=2026-11-04d"></script>
-  <script src="wallet.js?v=2026-11-04d"></script>
-  <script src="catchup.js?v=2026-11-04d"></script>
-  <script src="packs.js?v=2026-11-04d"></script>
-  <script src="league.js?v=2026-11-04d"></script>
-  <script src="uploads.js?v=2026-11-04d"></script>
-  <script src="weekend.js?v=2026-11-04d"></script>
-  <script src="streak.js?v=2026-11-04d"></script>
-  <script src="supplies.js?v=2026-11-04d"></script>
-  <script src="career.js?v=2026-11-04d"></script>
-  <script src="bills.js?v=2026-11-04d"></script>
-  <script src="money.js?v=2026-11-04d"></script>
-  <script src="arcade.js?v=2026-11-04d"></script>
-  <script src="earnback.js?v=2026-11-04d"></script>
-  <script src="familygames.js?v=2026-11-04d"></script>
-  <script src="town.js?v=2026-11-04d"></script>
-  <script src="tour.js?v=2026-11-04d"></script>
+  <script src="config.js?v=2026-11-04e"></script>
+  <script src="push.js?v=2026-11-04e"></script>
+  <script src="sync.js?v=2026-11-04e"></script>
+  <script src="daily.js?v=2026-11-04e"></script>
+  <script src="pet.js?v=2026-11-04e"></script>
+  <script src="stickers.js?v=2026-11-04e"></script>
+  <script src="games.js?v=2026-11-04e"></script>
+  <script src="challenge.js?v=2026-11-04e"></script>
+  <script src="rewards.js?v=2026-11-04e"></script>
+  <script src="wallet.js?v=2026-11-04e"></script>
+  <script src="catchup.js?v=2026-11-04e"></script>
+  <script src="packs.js?v=2026-11-04e"></script>
+  <script src="league.js?v=2026-11-04e"></script>
+  <script src="uploads.js?v=2026-11-04e"></script>
+  <script src="weekend.js?v=2026-11-04e"></script>
+  <script src="streak.js?v=2026-11-04e"></script>
+  <script src="supplies.js?v=2026-11-04e"></script>
+  <script src="career.js?v=2026-11-04e"></script>
+  <script src="bills.js?v=2026-11-04e"></script>
+  <script src="money.js?v=2026-11-04e"></script>
+  <script src="arcade.js?v=2026-11-04e"></script>
+  <script src="earnback.js?v=2026-11-04e"></script>
+  <script src="familygames.js?v=2026-11-04e"></script>
+  <script src="town.js?v=2026-11-04e"></script>
+  <script src="tour.js?v=2026-11-04e"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
