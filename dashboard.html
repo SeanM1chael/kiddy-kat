@@ -870,7 +870,8 @@
         if (recent.length) {
           const LESSON_NAMES = { coins: 'counting coins', needs: 'needs vs. wants', deal: 'finding the better deal', interest: 'interest math',
                                  paycheck: 'reading a paycheck', budget: '50/30/20 budget', goal: 'setting a savings goal' };
-          const acts = [...new Set(recent.map(x => LESSON_NAMES[x.act] || x.act))];
+          const actName = a => LESSON_NAMES[a] || (String(a).startsWith('cook-') ? 'cooking ' + a.slice(5) : String(a).startsWith('shop-') ? 'grocery budget' : a);
+          const acts = [...new Set(recent.map(x => actName(x.act)))];
           row(townBox, '📚 Life skills this week', `${recent.length}× ${acts.join(', ')}`);
         }
         // Change the daily Kat Town spending limit

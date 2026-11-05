@@ -10,7 +10,7 @@ test('first visit: make a character, then the town map shows', async ({ page }) 
   await expect(page.locator('#townTitle')).toContainText('Make your character');
   await page.click('.townChoice >> text=Curly');
   await page.click('text=✅ Done! Go to town');
-  await expect(page.locator('.townTile.place')).toHaveCount(7);
+  await expect(page.locator('.townTile.place')).toHaveCount(8);
   expect(await page.evaluate(() => loadTown().avatar.hair)).toBe('curly');
   await expectNoProblems(page, errors);
 });
@@ -564,4 +564,135 @@ test('something built where Kat Bank now stands moves to a free lot', async ({ p
   await page.click('#townButton');
   await expect(page.locator('[data-place=bank]')).toBeVisible();
   await expect(page.locator(`.townTile[data-lot="${lot}"]`)).toContainText('🏊');
+});
+
+// Nov 5: mid-update, an old page (no bank.js) loaded the new town.js, and tapping 🏦 Bank crashed in the store code
+test('a half-updated phone (no bank.js yet) does not crash when the Bank is tapped', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.evaluate(() => { window.showTownBank = undefined; });
+  await page.click('#townButton');
+  await page.evaluate(() => townEnter('bank'));
+  await expect(page.locator('#townBody .arcadeMessage')).toContainText('opening soon');
+  await page.evaluate(() => showTownStore('nope'));
+  await expect(page.locator('#townTitle')).toContainText('Kat Town');
+  await expectNoProblems(page, errors);
+});
+
+// Nov 5: 🍳 Kat Kitchen — cook real recipes, shop on a budget
+async function cookThrough(page) {
+  for (let guard = 0; guard < 10; guard++) {
+    const stage = await page.evaluate(() => window.kitchenStage && kitchenStage());
+    if (await page.locator('.townPop').count()) return;
+    if (stage === 'gather') {
+      for (const name of await page.evaluate(() => kitchenNeeds())) await page.click(`.kitchenItem[data-name="${name}"]`);
+    } else if (stage === 'measure') {
+      const sizes = await page.$$eval('.kitchenTool', bs => bs.map(b => Number(b.dataset.size)));
+      let left = await page.evaluate(() => kitchenMeasureLeft());
+      for (const size of sizes) while (left >= size) { await page.click(`.kitchenTool[data-size="${size}"]`); left -= size; }
+    } else if (stage === 'steps') {
+      const n = await page.locator('.kitchenStep').count();
+      for (let i = 0; i < n; i++) await page.click(`.kitchenStep[data-i="${i}"]`);
+    } else if (stage === 'safety' || stage === 'scale') {
+      await page.click('.kitchenOption[data-right="1"]');
+      await page.click('.bankNext');
+      await page.waitForTimeout(100);
+      continue;
+    } else if (stage === 'cook') {
+      await page.evaluate(() => kitchenCookAt(65));
+    }
+    await page.waitForTimeout(900);
+  }
+}
+
+test('Kat Kitchen: cook a recipe start to finish, and it goes in the recipe book', async ({ page }) => {
+  test.setTimeout(60000);
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await page.click('[data-place=kitchen]');
+  await expect(page.locator('#townTitle')).toContainText('Kat Kitchen', { timeout: 5000 });
+  await expect(page.locator('.kitchenCook')).toHaveText(['🥞 Pancakes', '🍳 Scrambled eggs']);
+  await page.click('.kitchenCook >> text=Pancakes');
+  // A wrong ingredient is refused
+  await page.click('.kitchenItem[data-name="Ketchup"]');
+  await expect(page.locator('.toySay')).toContainText("isn't in this recipe");
+  // Measuring too much spills and starts over
+  for (const name of await page.evaluate(() => kitchenNeeds())) await page.click(`.kitchenItem[data-name="${name}"]`);
+  await page.waitForTimeout(900);
+  expect(await page.evaluate(() => kitchenStage())).toBe('measure');
+  for (let i = 0; i < 2; i++) await page.click('.kitchenTool[data-size="4"]');
+  await expect(page.locator('.toySay')).toContainText('Too much');
+  await cookThrough(page);
+  await expect(page.locator('.townPopSay')).toContainText('You made Pancakes');
+  await expect(page.locator('.townPopSay')).toContainText('+1 ⭐');
+  expect(await page.evaluate(() => [pet.stars, loadTown().recipes.pancakes])).toEqual([31, 1]);
+  // Recipe book: ask to cook it for real → wish list for the dashboard
+  await page.click('.townPop >> text=🍳 Kitchen');
+  await page.click('.kitchenReal');
+  expect(await page.evaluate(() => loadTown().wishes.map(w => w.name))).toEqual(['Cook Pancakes together for real']);
+  await expectNoProblems(page, errors);
+});
+
+test('cooking: taking it off too early or too late means try again', async ({ page }) => {
+  await openAppAs(page, 'lion', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await page.evaluate(() => openKitchenCook('tacos'));
+  // Jump straight to the cook stage's checks
+  await page.evaluate(() => {
+    const area = document.querySelector('.kitchenArea');
+    area.textContent = '';
+    kitchenCookIt(area, document.querySelector('.toySay'), kitchenRecipe('tacos'), '', () => { window.cookedOK = true; });
+  });
+  await page.evaluate(() => kitchenCookAt(20));
+  await expect(page.locator('.toySay')).toContainText('Still pink');
+  await page.evaluate(() => kitchenCookAt(95));
+  await expect(page.locator('.toySay')).toContainText('burnt');
+  await page.evaluate(() => kitchenCookAt(60));
+  await page.waitForFunction(() => window.cookedOK === true);
+});
+
+test('every recipe can be cooked by its age group', async ({ page }) => {
+  test.setTimeout(90000);
+  for (const who of ['kitten', 'lion']) {
+    await openAppAs(page, who, { ...PET, kiddyKatTown: AVATAR });
+    await page.click('#townButton');
+    for (const id of await page.evaluate(() => kitchenRecipes().map(r => r.id))) {
+      await page.evaluate(i => openKitchenCook(i), id);
+      await cookThrough(page);
+      await expect(page.locator('.townPopSay')).toContainText('You made');
+      await page.click('.townPop >> text=🍳 Kitchen');
+    }
+  }
+});
+
+test('grocery shopping: everything on the list, inside the budget, with change back', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await page.evaluate(() => openKitchenShop('pancakes'));
+  await expect(page.locator('.kitchenBudget')).toContainText('Budget $15.00');
+  // Forgot something
+  await page.click('.kitchenPrice[data-item="Flour"][data-kind="brand"]');
+  await page.click('.kitchenCheckout');
+  await expect(page.locator('.toySay')).toContainText('You forgot');
+  // All name brand is over budget ($18.76)
+  for (const item of ['Milk', 'Eggs', 'Butter']) await page.click(`.kitchenPrice[data-item="${item}"][data-kind="brand"]`);
+  expect(await page.evaluate(() => kitchenShopTotal())).toBe(18.76);
+  await expect(page.locator('.kitchenBudget')).toHaveClass(/over/);
+  await page.click('.kitchenCheckout');
+  await expect(page.locator('.toySay')).toContainText('over your budget');
+  // Switch to store brands: $13.46, $1.54 change, saved $5.30
+  for (const item of ['Flour', 'Milk', 'Eggs', 'Butter']) await page.click(`.kitchenPrice[data-item="${item}"][data-kind="store"]`);
+  await page.click('.kitchenCheckout');
+  await expect(page.locator('.townPopSay')).toContainText('$13.46');
+  await expect(page.locator('.townPopSay')).toContainText('$1.54 back');
+  await expect(page.locator('.townPopSay')).toContainText('saved you $5.30');
+  expect(await page.evaluate(() => pet.stars)).toBe(31);
+  await expectNoProblems(page, errors);
+});
+
+test('every shopping trip can be done within budget using store brands', async ({ page }) => {
+  for (const who of ['kitten', 'tiger', 'lion']) {
+    await openAppAs(page, who, { ...PET, kiddyKatTown: AVATAR });
+    const ok = await page.evaluate(() => kitchenRecipes().every(r => r.shop.reduce((s, i) => s + i[3], 0) <= r.budget && r.shop.reduce((s, i) => s + i[2], 0) > r.budget));
+    expect(ok).toBe(true);           // store brands fit, but all name brands don't: there's a real choice to make
+  }
 });
