@@ -103,11 +103,10 @@ test('things you buy do something: put on clothes, eat food, play with toys', as
   await page.evaluate(() => showTownStore('toys'));
   await page.locator('.townItem', { hasText: 'Soccer ball' }).locator('.townBuy').click();
   await page.click('.townPop >> text=▶️ Play now');
-  await expect(page.locator('.townPopSay')).toContainText('GOAL');
-  await page.click('.townPop >> text=Done');
-  await page.evaluate(() => showTownHome());
+  await expect(page.locator('.toy-soccer')).toBeVisible();          // the toy's own game opens
+  await page.click('#town .closeGame');
   await page.locator('.townStuffItem[aria-label="Soccer ball"]').click();
-  await expect(page.locator('.townPop')).toBeVisible();
+  await expect(page.locator('.toy-soccer')).toBeVisible();
   await expectNoProblems(page, errors);
 });
 
@@ -117,7 +116,7 @@ const RICH = { ...PET, kiddyKatPets: [{ ...PET.kiddyKatPets[0], stars: 200 }] };
 const paletteItem = (page, name) => page.locator('.townPaletteItem').filter({ has: page.locator('.townPaletteName', { hasText: new RegExp(`^${name}$`) }) });
 
 test('build mode: pick, place, level up, move, rename and take down', async ({ page }) => {
-  const errors = await openAppAs(page, 'tiger', { ...RICH, kiddyKatTown: AVATAR });
+  const errors = await openAppAs(page, 'tiger', { ...RICH, kiddyKatTown: { ...AVATAR, limit: 500 } });
   page.on('dialog', d => d.accept('Slime Spot'));
   await page.click('#townButton');
   await page.click('text=🔨 Build');
@@ -316,4 +315,134 @@ test('a visit from family shows up in my town', async ({ page }) => {
   await page.click('#townButton');
   await expect(page.locator('.townVisitNote')).toContainText('PJ Flash visited your town: 🏆 Best town!');
   await expectNoProblems(page, errors);
+});
+
+// Nov 4: Juju spent about 100 stars in 5 minutes. Kat Town now has a daily limit (25 ⭐ unless a grown-up changes it)
+test('Kat Town spending stops at the daily limit, and a grown-up can change it', async ({ page }) => {
+  const errors = await openAppAs(page, 'kitten', { ...RICH, kiddyKatTown: AVATAR });
+  page.on('dialog', d => d.accept());
+  await page.evaluate(() => { openTown(); showTownStore('closet'); });
+  await expect(page.locator('.townSpendLine')).toContainText('25 of 25');
+  await page.locator('.townItem', { hasText: 'Cozy hoodie' }).locator('.townBuy').click();     // 15
+  await page.click('.townPop >> text=Later');
+  await page.locator('.townItem', { hasText: 'Headphones' }).locator('.townBuy').click();      // 12: only 10 left
+  await expect(page.locator('#townBody .arcadeMessage')).toContainText('only spend 10 more');
+  expect(await page.evaluate(() => pet.stars)).toBe(200 - 15);
+  // Building counts too
+  await page.evaluate(() => { townBuilding = true; townPick = 'pool'; showTownMap(); });
+  await page.click('.townTile[data-lot="0,0"]');
+  await expect(page.locator('#townBody .arcadeMessage')).toContainText('only spend 10 more');
+  // The dashboard raises the limit through the parent inbox
+  await page.evaluate(() => {
+    localStorage.setItem('kiddyKatParentInbox', JSON.stringify([{ type: 'townlimit', limit: 50, from: 'Dad', id: 'lim-1' }]));
+    processParentInbox(); document.getElementById('party').style.display = 'none';
+  });
+  expect(await page.evaluate(() => townSpendLeft())).toBe(35);
+  await page.evaluate(() => showTownMap());
+  await page.click('.townTile[data-lot="0,0"]');
+  expect(await page.evaluate(() => loadTown().built.map(b => b.id))).toEqual(['pool']);
+  await expectNoProblems(page, errors);
+});
+
+// Nov 4: "every item would have some kind of interactive level"
+const ALL_TOYS = ['puzzle', 'blocks', 'soccer', 'art', 'plush', 'rccar', 'science', 'books', 'game', 'slime'];
+test('every toy opens its own game, and ✖ goes back to My House', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: { ...AVATAR, owned: ALL_TOYS } });
+  await page.click('#townButton');
+  for (const id of ALL_TOYS) {
+    await page.evaluate(() => showTownHome());
+    const name = await page.evaluate(i => TOWN_STORES.toys.items.find(x => x[0] === i)[2], id);
+    await page.locator(`.townStuffItem[aria-label="${name}"]`).click();
+    await expect(page.locator('.toyArea')).toBeVisible();
+    await page.waitForTimeout(300);
+    await page.click('#town .closeGame');
+    await expect(page.locator('#townTitle')).toContainText('My House');
+  }
+  await expectNoProblems(page, errors);
+});
+
+test('toy games can be won: first win of the day gives +1 ⭐, the second is for fun', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: { ...AVATAR, owned: ALL_TOYS } });
+  await page.click('#townButton');
+  const won = async () => { await expect(page.locator('.townPopSay')).toContainText('🎉', { timeout: 8000 }); await page.click('.townPop >> text=🏠 My House'); };
+  // 🧩 Puzzle: put each piece where it belongs
+  await page.evaluate(() => openToy('puzzle'));
+  for (let pos = 0; pos < 9; pos++) {
+    const order = await page.evaluate(() => toyPuzzleState());
+    if (order[pos] === pos) continue;
+    const from = order.indexOf(pos);
+    await page.click(`.toyPiece[data-i="${pos}"]`);
+    await page.click(`.toyPiece[data-i="${from}"]`);
+  }
+  await won();
+  expect(await page.evaluate(() => pet.stars)).toBe(31);
+  // 🎨 Art: paint every square its number
+  await page.evaluate(() => openToy('art'));
+  const cells = await page.evaluate(() => toyArtCells());
+  for (const color of [...new Set(cells)]) {
+    await page.locator('.toyBrush').nth(color).click();
+    for (let i = 0; i < cells.length; i++) if (cells[i] === color) await page.click(`.toyPaint[data-i="${i}"]`);
+  }
+  await won();
+  // 🧸 Memory match
+  await page.evaluate(() => openToy('plush'));
+  const deck = await page.evaluate(() => toyPlushDeck());
+  const seen = new Set();
+  for (let i = 0; i < deck.length; i++) {
+    if (seen.has(i)) continue;
+    const j = deck.findIndex((f, k) => k !== i && f === deck[i]);
+    seen.add(i); seen.add(j);
+    await page.click(`.toyCard[data-i="${i}"]`);
+    await page.click(`.toyCard[data-i="${j}"]`);
+  }
+  await won();
+  // 🔬 Science: mix the right two potions, three times
+  await page.evaluate(() => openToy('science'));
+  for (let r = 0; r < 3; r++) {
+    const want = await page.evaluate(() => toyScienceWant());
+    for (const c of want) await page.click(`.toyPotion[data-color="${c}"]`);
+    await page.waitForTimeout(1000);
+  }
+  await won();
+  // 📚 Books: spell three words
+  await page.evaluate(() => openToy('books'));
+  for (let w = 0; w < 3; w++) {
+    const word = await page.evaluate(() => toyBooksWord());
+    for (const ch of word) await page.locator('.toyLetter:not([disabled])', { hasText: ch }).first().click();
+    await page.waitForTimeout(900);
+  }
+  await won();
+  // 🧱 Blocks: drop each block right on top
+  await page.evaluate(() => openToy('blocks'));
+  for (let b = 0; b < 8; b++) await page.evaluate(() => toyBlocksDrop(33));
+  await won();
+  // 🟢 Slime: repeat the recipe as it grows
+  await page.evaluate(() => openToy('slime'));
+  for (let round = 1; round <= 5; round++) {
+    await page.waitForFunction(n => { const s = toySlimeState(); return s.recipe.length === n && !s.watching; }, round, { timeout: 8000 });
+    const { recipe } = await page.evaluate(() => toySlimeState());
+    for (const i of recipe) await page.locator('.toySlimeBtn').nth(i).click();
+  }
+  await won();
+  expect(await page.evaluate(() => pet.stars)).toBe(30 + 7);
+  // Same toy again today: fun, but no more stars
+  await page.evaluate(() => openToy('blocks'));
+  for (let b = 0; b < 8; b++) await page.evaluate(() => toyBlocksDrop(33));
+  await expect(page.locator('.townPopSay')).toContainText('Playing for fun');
+  expect(await page.evaluate(() => pet.stars)).toBe(37);
+  await expectNoProblems(page, errors);
+});
+
+test('toy games you can lose say try again', async ({ page }) => {
+  await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: { ...AVATAR, owned: ALL_TOYS } });
+  await page.click('#townButton');
+  await page.evaluate(() => openToy('blocks'));
+  await page.evaluate(() => toyBlocksDrop(0));
+  await page.evaluate(() => toyBlocksDrop(66));
+  await expect(page.locator('.townPopSay')).toContainText('Crash');
+  await expect(page.locator('.townPop >> text=🔁 Try again')).toBeVisible();
+  // The board game's ladders and slides work
+  await page.click('.townPop >> text=🏠 My House');
+  await page.evaluate(() => openToy('game'));
+  expect(await page.evaluate(() => [toyBoardMove(0, 3), toyBoardMove(4, 2), toyBoardMove(13, 6)])).toEqual([8, 2, 15]);
 });

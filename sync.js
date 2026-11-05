@@ -266,6 +266,9 @@ function processParentInbox() {
     } else if (d.type === 'tasks' && typeof receiveTasks === 'function') {
       const said = receiveTasks(d);                              // 📋 a task list from the dashboard
       if (said) messages.push(said);
+    } else if (d.type === 'townlimit' && typeof receiveTownLimit === 'function') {
+      const said = receiveTownLimit(d);                          // 🛍️ Kat Town daily spending limit (town.js)
+      if (said) messages.push(said);
     } else if (d.type === 'townvisit' && typeof receiveTownVisit === 'function') {
       const said = receiveTownVisit(d);                          // 🏙️ a brother or sister visited my town (town.js)
       if (said) messages.push(said);
