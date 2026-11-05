@@ -255,6 +255,44 @@
     .townColorLabel { font-size: 13px; font-weight: bold; width: 64px; }
     .townColorRow .townChoice.swatch { width: 30px; height: 30px; }
     .townJobsBtn { background: #1c7ed6; }
+    .toyArea { max-width: 420px; margin: 8px auto; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .toyLabel { font-size: 14px; color: #495057; }
+    .toyGrid3, .toyGrid4, .toyGrid2 { display: grid; gap: 6px; width: 100%; max-width: 320px; }
+    .toyGrid3 { grid-template-columns: repeat(3, 1fr); }
+    .toyGrid4 { grid-template-columns: repeat(4, 1fr); }
+    .toyGrid2 { grid-template-columns: repeat(2, 1fr); }
+    .toyGrid3.toySmall { max-width: 120px; gap: 2px; }
+    .toySmall .toyCell { font-size: 18px; border-radius: 6px; }
+    .toyCell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 34px; border-radius: 12px; border: 2px solid #e9ecef; background: white; font-family: inherit; padding: 0; color: #343a40; }
+    .toyCell.picked { border-color: #f08c00; box-shadow: 0 0 0 3px #f08c00; }
+    .toyCell.right { border-color: #40c057; background: #ebfbee; }
+    .toyPaint { font-size: 18px; font-weight: bold; }
+    .toyBrush { width: 52px; height: 52px; border-radius: 50%; border: 3px solid #dee2e6; font-size: 24px; font-weight: bold; font-family: inherit; background: white; }
+    .toyBrush.picked { border-color: #343a40; box-shadow: 0 0 0 3px #f08c00; }
+    .toyRow { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .toyBig { font-size: 22px; min-width: 110px; }
+    .toyBlocksField { position: relative; width: 100%; max-width: 320px; height: 300px; background: #e7f5ff; border-radius: 16px; overflow: hidden; }
+    .toyBlock { position: absolute; height: 10%; border-radius: 6px; background: #868e96; }
+    .toyBlock.moving { background: #fab005; }
+    .toyGoal { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; max-width: 320px; height: 110px; border: 6px solid #f8f9fa; border-bottom: none; background: repeating-linear-gradient(45deg, #b2f2bb, #b2f2bb 8px, #d3f9d8 8px, #d3f9d8 16px); border-radius: 8px 8px 0 0; }
+    .toyGoalSpot { display: flex; align-items: center; justify-content: center; font-size: 48px; }
+    .toyKick { font-size: 16px; padding: 12px 10px; }
+    .toyRoad { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; max-width: 240px; background: #495057; border-radius: 12px; padding: 4px; }
+    .toyLane { aspect-ratio: 1.3; display: flex; align-items: center; justify-content: center; font-size: 30px; border-left: 2px dashed rgba(255,255,255,0.3); }
+    .toyLane:nth-child(3n+1) { border-left: none; }
+    .toyTarget { font-size: 28px; font-weight: bold; text-align: center; }
+    .toyFlask { font-size: 34px; min-height: 44px; }
+    .toyBowl { font-size: 44px; min-height: 56px; }
+    .toyPotion { font-size: 30px; }
+    .toySpell { font-size: 30px; font-weight: bold; letter-spacing: 2px; min-height: 40px; }
+    .toyLetter { width: 50px; height: 54px; font-size: 26px; font-weight: bold; border-radius: 12px; border: 2px solid #dee2e6; background: white; font-family: inherit; }
+    .toyLetter:disabled { opacity: 0.3; }
+    .toyBoardGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; width: 100%; max-width: 320px; }
+    .toySpace { font-size: 18px; }
+    .toySpace.here { background: #fff3bf; font-size: 26px; }
+    .toySlimeBtn { font-size: 20px; padding: 18px 8px; border-radius: 16px; border: 3px solid #b2f2bb; background: white; font-family: inherit; transition: transform 0.15s; }
+    .toySlimeBtn.lit { background: #69db7c; border-color: #2b8a3e; transform: scale(1.08); }
+    .townSpendLine { color: #e8590c; font-weight: bold; }
     .townFamilyBtn { background: #7048e8; }
     .townFamilyCard svg { flex: none; }
     .townMap.visiting { background: #c5f6fa; }
@@ -997,7 +1035,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
 
   <!-- Problem reporter: if any file or step fails, show which one at the bottom of the screen (for testing) -->
   <script>
-    const APP_VERSION = '2026-11-04g';      // bump with the ?v= numbers below
+    const APP_VERSION = '2026-11-04h';      // bump with the ?v= numbers below
     function kkReport(where, message) {
       try { localStorage.setItem('kkLastError', new Date().toLocaleString() + ' · ' + where + ': ' + message); } catch (err) {}
       let bar = document.getElementById('kkError');
@@ -1017,31 +1055,32 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     window.addEventListener('unhandledrejection', e => kkReport('a background step', (e.reason && e.reason.message) || String(e.reason)));
   </script>
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-11-04g"></script>
-  <script src="push.js?v=2026-11-04g"></script>
-  <script src="sync.js?v=2026-11-04g"></script>
-  <script src="daily.js?v=2026-11-04g"></script>
-  <script src="pet.js?v=2026-11-04g"></script>
-  <script src="stickers.js?v=2026-11-04g"></script>
-  <script src="games.js?v=2026-11-04g"></script>
-  <script src="challenge.js?v=2026-11-04g"></script>
-  <script src="rewards.js?v=2026-11-04g"></script>
-  <script src="wallet.js?v=2026-11-04g"></script>
-  <script src="catchup.js?v=2026-11-04g"></script>
-  <script src="packs.js?v=2026-11-04g"></script>
-  <script src="league.js?v=2026-11-04g"></script>
-  <script src="uploads.js?v=2026-11-04g"></script>
-  <script src="weekend.js?v=2026-11-04g"></script>
-  <script src="streak.js?v=2026-11-04g"></script>
-  <script src="supplies.js?v=2026-11-04g"></script>
-  <script src="career.js?v=2026-11-04g"></script>
-  <script src="bills.js?v=2026-11-04g"></script>
-  <script src="money.js?v=2026-11-04g"></script>
-  <script src="arcade.js?v=2026-11-04g"></script>
-  <script src="earnback.js?v=2026-11-04g"></script>
-  <script src="familygames.js?v=2026-11-04g"></script>
-  <script src="town.js?v=2026-11-04g"></script>
-  <script src="tour.js?v=2026-11-04g"></script>
+  <script src="config.js?v=2026-11-04h"></script>
+  <script src="push.js?v=2026-11-04h"></script>
+  <script src="sync.js?v=2026-11-04h"></script>
+  <script src="daily.js?v=2026-11-04h"></script>
+  <script src="pet.js?v=2026-11-04h"></script>
+  <script src="stickers.js?v=2026-11-04h"></script>
+  <script src="games.js?v=2026-11-04h"></script>
+  <script src="challenge.js?v=2026-11-04h"></script>
+  <script src="rewards.js?v=2026-11-04h"></script>
+  <script src="wallet.js?v=2026-11-04h"></script>
+  <script src="catchup.js?v=2026-11-04h"></script>
+  <script src="packs.js?v=2026-11-04h"></script>
+  <script src="league.js?v=2026-11-04h"></script>
+  <script src="uploads.js?v=2026-11-04h"></script>
+  <script src="weekend.js?v=2026-11-04h"></script>
+  <script src="streak.js?v=2026-11-04h"></script>
+  <script src="supplies.js?v=2026-11-04h"></script>
+  <script src="career.js?v=2026-11-04h"></script>
+  <script src="bills.js?v=2026-11-04h"></script>
+  <script src="money.js?v=2026-11-04h"></script>
+  <script src="arcade.js?v=2026-11-04h"></script>
+  <script src="earnback.js?v=2026-11-04h"></script>
+  <script src="familygames.js?v=2026-11-04h"></script>
+  <script src="town.js?v=2026-11-04h"></script>
+  <script src="toys.js?v=2026-11-04h"></script>
+  <script src="tour.js?v=2026-11-04h"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {

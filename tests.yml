@@ -1,0 +1,52 @@
+# =====================================================================
+# Automatic tests that GitHub runs for you.
+# Runs once per pull request, and once on main after a merge.
+# See the results on GitHub → your repo → Actions tab.
+# A ✅ means everything passed. A ❌ means something broke: click it to see what.
+#
+# The tests run inside Microsoft's official Playwright container, which
+# already has the test browsers (Safari's engine and Chrome) installed,
+# so nothing big has to be downloaded on every run.
+# Keep the container version the same as @playwright/test in package.json.
+# =====================================================================
+name: Tests
+
+on:
+  push:
+    branches: [main]      # after a merge, check main once more
+  pull_request:           # every pull request (this is the required check)
+
+# A newer push to the same pull request cancels the older, unfinished run
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --user 1001
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install the test tool
+        run: npm install --no-audit --no-fund
+
+      - name: Run the tests
+        run: npx playwright test
+
+      - name: Save the test report (open it if a test failed)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: playwright-report/
+          retention-days: 14

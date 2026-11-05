@@ -71,6 +71,38 @@ function saveTown(t) {
 
 function townStars() { return typeof pet !== 'undefined' && pet ? pet.stars : 0; }
 
+// 🛍️ Daily Kat Town spending limit, so stars are left for real-life rewards.
+// A grown-up can change it from the dashboard (it arrives in the parent inbox).
+const TOWN_DEFAULT_LIMIT = 25;
+function townLimit(t) { return typeof t.limit === 'number' ? t.limit : TOWN_DEFAULT_LIMIT; }
+function townSpentToday(t) { return t.spent && t.spent.date === new Date().toDateString() ? t.spent.stars : 0; }
+function townSpendLeft(t) { return Math.max(0, townLimit(t || loadTown()) - townSpentToday(t || loadTown())); }
+// null if it's OK to spend, or a friendly message if today's limit would be passed
+function townSpendProblem(price) {
+  const left = townSpendLeft(loadTown());
+  if (price <= left) return null;
+  return left > 0
+    ? `🛍️ You can only spend ${left} more ⭐ in Kat Town today. Save up and come back tomorrow, or keep your stars for a real reward!`
+    : `🛍️ You've spent your ${townLimit(loadTown())} ⭐ for Kat Town today. The shops open again tomorrow! Your other stars are safe for real rewards.`;
+}
+function townRecordSpend(price) {
+  const t = loadTown();
+  const today = new Date().toDateString();
+  if (!t.spent || t.spent.date !== today) t.spent = { date: today, stars: 0 };
+  t.spent.stars += price;
+  saveTown(t);
+}
+function townSpendLine() { return `🛍️ ${townSpendLeft()} of ${townLimit(loadTown())} ⭐ left to spend in town today`; }
+// From the dashboard: a new daily limit
+function receiveTownLimit(d) {
+  const n = Math.round(Number(d.limit));
+  if (!(n >= 0 && n <= 500)) return '';
+  const t = loadTown();
+  t.limit = n;
+  saveTown(t);
+  return n === 0 ? `🛍️ ${d.from || 'Your grown-up'} paused Kat Town shopping for now.` : `🛍️ ${d.from || 'Your grown-up'} set your Kat Town spending to ${n} ⭐ a day.`;
+}
+
 function townAdd(parent, tag, text, cls) {
   const el = document.createElement(tag);
   if (text !== undefined) el.textContent = text;
@@ -164,11 +196,13 @@ function openTown() {
 
 // ✖ goes back one step: from a store, My House or My look back to the map; from the map, out of town
 function closeTown() {
+  if (String(townView).startsWith('toy:')) { if (typeof toyStop === 'function') toyStop(); showTownHome(); return; }
   if (townView !== 'map' && loadTown().avatar) { showTownMap(); return; }
   leaveTown();
 }
 
 function leaveTown() {
+  if (typeof toyStop === 'function') toyStop();
   document.getElementById('town').style.display = 'none';
   showTownButton();
 }
@@ -296,7 +330,7 @@ function showTownMap(message) {
   me.appendChild(townAvatarSvg(t.avatar || townDefaultAvatar(), 40));
   townPlaceMe(me, townSpot[0], townSpot[1]);
 
-  if (townBuilding) showTownPalette(box);
+  if (townBuilding) { townAdd(box, 'div', townSpendLine(), 'arcadeHint townSpendLine'); showTownPalette(box); }
   else {
     const wishes = t.wishes.length;
     townAdd(box, 'div', wishes ? `💝 ${wishes} thing${wishes === 1 ? '' : 's'} on your wish list (see 🏠 Home)` : '💝 Tap ❤️ on anything in a store to add it to your wish list.', 'arcadeHint');
@@ -370,6 +404,7 @@ function showTownStore(id, message) {
     mirror.appendChild(fig);
   }
   townAdd(box, 'div', `⭐ ${townStars()} stars`, 'townWallet');
+  townAdd(box, 'div', townSpendLine(), 'arcadeHint townSpendLine');
   if (message) townAdd(box, 'div', message, 'arcadeMessage');
 
   const grid = townAdd(box, 'div', undefined, 'townShelf');
@@ -422,11 +457,14 @@ function townBuy(storeId, itemId, button) {
     showTownStore(storeId, `You need ${price - pet.stars} more ⭐ for ${name}. Finish a list or play in 🎮 Practice!`);
     return;
   }
+  const limitSays = townSpendProblem(price);
+  if (limitSays) { showTownStore(storeId, limitSays); return; }
   if (!confirm(`Buy ${emoji} ${name} for ${price} ⭐?`)) return;
   if (button) townFly('⭐', button, document.querySelector('#townBody .townWallet'));
   pet.stars -= price;
   if (typeof savePet === 'function') savePet();
   if (typeof showPet === 'function') showPet();
+  townRecordSpend(price);
   const t = loadTown();
   if (store.kind !== 'food' && !t.owned.includes(itemId)) t.owned.push(itemId);
   t.bought.push({ id: itemId, emoji: emoji, name: name, store: store.name, at: new Date().toISOString().slice(0, 10) });
@@ -487,6 +525,7 @@ function townEat(emoji, name) {
 function townPlay(itemId) {
   const item = TOWN_STORES.toys.items.find(i => i[0] === itemId);
   if (!item) return;
+  if (typeof openToy === 'function' && openToy(itemId)) return;     // 🧸 a real game (toys.js)
   const [anim, extra] = TOWN_PLAY[itemId] || ['bounce', '✨'];
   const lines = { bounce: 'Kick! Bounce! GOAL! ⚽', squish: 'Squish... squish... so squishy!', zoom: 'Vroom vroom! 🏁', stack: 'Stack it higher... higher!',
                   spin: 'Click! The last piece fits!', hug: 'Big squeezy hug!', flip: 'Turning the pages...', roll: 'Roll the dice... you rolled a 6!', wiggle: 'So much fun!' };
@@ -573,7 +612,7 @@ function showTownHome(message) {
   const things = Object.values(TOWN_STORES).filter(s => s.kind !== 'food').flatMap(s => s.items).filter(i => t.owned.includes(i[0]));
   if (!things.length) townAdd(box, 'div', 'Nothing yet. Visit 👕 Kat Closet and 🧸 Toy Box!', 'arcadeHint');
   else {
-    townAdd(box, 'div', 'Tap a toy to play, or tap clothes to put them on.', 'arcadeHint');
+    townAdd(box, 'div', 'Tap a toy to play its game (first win of each toy a day = +1 ⭐), or tap clothes to put them on.', 'arcadeHint');
     const shelf = townAdd(box, 'div', undefined, 'townStuff');
     things.forEach(([id, emoji, name]) => {
       const b = townAdd(shelf, 'button', emoji, 'townStuffItem');
@@ -701,6 +740,8 @@ function townTapLot(lot, c, r) {
   const [id, emoji, name, price, , ask] = item;
   if (typeof pet === 'undefined' || !pet) { showTownMap('🥚 Hatch a pet first to start earning stars!'); return; }
   if (pet.stars < price) { showTownMap(`You need ${price - pet.stars} more ⭐ to build ${emoji} ${name}. Finish a list or play in 🎮 Practice!`); return; }
+  const limitSays = townSpendProblem(price);
+  if (limitSays) { showTownMap(limitSays); return; }
   let label = '';
   if (ask) {
     label = (prompt(ask, '') || '').trim().slice(0, 18);
@@ -709,6 +750,7 @@ function townTapLot(lot, c, r) {
   pet.stars -= price;
   if (typeof savePet === 'function') savePet();
   if (typeof showPet === 'function') showPet();
+  townRecordSpend(price);
   const t = loadTown();
   const before = townLevel(t);
   t.built.push({ lot: lot, id: id, name: label, fresh: true, at: new Date().toISOString().slice(0, 10) });
@@ -814,6 +856,7 @@ function townRoomSection(box) {
     townAdd(pal, 'button', 'Cancel move', 'arcadeSmall').addEventListener('click', () => { townDecorPick = null; showTownHome(); });
     return;
   }
+  townAdd(pal, 'div', townSpendLine(), 'arcadeHint townSpendLine');
   const row = townAdd(pal, 'div', undefined, 'townPaletteItems');
   TOWN_DECOR.forEach(([id, emoji, name, price]) => {
     const b = townAdd(row, 'button', undefined, 'townPaletteItem' + (townDecorPick === id ? ' picked' : '') + (townStars() < price ? ' pricey' : ''));
@@ -870,7 +913,10 @@ function townTapSpot(spot) {
   const [id, emoji, name, price] = townDecorItem(townDecorPick);
   if (typeof pet === 'undefined' || !pet) { showTownHome('🥚 Hatch a pet first to start earning stars!'); return; }
   if (pet.stars < price) { showTownHome(`You need ${price - pet.stars} more ⭐ for the ${emoji} ${name}. Finish a list or do a 💼 town job!`); return; }
+  const limitSays = townSpendProblem(price);
+  if (limitSays) { showTownHome(limitSays); return; }
   pet.stars -= price;
+  townRecordSpend(price);
   if (typeof savePet === 'function') savePet();
   if (typeof showPet === 'function') showPet();
   room.items.push({ spot: spot, id: id, fresh: true });

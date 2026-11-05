@@ -860,6 +860,27 @@
         row(townBox, 'Job shifts worked', `${town.workShifts || 0}`);
         const visit = (town.visits || []).slice(-1)[0];
         if (visit) row(townBox, 'Last family visit', `${visit.from}`);
+        const spentToday = town.spent && town.spent.date === today ? town.spent.stars : 0;
+        const limit = typeof town.limit === 'number' ? town.limit : 25;
+        row(townBox, 'Spent in town today', `${spentToday} of ${limit} ⭐`);
+        // Change the daily Kat Town spending limit
+        const limitRow = add(townBox, 'div', undefined, 'groceryRow');
+        add(limitRow, 'span', 'Daily limit');
+        const limitBox = add(limitRow, 'input');
+        limitBox.type = 'number'; limitBox.min = '0'; limitBox.max = '500'; limitBox.value = String(limit);
+        limitBox.style.width = '70px';
+        limitBox.className = 'townLimitInput';
+        add(limitRow, 'span', '⭐ a day');
+        const limitSave = add(limitRow, 'button', '💾 Save', 'plain');
+        const limitNote = add(townBox, 'div', '', 'who');
+        limitSave.addEventListener('click', async () => {
+          const token = sessionStorage.getItem('kiddyKatDashToken');
+          let from = 'Dad';
+          try { from = localStorage.getItem('kiddyKatDashFrom') || 'Dad'; } catch (err) {}
+          limitNote.textContent = '⏳ Saving...';
+          const r = await cloudCall('parent_town_limit', { p_token: token, p_nickname: kid.nickname, p_limit: Number(limitBox.value), p_from: from });
+          limitNote.textContent = r.ok ? `✅ ${kid.nickname} can spend ${r.limit} ⭐ a day in Kat Town (starts next time the app opens). 0 pauses shopping.` : '⚠️ ' + r.error;
+        });
       }
 
       // Wallet
