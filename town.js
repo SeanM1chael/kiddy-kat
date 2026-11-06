@@ -210,6 +210,9 @@ function openTown() {
   if (!townAllowed()) return;
   document.getElementById('town').style.display = 'block';
   const t = loadTown();
+  const closed = townClosedReason(t);                  // 🌙 asleep, or ⏳ out of time for today
+  if (closed) { showTownClosed(closed); return; }
+  townStartTicker();
   if (!t.avatar) { townCreating = townDefaultAvatar(); showTownCreator(true); return; }
   showTownMap();
   if (typeof hallSyncQuiet === 'function') hallSyncQuiet();     // 🏛️ build any new family-vote winners
@@ -217,6 +220,7 @@ function openTown() {
 
 // ✖ goes back one step: from a store, My House or My look back to the map; from the map, out of town
 function closeTown() {
+  if (townView === 'closed') { leaveTown(); return; }
   if (String(townView).startsWith('bank:')) { showTownBank(); return; }
   if (String(townView).startsWith('hall:')) { showTownHall(); return; }
   if (String(townView).startsWith('kitchen:')) { showTownKitchen(); return; }
@@ -227,6 +231,7 @@ function closeTown() {
 }
 
 function leaveTown() {
+  townStopTicker();
   if (typeof toyStop === 'function') toyStop();
   if (typeof kkStopSpeaking === 'function') kkStopSpeaking();
   document.getElementById('town').style.display = 'none';
@@ -238,6 +243,9 @@ function townComeBack() {
   if (!townReturn) return;
   townReturn = false;
   document.getElementById('town').style.display = 'block';
+  const closed = townClosedReason();
+  if (closed) { showTownClosed(closed); return; }
+  townStartTicker();                       // Practice and Arcade time don't count as Kat Town time
   showTownMap();
 }
 if (typeof closeGame === 'function') {
@@ -356,6 +364,8 @@ function showTownMap(message) {
   me.appendChild(townAvatarSvg(t.avatar || townDefaultAvatar(), 40));
   townPlaceMe(me, townSpot[0], townSpot[1]);
 
+  const timeLine = townTimeLine(t);
+  if (timeLine) townAdd(box, 'div', timeLine, 'arcadeHint townTimeLeft');
   if (typeof kkReadAloudToggle === 'function' && !townBuilding) kkReadAloudToggle(townAdd(box, 'div', undefined, 'kkReadRow'));
   if (townBuilding) { townAdd(box, 'div', townSpendLine(), 'arcadeHint townSpendLine'); showTownPalette(box); }
   else {
@@ -1261,4 +1271,103 @@ function receiveTownVisit(d) {
   t.visits = t.visits.slice(-10);
   saveTown(t);
   return `🏙️ ${from} visited your Kat Town: ${reaction[0]} ${reaction[1]}`;
+}
+
+// =====================================================================
+// 🌙 Kat Town bedtime and ⏳ daily play time
+// • The town sleeps from this phone's bedtime (⚙️ Grown-ups) until 6:00 AM.
+// • A grown-up can set daily minutes from the dashboard (0 = no limit).
+// Time counts only while Kat Town is on screen.
+// =====================================================================
+const TOWN_OPENS_AT = 6 * 60;            // 6:00 AM, in minutes after midnight
+const TOWN_TICK_SECONDS = 20;
+let townTicker = null;
+
+function townBedtime() {
+  let v = null;
+  try { v = localStorage.getItem('kiddyKatBedTime'); } catch (err) {}
+  const m = /^(\d{1,2}):(\d{2})$/.exec(v || '');
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+function townAsleep(now = new Date()) {
+  const bed = townBedtime();
+  if (bed === null) return false;
+  const m = now.getHours() * 60 + now.getMinutes();
+  return bed > TOWN_OPENS_AT ? (m >= bed || m < TOWN_OPENS_AT) : (m >= bed && m < TOWN_OPENS_AT);
+}
+function townPlayLimit(t) { return typeof t.playLimit === 'number' && t.playLimit > 0 ? t.playLimit : 0; }
+function townPlayedSeconds(t) { return t.play && t.play.date === new Date().toDateString() ? t.play.seconds : 0; }
+function townSecondsLeft(t) { const limit = townPlayLimit(t); return limit ? Math.max(0, limit * 60 - townPlayedSeconds(t)) : Infinity; }
+function townClosedReason(t) {
+  if (townAsleep()) return 'sleep';
+  if (townSecondsLeft(t || loadTown()) <= 0) return 'time';
+  return null;
+}
+function townTimeLine(t) {
+  const left = townSecondsLeft(t);
+  if (left === Infinity) return '';
+  const min = Math.ceil(left / 60);
+  return `⏳ ${min} minute${min === 1 ? '' : 's'} of Kat Town left today`;
+}
+
+function showTownClosed(reason) {
+  townView = 'closed';
+  if (typeof toyStop === 'function') toyStop();
+  townStopTicker();
+  const t = loadTown();
+  const asleep = reason === 'sleep';
+  const box = townBody(asleep ? '🌙 Kat Town is asleep' : '⏳ Kat Town is closed for today');
+  const night = townAdd(box, 'div', undefined, 'townClosedScene' + (asleep ? ' night' : ''));
+  townAdd(night, 'div', asleep ? '🌙 ✨ 🏘️ 💤' : '🏘️ 🚧', 'townClosedEmoji');
+  if (t.avatar) night.appendChild(townAvatarSvg(Object.assign({}, t.avatar, asleep ? { outfit: 'pajamas' } : {}), 90));
+  const opens = `${TOWN_OPENS_AT / 60}:00 AM`;
+  townAdd(box, 'div', asleep
+    ? `Everyone in Kat Town is sleeping. The town opens again at ${opens}. Sweet dreams!`
+    : `You played ${townPlayLimit(t)} minutes today. Kat Town opens again tomorrow!`, 'arcadeMessage');
+  townAdd(box, 'div', asleep
+    ? '💡 Kids your age need 9 to 12 hours of sleep. Your brain sorts out everything you learned today while you sleep!'
+    : '💡 Balancing fun with your other responsibilities is a life skill too. What\'s on your list right now?', 'bankTip');
+  townAdd(box, 'button', '👋 OK', 'arcadeGo').addEventListener('click', leaveTown);
+  if (typeof kkAutoSpeak === 'function') kkAutoSpeak(box.textContent);
+}
+
+// Counts play time while the town is on screen; closes it at bedtime or when time runs out
+function townTick(seconds = TOWN_TICK_SECONDS) {
+  const town = document.getElementById('town');
+  if (!town || town.style.display !== 'block' || townView === 'closed') return;
+  if (document.visibilityState && document.visibilityState !== 'visible') return;
+  const t = loadTown();
+  const today = new Date().toDateString();
+  if (!t.play || t.play.date !== today) t.play = { date: today, seconds: 0 };
+  t.play.seconds += seconds;
+  const left = townSecondsLeft(t);
+  const warn = left <= 60 ? 1 : left <= 300 ? 5 : 0;
+  const warned = warn && t.play.warned !== warn;
+  if (warned) t.play.warned = warn;
+  saveTown(t);
+  const reason = townClosedReason(t);
+  if (reason) {
+    document.querySelectorAll('.townPop').forEach(p => p.remove());
+    showTownClosed(reason);
+    if (reason === 'sleep') townPop('🌙', 'It\'s bedtime! Kat Town is going to sleep. Goodnight!', [['😴 Goodnight', null]], 'townBounceIn');
+    return;
+  }
+  const line = document.querySelector('#townBody .townTimeLeft');
+  if (line) line.textContent = townTimeLine(t);
+  if (warned) townToast(warn === 1 ? '⏳ 1 minute of Kat Town left today!' : '⏳ 5 minutes of Kat Town left today!');
+}
+function townStartTicker() {
+  townStopTicker();
+  townTicker = setInterval(() => townTick(TOWN_TICK_SECONDS), TOWN_TICK_SECONDS * 1000);
+}
+function townStopTicker() { if (townTicker) { clearInterval(townTicker); townTicker = null; } }
+
+// From the dashboard: daily Kat Town minutes (0 = no limit)
+function receiveTownTime(d) {
+  const n = Math.round(Number(d.minutes));
+  if (!(n >= 0 && n <= 600)) return '';
+  const t = loadTown();
+  t.playLimit = n;
+  saveTown(t);
+  return n === 0 ? `⏳ ${d.from || 'Your grown-up'} took away the Kat Town time limit.` : `⏳ ${d.from || 'Your grown-up'} set Kat Town time to ${n} minutes a day.`;
 }

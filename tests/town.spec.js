@@ -932,3 +932,64 @@ test('read-aloud: off by default for older kids, the 🔊 button still reads, an
   expect(await page.evaluate(() => window.kkLastSpoken)).toContain('Get the ingredients');
   await expectNoProblems(page, errors);
 });
+
+// Nov 5: 🌙 Kat Town closes at bedtime, and ⏳ a grown-up can set daily minutes
+test('Kat Town is asleep after bedtime until 6 AM, and closes if bedtime comes while playing', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR, kiddyKatBedTime: '20:30' });
+  expect(await page.evaluate(() => [
+    townAsleep(new Date(2026, 10, 5, 20, 29)), townAsleep(new Date(2026, 10, 5, 20, 30)), townAsleep(new Date(2026, 10, 5, 23, 59)),
+    townAsleep(new Date(2026, 10, 6, 2, 0)), townAsleep(new Date(2026, 10, 6, 5, 59)), townAsleep(new Date(2026, 10, 6, 6, 0))
+  ])).toEqual([false, true, true, true, true, false]);
+  // A bedtime after midnight
+  await page.evaluate(() => localStorage.setItem('kiddyKatBedTime', '00:30'));
+  expect(await page.evaluate(() => [townAsleep(new Date(2026, 10, 5, 23, 0)), townAsleep(new Date(2026, 10, 6, 1, 0))])).toEqual([false, true]);
+  // Asleep now: the town won't open
+  await page.evaluate(() => { window.townAsleepReal = townAsleep; townAsleep = () => true; });
+  await page.click('#townButton');
+  await expect(page.locator('#townTitle')).toContainText('asleep');
+  await expect(page.locator('#townBody')).toContainText('opens again at 6:00 AM');
+  await page.click('#townBody >> text=👋 OK');
+  await expect(page.locator('#town')).toBeHidden();
+  // Awake: open it, then bedtime arrives while playing
+  await page.evaluate(() => { townAsleep = () => false; });
+  await page.click('#townButton');
+  await expect(page.locator('#townTitle')).toContainText('Kat Town');
+  await page.evaluate(() => { townAsleep = () => true; townTick(20); });
+  await expect(page.locator('#townTitle')).toContainText('asleep');
+  await expect(page.locator('.townPopSay')).toContainText('Goodnight');
+  await expectNoProblems(page, errors);
+});
+
+test('daily play time: counts while playing, warns, then closes until tomorrow', async ({ page }) => {
+  const errors = await openAppAs(page, 'kitten', { ...PET, kiddyKatTown: AVATAR });
+  // No limit by default
+  await page.click('#townButton');
+  await expect(page.locator('.townTimeLeft')).toHaveCount(0);
+  await page.evaluate(() => leaveTown());
+  // The dashboard sets 10 minutes
+  await page.evaluate(() => {
+    localStorage.setItem('kiddyKatParentInbox', JSON.stringify([{ type: 'towntime', minutes: 10, from: 'Dad', id: 'tt-1' }]));
+    processParentInbox(); document.getElementById('party').style.display = 'none';
+  });
+  expect(await page.evaluate(() => loadTown().playLimit)).toBe(10);
+  await page.click('#townButton');
+  await expect(page.locator('.townTimeLeft')).toContainText('10 minutes');
+  await page.evaluate(() => townTick(6 * 60));                       // 4 minutes left → warning
+  await expect(page.locator('.townTimeLeft')).toContainText('4 minutes');
+  expect(await page.evaluate(() => loadTown().play.warned)).toBe(5);
+  await page.evaluate(() => townTick(4 * 60));                       // time's up
+  await expect(page.locator('#townTitle')).toContainText('closed for today');
+  await page.click('#townBody >> text=👋 OK');
+  await page.click('#townButton');                                    // still closed
+  await expect(page.locator('#townTitle')).toContainText('closed for today');
+  // Time in Kat Town is only counted while the town is open
+  await page.evaluate(() => leaveTown());
+  const before = await page.evaluate(() => loadTown().play.seconds);
+  await page.evaluate(() => townTick(60));
+  expect(await page.evaluate(() => loadTown().play.seconds)).toBe(before);
+  // Tomorrow it opens again
+  await page.evaluate(() => { const t = loadTown(); t.play.date = 'Mon Jan 01 2001'; saveTown(t); });
+  await page.click('#townButton');
+  await expect(page.locator('#townTitle')).toContainText('Kat Town');
+  await expectNoProblems(page, errors);
+});
