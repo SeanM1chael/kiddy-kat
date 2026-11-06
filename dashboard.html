@@ -863,6 +863,27 @@
         const spentToday = town.spent && town.spent.date === today ? town.spent.stars : 0;
         const limit = typeof town.limit === 'number' ? town.limit : 25;
         row(townBox, 'Spent in town today', `${spentToday} of ${limit} ⭐`);
+        // ⏳ Kat Town play time today, and the daily minutes limit
+        const playLimit = typeof town.playLimit === 'number' ? town.playLimit : 0;
+        const playedMin = town.play && town.play.date === today ? Math.round(town.play.seconds / 60) : 0;
+        row(townBox, '⏳ Played in town today', `${playedMin} min` + (playLimit ? ` of ${playLimit}` : ' (no limit)'));
+        const timeRow = add(townBox, 'div', undefined, 'groceryRow');
+        add(timeRow, 'span', 'Daily play time');
+        const timeBox = add(timeRow, 'input');
+        timeBox.type = 'number'; timeBox.min = '0'; timeBox.max = '600'; timeBox.step = '5'; timeBox.value = String(playLimit);
+        timeBox.style.width = '70px';
+        timeBox.className = 'townTimeInput';
+        add(timeRow, 'span', 'min');
+        const timeSave = add(timeRow, 'button', '💾 Save', 'plain');
+        const timeNote = add(townBox, 'div', '0 = no limit. Kat Town also closes at each phone\'s bedtime until 6 AM.', 'who');
+        timeSave.addEventListener('click', async () => {
+          const token = sessionStorage.getItem('kiddyKatDashToken');
+          let from = 'Dad';
+          try { from = localStorage.getItem('kiddyKatDashFrom') || 'Dad'; } catch (err) {}
+          timeNote.textContent = '⏳ Saving...';
+          const r = await cloudCall('parent_town_time', { p_token: token, p_nickname: kid.nickname, p_minutes: Number(timeBox.value), p_from: from });
+          timeNote.textContent = r.ok ? (r.minutes ? `✅ ${kid.nickname} gets ${r.minutes} minutes of Kat Town a day (starts next time the app opens).` : `✅ No daily time limit for ${kid.nickname}.`) : '⚠️ ' + r.error;
+        });
         if (town.bank) row(townBox, '🐷 Savings jar', `${town.bank.saved || 0} ⭐` + (town.bank.goal ? ` (goal: ${town.bank.goal.name}, ${town.bank.goal.stars} ⭐)` : ''));
         // 📚 Life skills practiced this week
         const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
