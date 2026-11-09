@@ -40,3 +40,27 @@ test('no secret keys in the app files', () => {
     expect(text, `${f} has a service role key`).not.toMatch(/service_role"\s*:\s*"ey/);
   }
 });
+
+// Nov 9: `npm run bump` sets every version number at once, so a release can't load half-old files
+test('the version bump script picks the next version and updates every number', () => {
+  const { nextVersion, applyVersion, bump } = require('../scripts/bump.js');
+  expect(nextVersion('2026-11-05f', '2026-11-05')).toBe('2026-11-05g');
+  expect(nextVersion('2026-11-05f', '2026-11-09')).toBe('2026-11-09a');
+  expect(nextVersion('2026-11-09z', '2026-11-09')).toBe('2026-11-09za');
+  const page = `<script src="a.js?v=2026-11-05f"></script><script src="b.js?v=2026-10-29f"></script>\nconst APP_VERSION = '2026-11-05f';`;
+  const out = applyVersion(page, '2026-11-09a');
+  expect(out).not.toContain('2026-11-05f');
+  expect(out).not.toContain('2026-10-29f');
+  expect(out.match(/2026-11-09a/g).length).toBe(3);
+  // On a copy of the real pages
+  const os = require('os');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bump-'));
+  for (const f of fs.readdirSync(root).filter(f => f.endsWith('.html'))) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
+  const r = bump(tmp);
+  expect(r.changed).toContain('index.html');
+  const html = fs.readFileSync(path.join(tmp, 'index.html'), 'utf8');
+  const versions = [...html.matchAll(/\?v=(\d{4}-\d{2}-\d{2}[a-z]+)/g)].map(m => m[1]);
+  expect(new Set(versions)).toEqual(new Set([r.to]));
+  expect(html).toContain(`const APP_VERSION = '${r.to}'`);
+  fs.rmSync(tmp, { recursive: true });
+});
