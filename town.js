@@ -40,7 +40,7 @@ const TOWN_PLACES = [
   ['home', '🏠', 'My House', 'Home', 1, 1], ['closet', '👕', 'Kat Closet', 'Closet', 4, 1], ['burger', '🍔', 'Paw Burger', 'Burger', 6, 2],
   ['school', '🏫', 'Kat Academy', 'School', 1, 6], ['arcade', '🕹️', 'Arcade', 'Arcade', 4, 6], ['toys', '🧸', 'Toy Box', 'Toys', 6, 7],
   ['bank', '🏦', 'Kat Bank', 'Bank', 1, 3], ['kitchen', '🍳', 'Kat Kitchen', 'Kitchen', 5, 3],
-  ['safety', '🛡️', 'Safety HQ', 'Safety', 5, 8], ['hall', '🏛️', 'Town Hall', 'Town Hall', 2, 3]
+  ['safety', '🛡️', 'Safety HQ', 'Safety', 5, 5], ['hall', '🏛️', 'Town Hall', 'Town Hall', 2, 3]
 ];
 function townIsRoad(c, r) { return c === TOWN_ROAD_COL || r === TOWN_ROAD_ROW; }
 function townPlaceAt(c, r) { return TOWN_PLACES.find(p => p[4] === c && p[5] === r); }

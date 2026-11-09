@@ -3,7 +3,8 @@
   "private": true,
   "description": "Kiddy Kat family routine app. Only used to run the automatic tests.",
   "scripts": {
-    "test": "playwright test"
+    "test": "playwright test",
+    "bump": "node scripts/bump.js"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0"
