@@ -4,7 +4,7 @@
 //   • Kids see their list at the top, then their pet and one big 🏙️ Kat Town
 //     button. Practice, Arcade, Shop, Rewards, Wallet and the rest all have
 //     a door in Kat Town, so the extra buttons under the pet are hidden.
-//   • ⭐ stars and 🔥 streak sit up top, next to the hello
+//   • ⭐ stars, 🔥 streak and the 🏙️ Kat Town button sit up top, under the hello
 // Grown-ups (🦅 eagle) keep the old layout with all their buttons.
 // =====================================================================
 
@@ -52,6 +52,9 @@ function showKidChips() {
     if (!hello) return;
     hello.after(chips);
   }
+  // 🏙️ Kat Town sits right under the chips, so kids see it without scrolling
+  const town = document.getElementById('townButton');
+  if (town && chips.nextElementSibling !== town) chips.after(town);
   chips.textContent = '';
   const chip = (text, cls) => {
     const c = document.createElement('span');
