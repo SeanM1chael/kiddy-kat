@@ -138,6 +138,10 @@ test('kids home: the list for right now opens, the list sits above the pet, extr
   const listY = (await page.locator('#afternoon').boundingBox()).y;
   const petY = (await page.locator('#petCard').boundingBox()).y;
   expect(listY).toBeLessThan(petY);
+  // Kat Town is up top, above the list, so it shows without scrolling
+  const townBox = await page.locator('#townButton').boundingBox();
+  expect(townBox.y).toBeLessThan(listY);
+  expect(townBox.y + townBox.height).toBeLessThan(page.viewportSize().height);
   // One big Kat Town button; the rest are hidden
   await expect(page.locator('#townButton')).toBeVisible();
   for (const sel of ['#shopButton', '#challengeButton', '#albumButton', '#walletButton', 'button[onclick="openPractice()"]', 'button[onclick="openArcade()"]', 'button[onclick="openRewards()"]']) {
