@@ -10,7 +10,7 @@ test('first visit: make a character, then the town map shows', async ({ page }) 
   await expect(page.locator('#townTitle')).toContainText('Make your character');
   await page.click('.townChoice >> text=Curly');
   await page.click('text=✅ Done! Go to town');
-  await expect(page.locator('.townTile.place')).toHaveCount(10);
+  await expect(page.locator('.townTile.place')).toHaveCount(11);
   expect(await page.evaluate(() => loadTown().avatar.hair)).toBe('curly');
   await expectNoProblems(page, errors);
 });
@@ -1006,4 +1006,193 @@ test('every "← Town" button goes back to a clean map', async ({ page }) => {
     await expect(page.locator('#townBody')).not.toContainText('[object');
   }
   await expectNoProblems(page, errors);
+});
+
+// Nov 9: 🎟️ Reward Shop — real rewards in Kat Town, paid with wallet or savings
+test('Reward Shop: buy a real reward with the wallet; a grown-up approves it like before', async ({ page }) => {
+  const errors = await openAppAs(page, 'kitten', { ...PET, kiddyKatTown: AVATAR });
+  page.on('dialog', d => d.accept());
+  await page.click('#townButton');
+  await page.click('[data-place=rewards]');
+  await expect(page.locator('#townTitle')).toContainText('Reward Shop', { timeout: 5000 });
+  const story = page.locator('.shopCard[data-reward="Extra bedtime story"]');
+  await expect(story).toContainText('⭐ 30');
+  await expect(story.locator('.shopEffort')).toContainText('About 2 days of finishing your lists, or 7 🍔');
+  await story.locator('.shopBuy').click();
+  await expect(page.locator('.townPopSay')).toContainText('You asked Dad for Extra bedtime story');
+  expect(await page.evaluate(() => pet.stars)).toBe(0);
+  const req = await page.evaluate(() => JSON.parse(localStorage.getItem('kiddyKatRewardRequests')));
+  expect(req.map(r => [r.name, r.price, r.status])).toEqual([['Extra bedtime story', 30, 'waiting']]);
+  // Real rewards don't use up the daily Kat Town limit
+  expect(await page.evaluate(() => townSpendLeft())).toBe(25);
+  await page.click('.townPop >> text=🙌 Yay!');
+  await expect(page.locator('.shopWaiting')).toContainText('waiting for Dad');
+  await expectNoProblems(page, errors);
+});
+
+test('Reward Shop: savings pay first, "save for this" sets the Kat Bank goal', async ({ page }) => {
+  const errors = await openAppAs(page, 'kitten', { ...PET, kiddyKatTown: { ...AVATAR, bank: { saved: 50, low: 50, week: '2099-01-05', history: [] } } });
+  page.on('dialog', d => d.accept());
+  await page.click('#townButton');
+  await page.evaluate(() => showTownRewardShop());
+  // Goal
+  const movie = page.locator('.shopCard[data-reward="Pick the family movie"]');
+  await movie.locator('.shopGoal').click();
+  expect(await page.evaluate(() => loadTown().bank.goal)).toEqual({ name: 'Pick the family movie', stars: 60, emoji: '🎬' });
+  await expect(page.locator('.shopCard[data-reward="Pick the family movie"]')).toHaveClass(/goal/);
+  // 60 = 50 savings + 10 wallet; wallet alone (30) isn't enough, so only the savings button shows
+  await expect(movie.locator('.shopBuy:not(.shopSavings)')).toHaveCount(0);
+  await movie.locator('.shopSavings').click();
+  // 30 wallet + 4 for the 🐷 and 💰 saver badges earned on opening the town, − 10 from the wallet
+  expect(await page.evaluate(() => [pet.stars, loadTown().bank.saved])).toEqual([24, 0]);
+  await expect(page.locator('.townPopSay')).toContainText('Your savings paid off');
+  // Too expensive shows how many more stars
+  await expect(page.locator('.shopCard[data-reward="Trampoline park trip"] .shopShort')).toContainText('more ⭐ to go');
+  await expectNoProblems(page, errors);
+});
+
+// Nov 9: 🏆 achievements
+test('badges: earned from real progress once, +2 ⭐ each, shown in My House', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: { ...AVATAR, recipes: { pancakes: 1 },
+    bank: { saved: 12, low: 12, week: '2099-01-05', history: [{ kind: 'in', n: 12, at: '2026-11-01' }] },
+    skills: [{ skill: 'safety', act: 'safety-scam', at: '2026-11-05' }] } });
+  await page.click('#townButton');
+  await expect(page.locator('#careerToast')).toContainText('New badges', { timeout: 5000 });
+  const got = await page.evaluate(() => Object.keys(loadTown().badges).sort());
+  expect(got).toEqual(['chef', 'safety', 'saver', 'scam']);
+  expect(await page.evaluate(() => pet.stars)).toBe(30 + 8);
+  // Opening the map again doesn't give them twice
+  await page.evaluate(() => showTownMap());
+  expect(await page.evaluate(() => pet.stars)).toBe(38);
+  // The badge wall: earned ones show, the rest are locked with how to earn them
+  await page.evaluate(() => showTownHome());
+  await expect(page.locator('.badge.got')).toHaveCount(4);
+  await page.click('.badge[data-badge="worker"]');
+  await expect(page.locator('.townPopSay')).toContainText('Work 10 town job shifts');
+  await expectNoProblems(page, errors);
+});
+
+test('badges match the age: no scam or password badges for kittens', async ({ page }) => {
+  await openAppAs(page, 'kitten', { ...PET, kiddyKatTown: AVATAR });
+  const ids = await page.evaluate(() => badgesForMe().map(b => b[0]));
+  expect(ids).not.toContain('scam');
+  expect(ids).not.toContain('password');
+  expect(ids).toContain('chef');
+});
+
+// Nov 9: 🎁 daily gift
+test('daily gift: once a day, +1 ⭐, with a tip; the button goes away until tomorrow', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await expect(page.locator('.giftBtn')).toContainText('day 1 of 7');
+  await page.click('.giftBtn');
+  await expect(page.locator('.townPopSay')).toContainText('Day 1 of 7: +1 ⭐');
+  await expect(page.locator('.townPopSay')).toContainText('Tip of the day');
+  expect(await page.evaluate(() => pet.stars)).toBe(31);
+  await page.click('.townPop >> text=😄 Thanks!');
+  await expect(page.locator('.giftBtn')).toHaveCount(0);
+  await page.evaluate(() => openGift());                              // can't open it twice
+  expect(await page.evaluate(() => pet.stars)).toBe(31);
+  await expectNoProblems(page, errors);
+});
+
+test('daily gift: the streak grows day by day, day 7 is big, and a missed day starts over', async ({ page }) => {
+  // Yesterday was day 6
+  await openAppAs(page, 'kitten', { ...PET, kiddyKatTown: AVATAR });
+  await page.evaluate(() => { const t = loadTown(); t.gift = { last: giftYesterday(), streak: 6 }; saveTown(t); });
+  await page.click('#townButton');
+  await expect(page.locator('.giftBtn')).toContainText('Day 7 BIG gift');
+  await page.click('.giftBtn');
+  await expect(page.locator('.townPopSay')).toContainText('Day 7 of 7: +5 ⭐');
+  await expect(page.locator('.townPopSay')).toContainText('surprise for your room');
+  expect(await page.evaluate(() => [pet.stars, loadTown().room.items.length])).toEqual([35, 1]);
+  // After day 7 it starts again at 1
+  expect(await page.evaluate(() => { const t = loadTown(); t.gift.last = giftYesterday(); return giftNextStreak(t); })).toBe(1);
+  // Missing a day starts over
+  expect(await page.evaluate(() => giftNextStreak({ gift: { last: 'Mon Jan 01 2001', streak: 4 } }))).toBe(1);
+  expect(await page.evaluate(() => giftNextStreak({ gift: { last: giftYesterday(), streak: 4 } }))).toBe(5);
+});
+
+// Nov 9: 🎉 birthdays and holidays
+test('holiday dates are right, and only the family\'s chosen holidays count', async ({ page }) => {
+  await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  const on = await page.evaluate(() => [
+    holidayToday(new Date(2026, 9, 31)).id,          // Halloween
+    holidayToday(new Date(2026, 10, 26)).id,         // Thanksgiving 2026: 4th Thursday of November
+    holidayToday(new Date(2026, 11, 26)).id,         // winter holidays cover Dec 24–26
+    holidayToday(new Date(2026, 10, 9)),              // an ordinary day
+    holidayToday(new Date(2027, 2, 28))               // Easter 2027 is off by default
+  ]);
+  expect(on).toEqual(['halloween', 'thanksgiving', 'winter', null, null]);
+  // The dates of holidays that move each year
+  expect(await page.evaluate(() => [hdEaster(2027), hdEaster(2026), hdNth(2027, 1, 1, 3), hdNth(2027, 5, 0, 2), hdNth(2027, 6, 0, 3)]))
+    .toEqual(['03-28', '04-05', '01-18', '05-09', '06-20']);
+  // The family turns on Easter and adds its own holiday
+  await page.evaluate(() => localStorage.setItem('kiddyKatHolidays', JSON.stringify({ on: ['easter'], custom: [{ name: 'Diwali', emoji: '🪔', date: '11-08' }] })));
+  expect(await page.evaluate(() => [holidayToday(new Date(2027, 2, 28)).id, holidayToday(new Date(2026, 9, 31)), holidayToday(new Date(2026, 10, 8)).name]))
+    .toEqual(['easter', null, 'Diwali']);
+});
+
+test('on a holiday: a banner, a free room decoration once, and a holiday challenge', async ({ page }) => {
+  const errors = await openAppAs(page, 'kitten', { ...PET, kiddyKatTown: AVATAR });
+  await page.evaluate(() => { const real = holidayToday; window.holidayToday = () => real(new Date(2026, 9, 31)); });
+  await page.click('#townButton');
+  await page.click('.hdBanner >> text=Happy Halloween');
+  await page.click('.hdDecorBtn');
+  await expect(page.locator('.townPopSay')).toContainText('Jack-o\'-lantern is in your room');
+  await page.click('.townPop >> text=😄 Cool!');
+  await expect(page.locator('.hdDecorBtn')).toHaveCount(0);            // once a year
+  expect(await page.evaluate(() => loadTown().room.items.map(i => i.id))).toEqual(['h-halloween']);
+  await page.click('.hdQuizBtn');
+  await answerAllRight(page);
+  await expect(page.locator('.townPopSay')).toContainText('3 of 3! Happy Halloween!');
+  expect(await page.evaluate(() => pet.stars)).toBe(31);
+  // The decoration works in the room
+  await page.evaluate(() => showTownHome());
+  await expect(page.locator('.townRoomSpot[data-spot="0,0"]')).toHaveText('🎃');
+  await expectNoProblems(page, errors);
+});
+
+test('birthday: a party with +10 ⭐ and a cake, and the birthday never goes online', async ({ page }) => {
+  const errors = await openAppAs(page, 'kitten', { ...PET, kiddyKatTown: AVATAR });
+  await page.evaluate(() => localStorage.setItem('kiddyKatBirthday', hdToday()));
+  expect(await page.evaluate(() => 'kiddyKatBirthday' in cloudCollect())).toBe(false);
+  await page.click('#townButton');
+  await expect(page.locator('.hdBanner.birthday')).toBeVisible();
+  expect(await page.evaluate(() => loadTown().partyDay)).toBe(await page.evaluate(() => hdDateKey()));
+  await page.click('.hdBanner.birthday');
+  await page.click('.hdOpenGift');
+  await expect(page.locator('.townPopSay')).toContainText('+10 ⭐');
+  expect(await page.evaluate(() => [pet.stars, loadTown().room.items.map(i => i.id)])).toEqual([40, ['h-birthday']]);
+  await page.click('.townPop >> text=🎉 Yay!');
+  await expect(page.locator('.hdOpenGift')).toHaveCount(0);           // once a year
+  // A brother's gift shows up at the party
+  await page.evaluate(() => { localStorage.setItem('kiddyKatParentInbox', JSON.stringify([{ type: 'townvisit', from: 'PJ Flash', reaction: 'balloon', id: 'bd-1' }]));
+    processParentInbox(); document.getElementById('party').style.display = 'none'; showBirthdayParty(); });
+  await expect(page.locator('.hdGift')).toContainText('PJ Flash sent you a balloon');
+  await expectNoProblems(page, errors);
+});
+
+test('visiting a sister on her birthday: send a preset birthday gift', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, ...LINKED, kiddyKatTown: AVATAR });
+  const today = await page.evaluate(() => hdDateKey());
+  await fakeFamily(page, { ok: true, on: true, towns: [{ ...JUJU_TOWN, partyDay: today }] });
+  await page.click('#townButton');
+  await page.click('.townFamilyBtn');
+  await expect(page.locator('.hdCardBirthday')).toContainText('Birthday today');
+  await page.click('.townFamilyCard >> text=🚶 Visit');
+  await expect(page.locator('#townBody h3', { hasText: 'birthday' })).toBeVisible();
+  await expect(page.locator('.townReaction')).toHaveText(['🎂 Birthday cake', '🎈 Balloon', '🎁 Present', '💌 Birthday card']);
+  await page.click('.townReaction >> text=Balloon');
+  expect(await page.evaluate(() => window.sentToServer.find(s => s[0] === 'town_react')[1].p_reaction)).toBe('balloon');
+  await expectNoProblems(page, errors);
+});
+
+test('the birthday is set in Grown-ups on the phone', async ({ page }) => {
+  await openAppAs(page, 'kitten', PET);
+  await page.evaluate(() => openSettings(true));
+  await page.selectOption('#birthdayMonth', '03');
+  await page.selectOption('#birthdayDay', '14');
+  await page.click('text=Save birthday');
+  expect(await page.evaluate(() => localStorage.getItem('kiddyKatBirthday'))).toBe('03-14');
 });

@@ -163,6 +163,32 @@ function showParentClock() {
   tip.className = 'pushNote';
   tip.textContent = '🔔 Alerts on this phone come 15 and 5 minutes before leaving (only if the morning list isn\'t done), and grown-ups get one at leave time. Turn on alerts in ☁️ Online family.';
   box.append(document.createElement('br'), bedLabel, bedInput, bedSave, bedStatus, tip);
+
+  // 🎂 Birthday (month and day only). It stays on this phone and is never sent online.
+  const bdLabel = document.createElement('label');
+  bdLabel.textContent = '🎂 Birthday (for a Kat Town party)';
+  const bdMonth = document.createElement('select');
+  bdMonth.id = 'birthdayMonth';
+  const bdDay = document.createElement('select');
+  bdDay.id = 'birthdayDay';
+  ['Month', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    .forEach((m, i) => { const o = document.createElement('option'); o.value = i ? String(i).padStart(2, '0') : ''; o.textContent = m; bdMonth.appendChild(o); });
+  for (let d = 0; d <= 31; d++) { const o = document.createElement('option'); o.value = d ? String(d).padStart(2, '0') : ''; o.textContent = d || 'Day'; bdDay.appendChild(o); }
+  const saved = (localStorage.getItem('kiddyKatBirthday') || '').split('-');
+  if (saved.length === 2) { bdMonth.value = saved[0]; bdDay.value = saved[1]; }
+  const bdSave = document.createElement('button');
+  bdSave.textContent = 'Save birthday';
+  const bdStatus = document.createElement('div');
+  bdSave.addEventListener('click', () => {
+    if (bdMonth.value && bdDay.value) {
+      localStorage.setItem('kiddyKatBirthday', `${bdMonth.value}-${bdDay.value}`);
+      bdStatus.textContent = '✅ Saved. Kat Town throws a party on this day! (It stays on this phone only.)';
+    } else {
+      localStorage.removeItem('kiddyKatBirthday');
+      bdStatus.textContent = '✅ Birthday removed.';
+    }
+  });
+  box.append(document.createElement('br'), bdLabel, bdMonth, bdDay, bdSave, bdStatus);
 }
 
 // ---------- Weather for where this phone is ----------
