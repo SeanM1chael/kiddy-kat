@@ -301,6 +301,24 @@
     .shopButtons .shopSavings { background: #2b8a3e; }
     .shopShort { font-size: 13px; color: #868e96; font-weight: bold; }
     .townStillOpen { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 6px 0 10px; }
+    .musicGrid { display: grid; grid-template-columns: 38px repeat(8, 1fr); gap: 4px; max-width: 420px; margin: 10px auto; }
+    .musicCount { font-size: 12px; font-weight: bold; color: #868e96; text-align: center; }
+    .musicLabel { font-size: 20px; background: none; border: none; padding: 0; }
+    .musicCell { aspect-ratio: 1; border-radius: 8px; border: 2px solid #dee2e6; background: white; padding: 0; }
+    .musicCell.beat { background: #f8f9fa; }
+    .musicCell.drum.on { background: #495057; border-color: #343a40; }
+    .musicCell.do.on { background: #fa5252; border-color: #e03131; }
+    .musicCell.re.on { background: #fcc419; border-color: #fab005; }
+    .musicCell.mi.on { background: #51cf66; border-color: #37b24d; }
+    .musicCell.sol.on { background: #339af0; border-color: #1c7ed6; }
+    .musicCell.la.on { background: #9775fa; border-color: #7950f2; }
+    .musicCell.now { outline: 3px solid #f08c00; outline-offset: 1px; }
+    .musicKey { font-size: 13px; color: #495057; text-align: center; max-width: 420px; margin: 4px auto; }
+    .musicControls, .musicTempos { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 8px 0; }
+    .musicTempo.picked { background: var(--main); color: white; }
+    .musicSong { display: flex; align-items: center; gap: 6px; max-width: 420px; margin: 6px auto; background: white; border-radius: 12px; padding: 6px 10px; }
+    .musicSongTitle { flex: 1; text-align: left; font-weight: bold; }
+    .musicListen { display: block; margin: 8px auto; }
     .townPetLook { font-size: 80px; text-align: center; margin: 6px 0; }
     .townPetShop, .townPetHouse, .townAlbum, .bankRealMoney { display: block; margin: 10px auto; }
     .townTile.townLive { box-shadow: 0 0 0 3px #e03131; animation: townLivePulse 1.6s ease-in-out infinite; position: relative; }
@@ -1176,7 +1194,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
 
   <!-- Problem reporter: if any file or step fails, show which one at the bottom of the screen (for testing) -->
   <script>
-    const APP_VERSION = '2026-11-09f';      // bump with the ?v= numbers below
+    const APP_VERSION = '2026-11-09g';      // bump with the ?v= numbers below
     function kkReport(where, message) {
       try { localStorage.setItem('kkLastError', new Date().toLocaleString() + ' · ' + where + ': ' + message); } catch (err) {}
       let bar = document.getElementById('kkError');
@@ -1196,42 +1214,43 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     window.addEventListener('unhandledrejection', e => kkReport('a background step', (e.reason && e.reason.message) || String(e.reason)));
   </script>
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-11-09f"></script>
-  <script src="push.js?v=2026-11-09f"></script>
-  <script src="sync.js?v=2026-11-09f"></script>
-  <script src="daily.js?v=2026-11-09f"></script>
-  <script src="pet.js?v=2026-11-09f"></script>
-  <script src="stickers.js?v=2026-11-09f"></script>
-  <script src="games.js?v=2026-11-09f"></script>
-  <script src="challenge.js?v=2026-11-09f"></script>
-  <script src="rewards.js?v=2026-11-09f"></script>
-  <script src="wallet.js?v=2026-11-09f"></script>
-  <script src="catchup.js?v=2026-11-09f"></script>
-  <script src="packs.js?v=2026-11-09f"></script>
-  <script src="league.js?v=2026-11-09f"></script>
-  <script src="uploads.js?v=2026-11-09f"></script>
-  <script src="weekend.js?v=2026-11-09f"></script>
-  <script src="streak.js?v=2026-11-09f"></script>
-  <script src="supplies.js?v=2026-11-09f"></script>
-  <script src="career.js?v=2026-11-09f"></script>
-  <script src="bills.js?v=2026-11-09f"></script>
-  <script src="money.js?v=2026-11-09f"></script>
-  <script src="arcade.js?v=2026-11-09f"></script>
-  <script src="earnback.js?v=2026-11-09f"></script>
-  <script src="familygames.js?v=2026-11-09f"></script>
-  <script src="town.js?v=2026-11-09f"></script>
-  <script src="toys.js?v=2026-11-09f"></script>
-  <script src="bank.js?v=2026-11-09f"></script>
-  <script src="kitchen.js?v=2026-11-09f"></script>
-  <script src="safety.js?v=2026-11-09f"></script>
-  <script src="hall.js?v=2026-11-09f"></script>
-  <script src="speak.js?v=2026-11-09f"></script>
-  <script src="rewardshop.js?v=2026-11-09f"></script>
-  <script src="badges.js?v=2026-11-09f"></script>
-  <script src="gift.js?v=2026-11-09f"></script>
-  <script src="holidays.js?v=2026-11-09f"></script>
-  <script src="home.js?v=2026-11-09f"></script>
-  <script src="tour.js?v=2026-11-09f"></script>
+  <script src="config.js?v=2026-11-09g"></script>
+  <script src="push.js?v=2026-11-09g"></script>
+  <script src="sync.js?v=2026-11-09g"></script>
+  <script src="daily.js?v=2026-11-09g"></script>
+  <script src="pet.js?v=2026-11-09g"></script>
+  <script src="stickers.js?v=2026-11-09g"></script>
+  <script src="games.js?v=2026-11-09g"></script>
+  <script src="challenge.js?v=2026-11-09g"></script>
+  <script src="rewards.js?v=2026-11-09g"></script>
+  <script src="wallet.js?v=2026-11-09g"></script>
+  <script src="catchup.js?v=2026-11-09g"></script>
+  <script src="packs.js?v=2026-11-09g"></script>
+  <script src="league.js?v=2026-11-09g"></script>
+  <script src="uploads.js?v=2026-11-09g"></script>
+  <script src="weekend.js?v=2026-11-09g"></script>
+  <script src="streak.js?v=2026-11-09g"></script>
+  <script src="supplies.js?v=2026-11-09g"></script>
+  <script src="career.js?v=2026-11-09g"></script>
+  <script src="bills.js?v=2026-11-09g"></script>
+  <script src="money.js?v=2026-11-09g"></script>
+  <script src="arcade.js?v=2026-11-09g"></script>
+  <script src="earnback.js?v=2026-11-09g"></script>
+  <script src="familygames.js?v=2026-11-09g"></script>
+  <script src="town.js?v=2026-11-09g"></script>
+  <script src="toys.js?v=2026-11-09g"></script>
+  <script src="bank.js?v=2026-11-09g"></script>
+  <script src="kitchen.js?v=2026-11-09g"></script>
+  <script src="safety.js?v=2026-11-09g"></script>
+  <script src="hall.js?v=2026-11-09g"></script>
+  <script src="speak.js?v=2026-11-09g"></script>
+  <script src="rewardshop.js?v=2026-11-09g"></script>
+  <script src="badges.js?v=2026-11-09g"></script>
+  <script src="gift.js?v=2026-11-09g"></script>
+  <script src="holidays.js?v=2026-11-09g"></script>
+  <script src="music.js?v=2026-11-09g"></script>
+  <script src="home.js?v=2026-11-09g"></script>
+  <script src="tour.js?v=2026-11-09g"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {

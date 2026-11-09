@@ -25,7 +25,9 @@ const BADGES = [
   ['city', '🌆', 'City planner', 'Grow your town into a City', t => t.built.length >= 20],
   ['decorator', '🛋️', 'Decorator', 'Put 5 things in your room', t => ((t.room || {}).items || []).length >= 5],
   ['worker', '💼', 'Hard worker', 'Work 10 town job shifts', t => (t.workShifts || 0) >= 10],
-  ['toys', '🧸', 'Game master', 'Win 10 toy games', t => (t.toyPlays || 0) >= 10]
+  ['toys', '🧸', 'Game master', 'Win 10 toy games', t => (t.toyPlays || 0) >= 10],
+  ['musician', '🎵', 'Songwriter', 'Save a song in the Music Studio', t => Array.isArray(t.songs) && t.songs.length > 0],
+  ['ear', '👂', 'Great ear', 'Win Echo the beat in the Music Studio', (t, c) => c.did(a => a === 'music-echo')]
 ];
 
 function badgesForMe() {
