@@ -41,7 +41,8 @@ const TOWN_PLACES = [
   ['school', '🏫', 'Kat Academy', 'School', 1, 6], ['arcade', '🕹️', 'Arcade', 'Arcade', 4, 6], ['toys', '🧸', 'Toy Box', 'Toys', 6, 7],
   ['bank', '🏦', 'Kat Bank', 'Bank', 1, 3], ['kitchen', '🍳', 'Kat Kitchen', 'Kitchen', 5, 3],
   ['safety', '🛡️', 'Safety HQ', 'Safety', 5, 5], ['hall', '🏛️', 'Town Hall', 'Town Hall', 2, 3],
-  ['rewards', '🎟️', 'Reward Shop', 'Rewards', 2, 5]
+  ['rewards', '🎟️', 'Reward Shop', 'Rewards', 2, 5],
+  ['pets', '🐾', 'Pet Shop', 'Pets', 2, 1], ['studio', '🎤', 'Live Studio', 'Studio', 5, 7]
 ];
 function townIsRoad(c, r) { return c === TOWN_ROAD_COL || r === TOWN_ROAD_ROW; }
 function townPlaceAt(c, r) { return TOWN_PLACES.find(p => p[4] === c && p[5] === r); }
@@ -59,7 +60,7 @@ let townBuilding = false;              // 🔨 build mode on?
 let townPick = null;                   // build mode: what's picked in the menu, or { move: lot }
 let townCreating = null;               // the character being edited
 let townView = 'map';                  // which screen is showing: map, store, home, creator
-let townReturn = false;                // true while Practice or the Arcade was opened from town
+let townReturn = false;                // where to come back to after a screen opened from town ('map', 'bank', 'home'...)
 
 function townAllowed() { return typeof animal !== 'undefined' && animal && animal.theme !== 'eagle'; }
 
@@ -240,23 +241,66 @@ function leaveTown() {
   showTownButton();
 }
 
-// Practice and the Arcade opened from town come back to the town map when closed
+// Open a screen that lives outside the town (Practice, Arcade, Pet Shop, Wallet...).
+// When it closes, the kid comes back to the same spot in town.
+function townGoTo(openName, back) {
+  if (typeof window[openName] !== 'function') return;
+  leaveTown();
+  townReturn = back || 'map';
+  window[openName]();
+}
+
 function townComeBack() {
   if (!townReturn) return;
+  const back = townReturn;
   townReturn = false;
   document.getElementById('town').style.display = 'block';
   const closed = townClosedReason();
   if (closed) { showTownClosed(closed); return; }
-  townStartTicker();                       // Practice and Arcade time don't count as Kat Town time
+  townStartTicker();                       // time on those screens doesn't count as Kat Town time
+  const screens = { bank: 'showTownBank', home: 'showTownHome', pets: 'showTownPets', rewards: 'showTownRewardShop' };
+  if (screens[back] && typeof window[screens[back]] === 'function') { window[screens[back]](); return; }
   showTownMap();
 }
-if (typeof closeGame === 'function') {
-  const closeGameBefore = closeGame;
-  closeGame = function () { closeGameBefore(); townComeBack(); };     // eslint-disable-line no-global-assign
+
+// 🐾 Pet Shop: outfits and toys for your pet, and the Pet House for new eggs
+function showTownPets() {
+  townView = 'pets';
+  const box = townBody('🐾 Pet Shop');
+  townAdd(box, 'button', '← Town', 'arcadeBack').addEventListener('click', () => showTownMap());
+  if (typeof pet === 'undefined' || !pet) {
+    townAdd(box, 'div', 'You need a pet first! Close Kat Town and tap "Choose your pet".', 'arcadeMessage');
+    return;
+  }
+  const kind = (typeof PET_TYPES !== 'undefined' && PET_TYPES[pet.type]) || null;
+  const look = kind && kind.stages && typeof petStage === 'function' ? kind.stages[petStage(pet)] : '🐾';
+  townAdd(box, 'div', look, 'townPetLook');
+  townAdd(box, 'div', `Treat ${pet.name} to something new, or check on your other pets.`, 'arcadeHint');
+  townAdd(box, 'button', `🛍️ Shop for ${pet.name}`, 'arcadeGo townPetShop').addEventListener('click', () => townGoTo('openShop', 'pets'));
+  const canHatch = typeof canHatchNewPet === 'function' && canHatchNewPet();
+  if ((typeof petHouse !== 'undefined' && petHouse.length > 1) || canHatch) {
+    townAdd(box, 'button', canHatch ? '🏠 Pet House 🥚 NEW!' : '🏠 Pet House', 'arcadeGo townPetHouse').addEventListener('click', () => townGoTo('openPetHouse', 'pets'));
+  } else {
+    townAdd(box, 'div', `🥚 When ${pet.name} reaches Level 4, a new egg waits for you in the Pet House!`, 'arcadeHint');
+  }
+  townAdd(box, 'div', '💡 Pets need care every day. Taking care of something (or someone) is a real responsibility!', 'bankTip');
 }
-if (typeof closeArcade === 'function') {
-  const closeArcadeBefore = closeArcade;
-  closeArcade = function () { closeArcadeBefore(); townComeBack(); };   // eslint-disable-line no-global-assign
+
+// Every screen a kid can open from town comes back to town when it closes
+['closeGame', 'closeArcade', 'closeShop', 'closePetHouse', 'closeAlbum', 'closeChallenge', 'closeWallet', 'closeRewards'].forEach(name => {
+  const before = window[name];
+  if (typeof before !== 'function') return;
+  window[name] = function () { const r = before.apply(this, arguments); townComeBack(); return r; };
+});
+// Hatching a new pet from the Pet House stays on the home screen, so the kid sees the celebration
+if (typeof hatchPet === 'function') {
+  const hatchBefore = hatchPet;
+  hatchPet = function () {                                   // eslint-disable-line no-global-assign
+    const back = townReturn, had = typeof petHouse !== 'undefined' ? petHouse.length : 0;
+    townReturn = false;
+    hatchBefore.apply(this, arguments);
+    if (typeof petHouse !== 'undefined' && petHouse.length === had) townReturn = back;   // nothing hatched
+  };
 }
 
 function showTownButton() {
@@ -345,6 +389,10 @@ function showTownMap(message) {
         tile.setAttribute('aria-label', place[2]);
         townAdd(tile, 'span', place[1], 'townPlaceEmoji');
         townAdd(tile, 'span', place[3], 'townPlaceName');
+        if (place[0] === 'studio' && typeof challengeStatus === 'function' && !challengeStatus().done) {
+          tile.classList.add('townLive');
+          townAdd(tile, 'span', 'LIVE', 'townLiveTag');
+        }
         tile.addEventListener('click', () => { if (!townBuilding) townWalkTo(c, r, () => townEnter(place[0])); });
       } else if (built[lot]) {
         const b = built[lot];
@@ -410,8 +458,10 @@ function townWalkTo(c, r, then) {
 function townEnter(id) {
   if (document.getElementById('town').style.display !== 'block') return;
   if (id === 'home') { showTownHome(); return; }
-  if (id === 'school') { leaveTown(); townReturn = true; if (typeof openPractice === 'function') openPractice(); return; }
-  if (id === 'arcade') { leaveTown(); townReturn = true; if (typeof openArcade === 'function') openArcade(); return; }
+  if (id === 'school') { townGoTo('openPractice'); return; }
+  if (id === 'arcade') { townGoTo('openArcade'); return; }
+  if (id === 'pets') { showTownPets(); return; }
+  if (id === 'studio') { townGoTo('openChallenge'); return; }
   if (id === 'rewards') {
     if (typeof showTownRewardShop === 'function') showTownRewardShop();
     else showTownMap('🎟️ The Reward Shop is opening soon! Close the app all the way and open it again to finish updating.');
@@ -680,6 +730,9 @@ function showTownHome(message) {
   if (message) townAdd(box, 'div', message, 'arcadeMessage');
   townRoomSection(box);
   if (typeof townBadgeSection === 'function') townBadgeSection(box);      // 🏆 badges.js
+  if (typeof openAlbum === 'function') {
+    townAdd(box, 'button', '📒 My sticker album', 'arcadeGo townAlbum').addEventListener('click', () => townGoTo('openAlbum', 'home'));
+  }
 
   // My stuff
   townAdd(box, 'h3', '🧸 My stuff', 'fgHead');
@@ -1344,6 +1397,16 @@ function showTownClosed(reason) {
   townAdd(box, 'div', asleep
     ? '💡 Kids your age need 9 to 12 hours of sleep. Your brain sorts out everything you learned today while you sleep!'
     : '💡 Balancing fun with your other responsibilities is a life skill too. What\'s on your list right now?', 'bankTip');
+  // Learning and money aren't play time, so these stay open (Practice sleeps at bedtime too)
+  const open = [];
+  if (!asleep) open.push(['🎮 Practice', 'openPractice']);
+  open.push(['💵 My wallet', 'openWallet'], ['📒 My stickers', 'openAlbum']);
+  const still = open.filter(([, fn]) => typeof window[fn] === 'function');
+  if (still.length) {
+    townAdd(box, 'div', 'Still open:', 'townLabel');
+    const row = townAdd(box, 'div', undefined, 'townStillOpen');
+    still.forEach(([label, fn]) => townAdd(row, 'button', label, 'arcadeSmall').addEventListener('click', () => townGoTo(fn)));
+  }
   townAdd(box, 'button', '👋 OK', 'arcadeGo').addEventListener('click', leaveTown);
   if (typeof kkAutoSpeak === 'function') kkAutoSpeak(box.textContent);
 }

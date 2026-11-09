@@ -39,7 +39,11 @@ function showTownRewardShop(message) {
 
   // Waiting for a grown-up
   rewardRequests.filter(r => r.status === 'waiting').forEach(r => {
-    townAdd(box, 'div', `⏳ ${r.emoji} ${r.name}: waiting for ${parentName()} to say yes.`, 'waitingCard shopWaiting');
+    const card = townAdd(box, 'div', `⏳ ${r.emoji} ${r.name}: waiting for ${parentName()} to say yes. `, 'waitingCard shopWaiting');
+    const phone = localStorage.getItem('kiddyKatParentPhone') || '';
+    const who = typeof profile !== 'undefined' && profile && typeof callName === 'function' ? callName() : 'Your kid';
+    const text = townAdd(card, 'a', `📲 Text ${parentName()}`, 'textParent');
+    text.href = `sms:${phone}&body=${encodeURIComponent(`${who} earned "${r.name}" in Kiddy Kat! ⭐ Please approve it in Grown-ups.`)}`;
   });
 
   const goalName = localStorage.getItem('kiddyKatGoal');

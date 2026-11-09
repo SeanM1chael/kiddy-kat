@@ -7,7 +7,7 @@ const { openAppAs, expectNoProblems, PET } = require('./helpers');
 test('Arcade: Code Quest level 1 can be solved and gives stars', async ({ page }) => {
   const errors = await openAppAs(page, 'tiger', PET);
   const before = await page.evaluate(() => pet.stars);
-  await page.click('text=🕹️ Arcade');
+  await page.evaluate(() => openArcade());                      // kids reach the Arcade through Kat Town
   await page.click('text=Code Quest');
   await page.click('.codeLevel >> nth=0');
   await page.click('.codeArrow >> nth=2');                                    // ➡️
@@ -26,7 +26,7 @@ test('Arcade: every Code Quest maze can be finished', async ({ page }) => {
 
 test('Arcade: Daily Word can be solved', async ({ page }) => {
   const errors = await openAppAs(page, 'lion', PET);
-  await page.click('text=🕹️ Arcade');
+  await page.evaluate(() => openArcade());                      // kids reach the Arcade through Kat Town
   await page.click('text=Daily Word');
   const word = await page.evaluate(() => todaysWord().word);
   for (const ch of word) await page.click(`.wordKey:text-is("${ch}")`);
