@@ -10,7 +10,7 @@ test('first visit: make a character, then the town map shows', async ({ page }) 
   await expect(page.locator('#townTitle')).toContainText('Make your character');
   await page.click('.townChoice >> text=Curly');
   await page.click('text=✅ Done! Go to town');
-  await expect(page.locator('.townTile.place')).toHaveCount(13);
+  await expect(page.locator('.townTile.place')).toHaveCount(14);
   expect(await page.evaluate(() => loadTown().avatar.hair)).toBe('curly');
   await expectNoProblems(page, errors);
 });
@@ -1198,7 +1198,7 @@ test('the birthday is set in Grown-ups on the phone', async ({ page }) => {
 });
 
 // Nov 9: everything on the home screen has a door in Kat Town, and each one comes back to the same spot
-test('Pet Shop, Live Studio, sticker album and real-money wallet all open from town and come back', async ({ page }) => {
+test('Pet Shop, Kat Gym, sticker album and real-money wallet all open from town and come back', async ({ page }) => {
   const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
   await page.click('#townButton');
   // 🐾 Pet Shop building → pet shop → back to the Pet Shop screen
@@ -1210,9 +1210,9 @@ test('Pet Shop, Live Studio, sticker album and real-money wallet all open from t
   await page.click('#shop .closeGame');
   await expect(page.locator('#townTitle')).toContainText('Pet Shop');
   await page.click('#town .arcadeBack');
-  // 🎤 Live Studio glows until today's challenge is done, and opens the challenge
-  await expect(page.locator('[data-place=studio]')).toHaveClass(/townLive/);
-  await page.click('[data-place=studio]');
+  // 🏋️ Kat Gym glows until today's challenge is done, and opens the challenge
+  await expect(page.locator('[data-place=gym]')).toHaveClass(/townLive/);
+  await page.click('[data-place=gym]');
   await expect(page.locator('#challenge')).toBeVisible();
   await page.click('#challenge .closeGame');
   await expect(page.locator('#townTitle')).toContainText('Kat Town');
@@ -1267,4 +1267,81 @@ test('a morning bedtime (8:30 AM) is read as 8:30 PM', async ({ page }) => {
   expect(at).toEqual([false, false, true, true, true, false]);
   expect(await page.evaluate(() => { localStorage.setItem('kiddyKatBedTime', '21:00'); return [townAsleep(new Date(2026, 10, 9, 13, 0)), townAsleep(new Date(2026, 10, 9, 21, 5))]; })).toEqual([false, true]);
   await expectNoProblems(page, errors);
+});
+
+// Nov 9: 🎵 Music Studio: make a beat, save it, learn rhythm and note math
+test('Music Studio: tap squares, play, change tempo, save and load a song', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  await page.click('[data-place=music]');
+  await expect(page.locator('#townTitle')).toContainText('Music Studio');
+  await expect(page.locator('.musicCell')).toHaveCount(64);
+  // The starter beat is already on; clear it and make our own
+  await page.click('text=🧹 Clear');
+  await expect(page.locator('.musicCell.on')).toHaveCount(0);
+  await page.click('.musicCell[data-row=kick][data-step="0"]');
+  await page.click('.musicCell[data-row=mi][data-step="2"]');
+  await expect(page.locator('.musicCell.on')).toHaveCount(2);
+  await page.click('.musicPlay');
+  await expect(page.locator('.musicPlay')).toContainText('Stop');
+  await expect(page.locator('.musicCell.now').first()).toBeVisible();
+  await page.click('.musicTempo >> text=🐆 Fast');
+  await page.click('.musicPlay');
+  await expect(page.locator('.musicCell.now')).toHaveCount(0);
+  // Save, then the song shows up and loads back
+  await page.fill('.musicSongName', 'Jungle beat');
+  await page.click('.musicSave');
+  await expect(page.locator('.arcadeMessage')).toContainText('Saved "Jungle beat"');
+  const songs = await page.evaluate(() => loadTown().songs);
+  expect(songs).toHaveLength(1);
+  expect(songs[0]).toMatchObject({ name: 'Jungle beat', tempo: 130 });
+  expect(songs[0].grid.kick).toBe('10000000');
+  await page.click('text=🎲 Starter beat');
+  await page.click('.musicLoad');
+  await expect(page.locator('.musicCell.on')).toHaveCount(2);
+  // Leaving the studio stops the music
+  await page.click('.musicPlay');
+  await page.click('#town .arcadeBack');
+  expect(await page.evaluate(() => musicTimer)).toBeNull();
+  await expectNoProblems(page, errors);
+});
+
+test('Music lessons: each age gets the right ones, a win gives +1 ⭐ once a day, and the badges unlock', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.evaluate(() => { openTown(); showTownMusic(); });
+  await expect(page.locator('.bankLesson')).toHaveText(['👂 Echo the beat', '🧮 Note math', '📖 Music words']);
+  const before = await page.evaluate(() => pet.stars);
+  await page.click('[data-lesson=echo]');
+  // 3 listening rounds: after any pick, the right answer lights up and Next shows
+  for (let i = 0; i < 3; i++) {
+    await page.locator('.bankOption').first().click();
+    await expect(page.locator('.bankOption.right')).toHaveCount(1);
+    await page.click('.bankNext');
+  }
+  await page.locator('.townPop button').first().click();                // close the result pop
+  // Win or not depends on the first-option guesses; force a known win through the same path
+  await page.evaluate(() => musicWin('echo', 'test', 'tip'));
+  expect(await page.evaluate(() => pet.stars)).toBe(before + 1);
+  await page.click('.townPop >> text=🎵 Studio');
+  await page.evaluate(() => musicWin('echo', 'test', 'tip'));
+  expect(await page.evaluate(() => pet.stars)).toBe(before + 1);        // only once a day
+  await page.click('.townPop >> text=🎵 Studio');
+  await expect(page.locator('[data-lesson=echo]')).toHaveClass(/won/);
+  // Kittens get High or low instead of Note math
+  await page.evaluate(() => { animal.theme = 'kitten'; showTownMusic(); });
+  await expect(page.locator('.bankLesson')).toHaveText(['👂 Echo the beat', '🎹 High or low?', '📖 Music words']);
+  // Badges: Great ear (won echo) and Songwriter (after saving)
+  await page.evaluate(() => { animal.theme = 'tiger'; musicGrid = musicStarterGrid(); musicSaveSong('Mine'); });
+  const fresh = await page.evaluate(() => checkBadges().map(b => b[0]));
+  expect(fresh).toEqual(expect.arrayContaining(['musician', 'ear']));
+  await expectNoProblems(page, errors);
+});
+
+test('Music lessons: the quiz rounds are well formed for every lesson', async ({ page }) => {
+  await openAppAs(page, 'lion', { ...PET, kiddyKatTown: AVATAR });
+  const ok = await page.evaluate(() => {
+    const sets = [musicEchoRounds(), musicHighLowRounds(), musicQuizRounds(MUSIC_NOTE_MATH), musicQuizRounds(MUSIC_WORDS.kitten), musicQuizRounds(MUSIC_WORDS.older)];
+    return sets.every(rs => rs.length === 3 && rs.every(r => r.answer >= 0 && r.answer < r.options.length && new Set(r.options).size === r.options.length && r.why));
+  });
+  expect(ok).toBe(true);
 });

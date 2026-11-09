@@ -42,7 +42,7 @@ const TOWN_PLACES = [
   ['bank', '🏦', 'Kat Bank', 'Bank', 1, 3], ['kitchen', '🍳', 'Kat Kitchen', 'Kitchen', 5, 3],
   ['safety', '🛡️', 'Safety HQ', 'Safety', 5, 5], ['hall', '🏛️', 'Town Hall', 'Town Hall', 2, 3],
   ['rewards', '🎟️', 'Reward Shop', 'Rewards', 2, 5],
-  ['pets', '🐾', 'Pet Shop', 'Pets', 2, 1], ['studio', '🎤', 'Live Studio', 'Studio', 5, 7]
+  ['pets', '🐾', 'Pet Shop', 'Pets', 2, 1], ['gym', '🏋️', 'Kat Gym', 'Gym', 5, 7], ['music', '🎵', 'Music Studio', 'Music', 6, 5]
 ];
 function townIsRoad(c, r) { return c === TOWN_ROAD_COL || r === TOWN_ROAD_ROW; }
 function townPlaceAt(c, r) { return TOWN_PLACES.find(p => p[4] === c && p[5] === r); }
@@ -228,6 +228,7 @@ function closeTown() {
   if (String(townView).startsWith('hall:')) { showTownHall(); return; }
   if (String(townView).startsWith('kitchen:')) { showTownKitchen(); return; }
   if (String(townView).startsWith('safety:')) { showTownSafety(); return; }
+  if (String(townView).startsWith('music:')) { showTownMusic(); return; }
   if (String(townView).startsWith('toy:')) { if (typeof toyStop === 'function') toyStop(); showTownHome(); return; }
   if (townView !== 'map' && loadTown().avatar) { showTownMap(); return; }
   leaveTown();
@@ -389,9 +390,9 @@ function showTownMap(message) {
         tile.setAttribute('aria-label', place[2]);
         townAdd(tile, 'span', place[1], 'townPlaceEmoji');
         townAdd(tile, 'span', place[3], 'townPlaceName');
-        if (place[0] === 'studio' && typeof challengeStatus === 'function' && !challengeStatus().done) {
+        if (place[0] === 'gym' && typeof challengeStatus === 'function' && !challengeStatus().done) {
           tile.classList.add('townLive');
-          townAdd(tile, 'span', 'LIVE', 'townLiveTag');
+          townAdd(tile, 'span', 'TODAY', 'townLiveTag');
         }
         tile.addEventListener('click', () => { if (!townBuilding) townWalkTo(c, r, () => townEnter(place[0])); });
       } else if (built[lot]) {
@@ -461,7 +462,12 @@ function townEnter(id) {
   if (id === 'school') { townGoTo('openPractice'); return; }
   if (id === 'arcade') { townGoTo('openArcade'); return; }
   if (id === 'pets') { showTownPets(); return; }
-  if (id === 'studio') { townGoTo('openChallenge'); return; }
+  if (id === 'gym') { townGoTo('openChallenge'); return; }
+  if (id === 'music') {
+    if (typeof showTownMusic === 'function') showTownMusic();
+    else showTownMap('🎵 The Music Studio is opening soon! Close the app all the way and open it again to finish updating.');
+    return;
+  }
   if (id === 'rewards') {
     if (typeof showTownRewardShop === 'function') showTownRewardShop();
     else showTownMap('🎟️ The Reward Shop is opening soon! Close the app all the way and open it again to finish updating.');

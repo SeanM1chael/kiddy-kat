@@ -120,8 +120,8 @@
     <div id="familyPanel"></div>
   </div>
 
-  <script src="config.js?v=2026-11-09f"></script>
-  <script src="push.js?v=2026-11-09f"></script>
+  <script src="config.js?v=2026-11-09g"></script>
+  <script src="push.js?v=2026-11-09g"></script>
   <script>
     // =================================================================
     // Parent dashboard: every kid's day at a glance (read-only).
@@ -959,7 +959,9 @@
           const SAFETY_NAMES = { 'safety-safeornot': 'safe or not safe', 'safety-whatif': 'safety choices', 'safety-scam': 'spotting scams',
                                  'safety-password': 'strong passwords', 'safety-footprint': 'online privacy',
                                  vote: 'voting in the family election', 'hall-helpers': 'community helpers', 'hall-mayor': 'balancing a town budget', 'hall-taxes': 'how taxes work' };
-          const actName = a => LESSON_NAMES[a] || SAFETY_NAMES[a] || (String(a).startsWith('cook-') ? 'cooking ' + a.slice(5) : String(a).startsWith('shop-') ? 'grocery budget' : a);
+          const MUSIC_NAMES = { 'music-song': 'writing a song', 'music-echo': 'listening for rhythm', 'music-highlow': 'high and low notes',
+                                'music-notemath': 'note math (fractions and BPM)', 'music-words': 'music words' };
+          const actName = a => LESSON_NAMES[a] || SAFETY_NAMES[a] || MUSIC_NAMES[a] || (String(a).startsWith('cook-') ? 'cooking ' + a.slice(5) : String(a).startsWith('shop-') ? 'grocery budget' : a);
           const acts = [...new Set(recent.map(x => actName(x.act)))];
           row(townBox, '📚 Life skills this week', `${recent.length}× ${acts.join(', ')}`);
         }
