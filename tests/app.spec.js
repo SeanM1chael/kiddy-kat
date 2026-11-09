@@ -8,6 +8,7 @@ for (const who of ['kitten', 'tiger', 'lion', 'eagle']) {
   test(`${who}: the main screen loads with no problems`, async ({ page }) => {
     const errors = await openAppAs(page, who, PET);
     await expect(page.locator('#hello')).toContainText(who === 'eagle' ? 'eagle' : who);
+    await page.click('.tabs >> text=Morning');
     await expect(page.locator('#morning .task').first()).toBeVisible();      // the morning list
     await expect(page.locator('#streakCard')).toBeVisible();                 // 🔥 streak
     await expect(page.locator('#leagueCard')).toBeVisible();                 // 🏆 points
@@ -40,6 +41,7 @@ test('streak card still works when a challenge win streak is saved', async ({ pa
 test('finishing the morning list checks off tasks and earns stars', async ({ page }) => {
   const errors = await openAppAs(page, 'tiger', PET);
   const before = await page.evaluate(() => pet.stars);
+  await page.click('.tabs >> text=Morning');
   const tasks = page.locator('#morning .task');
   const n = await tasks.count();
   for (let i = 0; i < n; i++) await tasks.nth(i).click();
@@ -54,6 +56,7 @@ test('a broken card shows the problem bar but the rest still loads', async ({ pa
   await openAppAs(page, 'tiger', PET);
   await expect(page.locator('#kkError')).toContainText('showStreakCard');
   await expect(page.locator('#suppliesCard')).toBeVisible();
+  await page.click('.tabs >> text=Morning');
   await expect(page.locator('#morning .task').first()).toBeVisible();
 });
 
@@ -122,4 +125,46 @@ test('loading from online keeps this phone\'s PIN and birth year; a new phone ge
   expect(fresh.birthYear).toBe(year - 16);
   expect(await page.evaluate(b => animalFor(new Date().getFullYear() - b).theme, fresh.birthYear)).toBe('lion');
   await expectNoProblems(page, errors);
+});
+
+// Nov 9: list first, then the pet and one big Kat Town button (home.js)
+test('kids home: the list for right now opens, the list sits above the pet, extra buttons live in town', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 10, 16, 30));        // 4:30 PM: after school
+  const errors = await openAppAs(page, 'kitten', PET);
+  await expect(page.locator('#afternoon')).toBeVisible();
+  await expect(page.locator('#morning')).toBeHidden();
+  await expect(page.locator('.tabs button.active')).toHaveAttribute('data-list', 'afternoon');
+  // The list comes before the pet card
+  const listY = (await page.locator('#afternoon').boundingBox()).y;
+  const petY = (await page.locator('#petCard').boundingBox()).y;
+  expect(listY).toBeLessThan(petY);
+  // One big Kat Town button; the rest are hidden
+  await expect(page.locator('#townButton')).toBeVisible();
+  for (const sel of ['#shopButton', '#challengeButton', '#albumButton', '#walletButton', 'button[onclick="openPractice()"]', 'button[onclick="openArcade()"]', 'button[onclick="openRewards()"]']) {
+    await expect(page.locator(sel)).toBeHidden();
+  }
+  // Stars and streak up top
+  await expect(page.locator('#kidChips')).toContainText('⭐ 30');
+  await expect(page.locator('#kidChips')).toContainText('🔥');
+  // Tasks have tap circles and check off
+  await page.locator('#afternoon .task').first().click();
+  await expect(page.locator('#afternoon .task').first()).toHaveClass(/done/);
+  await expectNoProblems(page, errors);
+});
+
+test('grown-ups home keeps all the buttons; bedtime list opens at night', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 10, 20, 15));        // 8:15 PM
+  const errors = await openAppAs(page, 'eagle', PET);
+  await expect(page.locator('#bedtime')).toBeVisible();
+  await expect(page.locator('#kidChips')).toHaveCount(0);
+  await expect(page.locator('button[onclick="openPractice()"]')).toBeVisible();
+  await expectNoProblems(page, errors);
+});
+
+test('the morning list opens before school', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 10, 7, 0));
+  await openAppAs(page, 'tiger', PET);
+  await expect(page.locator('#morning')).toBeVisible();
+  expect(await page.evaluate(() => [listForNow(new Date(2026, 0, 1, 10, 59)), listForNow(new Date(2026, 0, 1, 11, 0)), listForNow(new Date(2026, 0, 1, 18, 0))]))
+    .toEqual(['morning', 'afternoon', 'bedtime']);
 });

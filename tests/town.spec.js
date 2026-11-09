@@ -10,7 +10,7 @@ test('first visit: make a character, then the town map shows', async ({ page }) 
   await expect(page.locator('#townTitle')).toContainText('Make your character');
   await page.click('.townChoice >> text=Curly');
   await page.click('text=✅ Done! Go to town');
-  await expect(page.locator('.townTile.place')).toHaveCount(11);
+  await expect(page.locator('.townTile.place')).toHaveCount(13);
   expect(await page.evaluate(() => loadTown().avatar.hair)).toBe('curly');
   await expectNoProblems(page, errors);
 });
@@ -74,9 +74,9 @@ test('Practice and the Arcade opened from town come back to the town map', async
   await expect(page.locator('#game')).toBeVisible();
   await page.click('#game .closeGame');
   await expect(page.locator('#townTitle')).toContainText('Kat Town');
-  // Opening Practice from the main screen still closes normally
+  // Opening Practice from outside town still closes normally
   await page.click('#town .closeGame');
-  await page.click('text=🎮 Practice');
+  await page.evaluate(() => openPractice());
   await page.click('#game .closeGame');
   await expect(page.locator('#town')).toBeHidden();
 });
@@ -1195,4 +1195,67 @@ test('the birthday is set in Grown-ups on the phone', async ({ page }) => {
   await page.selectOption('#birthdayDay', '14');
   await page.click('text=Save birthday');
   expect(await page.evaluate(() => localStorage.getItem('kiddyKatBirthday'))).toBe('03-14');
+});
+
+// Nov 9: everything on the home screen has a door in Kat Town, and each one comes back to the same spot
+test('Pet Shop, Live Studio, sticker album and real-money wallet all open from town and come back', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  // 🐾 Pet Shop building → pet shop → back to the Pet Shop screen
+  await page.click('[data-place=pets]');
+  await expect(page.locator('#townTitle')).toContainText('Pet Shop');
+  await page.click('.townPetShop');
+  await expect(page.locator('#shop')).toBeVisible();
+  await expect(page.locator('#town')).toBeHidden();
+  await page.click('#shop .closeGame');
+  await expect(page.locator('#townTitle')).toContainText('Pet Shop');
+  await page.click('#town .arcadeBack');
+  // 🎤 Live Studio glows until today's challenge is done, and opens the challenge
+  await expect(page.locator('[data-place=studio]')).toHaveClass(/townLive/);
+  await page.click('[data-place=studio]');
+  await expect(page.locator('#challenge')).toBeVisible();
+  await page.click('#challenge .closeGame');
+  await expect(page.locator('#townTitle')).toContainText('Kat Town');
+  // 📒 Sticker album from My House
+  await page.click('[data-place=home]');
+  await page.click('.townAlbum');
+  await expect(page.locator('#album')).toBeVisible();
+  await page.click('#album .closeGame');
+  await expect(page.locator('#townTitle')).toContainText('My House');
+  await page.click('#town .arcadeBack');
+  // 💵 Real money wallet from Kat Bank
+  await page.click('[data-place=bank]');
+  await page.click('.bankRealMoney');
+  await expect(page.locator('#wallet')).toBeVisible();
+  await page.click('#wallet .closeGame');
+  await expect(page.locator('#townTitle')).toContainText('Kat Bank');
+  // Opened from the home screen, they still just close
+  await page.click('#town .closeGame');
+  await page.click('#town .closeGame');
+  await expect(page.locator('#town')).toBeHidden();
+  await page.evaluate(() => openShop());
+  await page.click('#shop .closeGame');
+  await expect(page.locator('#town')).toBeHidden();
+  await expectNoProblems(page, errors);
+});
+
+test('Pet Shop: Pet House shows when a new egg is ready; hatching stays on the home screen', async ({ page }) => {
+  const big = { ...PET, kiddyKatTown: AVATAR, kiddyKatPets: [{ ...PET.kiddyKatPets[0], points: 45 }] };
+  const errors = await openAppAs(page, 'kitten', big);
+  await page.evaluate(() => { openTown(); showTownPets(); });
+  await expect(page.locator('.townPetHouse')).toContainText('NEW');
+  await page.click('.townPetHouse');
+  await expect(page.locator('#petHouse')).toBeVisible();
+  await expectNoProblems(page, errors);
+});
+
+test('when Kat Town is closed for the day, Practice, Wallet and Stickers are still open', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.evaluate(() => { openTown(); showTownClosed('time'); });
+  await expect(page.locator('.townStillOpen button')).toHaveCount(3);
+  await page.click('.townStillOpen >> text=🎮 Practice');
+  await expect(page.locator('#game')).toBeVisible();
+  await page.evaluate(() => showTownClosed('sleep'));
+  await expect(page.locator('.townStillOpen')).not.toContainText('Practice');      // Practice sleeps at bedtime too
+  await expectNoProblems(page, errors);
 });

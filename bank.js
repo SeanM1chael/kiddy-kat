@@ -118,6 +118,13 @@ function showTownBank(message) {
     : '📈 Save at least 5 ⭐ and leave them all week. On Monday the bank pays you interest!', 'arcadeHint bankInterest');
   townAdd(box, 'div', '💡 Interest is the bank paying YOU to keep your money there. Real banks pay about 4% a year.', 'bankTip');
 
+  // 💵 Real money: the wallet for real dollars (allowance, paydays)
+  if (typeof openWallet === 'function') {
+    townAdd(box, 'h3', '💵 My real money', 'fgHead');
+    townAdd(box, 'div', 'Stars are for Kat Town. Your real dollars from finishing lists live in your wallet.', 'arcadeHint');
+    townAdd(box, 'button', '💵 Open my wallet', 'arcadeGo bankRealMoney').addEventListener('click', () => townGoTo('openWallet', 'bank'));
+  }
+
   // Savings goal
   townAdd(box, 'h3', '🎯 My savings goal', 'fgHead');
   if (b.goal) {

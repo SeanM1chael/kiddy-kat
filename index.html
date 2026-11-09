@@ -28,6 +28,22 @@
     .task { font-size: 28px; padding: 20px; margin: 12px auto; width: 80%;
             background: white; border-radius: 20px; cursor: pointer; }
     .done { background: #b6f2b6; text-decoration: line-through; }
+    /* Big tap circles, so it's clear a task gets checked off */
+    .task { position: relative; text-align: left; box-sizing: border-box; padding-left: 74px; min-height: 76px; }
+    .task::before { content: ''; position: absolute; left: 20px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%;
+                    border: 3px solid #f08c00; background: white; display: flex; align-items: center; justify-content: center;
+                    font-size: 22px; color: white; font-weight: bold; box-sizing: border-box; }
+    .task.done::before { content: '✓'; background: #2b8a3e; border-color: #2b8a3e; }
+    .tabs button.active { background: var(--main); color: white; }
+    /* 🏡 Kids' home (home.js): list first, then the pet and one big Kat Town button */
+    #kidChips { display: flex; justify-content: center; gap: 10px; margin: 8px 0 4px; }
+    .kidChip { background: white; border-radius: 999px; padding: 6px 14px; font-size: 20px; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+    body.kidHome #petCard > button:not(#townButton):not(#petChooseButton):not(.info) { display: none !important; }
+    body.kidHome #petStars { display: none; }
+    body.kidHome #townButton { display: block; width: 90%; max-width: 360px; margin: 14px auto 4px; font-size: 26px; padding: 18px; border-radius: 20px;
+                               background: linear-gradient(135deg, #4c6ef5, #7950f2); box-shadow: 0 4px 0 #5f3dc4; }
+    body.kidHome #today, body.kidHome #weather { font-size: 18px; padding: 10px 14px; }
+    body.kidHome .tabs { margin-top: 10px; }
     #today, #weather { font-size: 26px; border-radius: 20px; padding: 16px;
                        margin: 12px auto; width: 80%; }
     #today { background: #e7f5ff; }
@@ -284,6 +300,12 @@
     .shopButtons .arcadeGo { font-size: 14px; padding: 8px 12px; }
     .shopButtons .shopSavings { background: #2b8a3e; }
     .shopShort { font-size: 13px; color: #868e96; font-weight: bold; }
+    .townStillOpen { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 6px 0 10px; }
+    .townPetLook { font-size: 80px; text-align: center; margin: 6px 0; }
+    .townPetShop, .townPetHouse, .townAlbum, .bankRealMoney { display: block; margin: 10px auto; }
+    .townTile.townLive { box-shadow: 0 0 0 3px #e03131; animation: townLivePulse 1.6s ease-in-out infinite; position: relative; }
+    .townLiveTag { position: absolute; top: -6px; right: -6px; background: #e03131; color: white; font-size: 9px; font-weight: bold; padding: 1px 4px; border-radius: 6px; }
+    @keyframes townLivePulse { 50% { box-shadow: 0 0 0 6px rgba(224,49,49,0.35); } }
     .shopWaiting { max-width: 420px; margin: 6px auto; }
     .townClosedScene { display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 420px; margin: 10px auto; padding: 18px; border-radius: 20px; background: #fff3bf; }
     .townClosedScene.night { background: linear-gradient(#1c2a5a, #3b4a8a); }
@@ -950,9 +972,9 @@ Level 4 pets unlock new eggs in the 🏠 Pet House!">i</button>
   <div id="clockCard"></div>
 
   <div class="tabs">
-    <button onclick="pickList('morning')">☀️ Morning</button>
-    <button id="tabAfternoon" onclick="pickList('afternoon')">🎒 After School</button>
-    <button onclick="pickList('bedtime')">🌙 Bedtime</button>
+    <button data-list="morning" onclick="pickList('morning')">☀️ Morning</button>
+    <button id="tabAfternoon" data-list="afternoon" onclick="pickList('afternoon')">🎒 After School</button>
+    <button data-list="bedtime" onclick="pickList('bedtime')">🌙 Bedtime</button>
     <button class="info" data-info="Tap a list to see it. Tap each task when it's done.
 Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet and earn 2 🏆 League points.">i</button>
   </div>
@@ -1154,7 +1176,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
 
   <!-- Problem reporter: if any file or step fails, show which one at the bottom of the screen (for testing) -->
   <script>
-    const APP_VERSION = '2026-11-09c';      // bump with the ?v= numbers below
+    const APP_VERSION = '2026-11-09d';      // bump with the ?v= numbers below
     function kkReport(where, message) {
       try { localStorage.setItem('kkLastError', new Date().toLocaleString() + ' · ' + where + ': ' + message); } catch (err) {}
       let bar = document.getElementById('kkError');
@@ -1174,41 +1196,42 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     window.addEventListener('unhandledrejection', e => kkReport('a background step', (e.reason && e.reason.message) || String(e.reason)));
   </script>
   <!-- When you release changes, bump every ?v= below (like 2026-10-30a) so phones load the new files right away -->
-  <script src="config.js?v=2026-11-09c"></script>
-  <script src="push.js?v=2026-11-09c"></script>
-  <script src="sync.js?v=2026-11-09c"></script>
-  <script src="daily.js?v=2026-11-09c"></script>
-  <script src="pet.js?v=2026-11-09c"></script>
-  <script src="stickers.js?v=2026-11-09c"></script>
-  <script src="games.js?v=2026-11-09c"></script>
-  <script src="challenge.js?v=2026-11-09c"></script>
-  <script src="rewards.js?v=2026-11-09c"></script>
-  <script src="wallet.js?v=2026-11-09c"></script>
-  <script src="catchup.js?v=2026-11-09c"></script>
-  <script src="packs.js?v=2026-11-09c"></script>
-  <script src="league.js?v=2026-11-09c"></script>
-  <script src="uploads.js?v=2026-11-09c"></script>
-  <script src="weekend.js?v=2026-11-09c"></script>
-  <script src="streak.js?v=2026-11-09c"></script>
-  <script src="supplies.js?v=2026-11-09c"></script>
-  <script src="career.js?v=2026-11-09c"></script>
-  <script src="bills.js?v=2026-11-09c"></script>
-  <script src="money.js?v=2026-11-09c"></script>
-  <script src="arcade.js?v=2026-11-09c"></script>
-  <script src="earnback.js?v=2026-11-09c"></script>
-  <script src="familygames.js?v=2026-11-09c"></script>
-  <script src="town.js?v=2026-11-09c"></script>
-  <script src="toys.js?v=2026-11-09c"></script>
-  <script src="bank.js?v=2026-11-09c"></script>
-  <script src="kitchen.js?v=2026-11-09c"></script>
-  <script src="safety.js?v=2026-11-09c"></script>
-  <script src="hall.js?v=2026-11-09c"></script>
-  <script src="speak.js?v=2026-11-09c"></script>
-  <script src="rewardshop.js?v=2026-11-09c"></script>
-  <script src="badges.js?v=2026-11-09c"></script>
-  <script src="gift.js?v=2026-11-09c"></script>
-  <script src="holidays.js?v=2026-11-09c"></script>
-  <script src="tour.js?v=2026-11-09c"></script>
+  <script src="config.js?v=2026-11-09d"></script>
+  <script src="push.js?v=2026-11-09d"></script>
+  <script src="sync.js?v=2026-11-09d"></script>
+  <script src="daily.js?v=2026-11-09d"></script>
+  <script src="pet.js?v=2026-11-09d"></script>
+  <script src="stickers.js?v=2026-11-09d"></script>
+  <script src="games.js?v=2026-11-09d"></script>
+  <script src="challenge.js?v=2026-11-09d"></script>
+  <script src="rewards.js?v=2026-11-09d"></script>
+  <script src="wallet.js?v=2026-11-09d"></script>
+  <script src="catchup.js?v=2026-11-09d"></script>
+  <script src="packs.js?v=2026-11-09d"></script>
+  <script src="league.js?v=2026-11-09d"></script>
+  <script src="uploads.js?v=2026-11-09d"></script>
+  <script src="weekend.js?v=2026-11-09d"></script>
+  <script src="streak.js?v=2026-11-09d"></script>
+  <script src="supplies.js?v=2026-11-09d"></script>
+  <script src="career.js?v=2026-11-09d"></script>
+  <script src="bills.js?v=2026-11-09d"></script>
+  <script src="money.js?v=2026-11-09d"></script>
+  <script src="arcade.js?v=2026-11-09d"></script>
+  <script src="earnback.js?v=2026-11-09d"></script>
+  <script src="familygames.js?v=2026-11-09d"></script>
+  <script src="town.js?v=2026-11-09d"></script>
+  <script src="toys.js?v=2026-11-09d"></script>
+  <script src="bank.js?v=2026-11-09d"></script>
+  <script src="kitchen.js?v=2026-11-09d"></script>
+  <script src="safety.js?v=2026-11-09d"></script>
+  <script src="hall.js?v=2026-11-09d"></script>
+  <script src="speak.js?v=2026-11-09d"></script>
+  <script src="rewardshop.js?v=2026-11-09d"></script>
+  <script src="badges.js?v=2026-11-09d"></script>
+  <script src="gift.js?v=2026-11-09d"></script>
+  <script src="holidays.js?v=2026-11-09d"></script>
+  <script src="home.js?v=2026-11-09d"></script>
+  <script src="tour.js?v=2026-11-09d"></script>
   <script>
     // ---------- Starting task lists for each animal ----------
     const DEFAULT_TASKS = {
@@ -1423,6 +1446,7 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     function show(name) {
       document.querySelectorAll('.list').forEach(list => list.style.display = 'none');
       document.getElementById(name).style.display = 'block';
+      if (typeof homeMarkTab === 'function') homeMarkTab(name);      // light up its tab (home.js)
     }
 
     // ---------- Editing the task lists (Grown-ups) ----------
@@ -1720,8 +1744,13 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
         const rain = data.daily.precipitation_probability_max[0];
 
         const tips = [];
-        if (low < 50) tips.push('🧥 Cold morning! Wear a warm jacket');
-        else if (low < 65) tips.push('🧶 Chilly morning! Bring a sweater');
+        if (new Date().getHours() < 11) {                       // before school: dress for the cold morning
+          if (low < 50) tips.push('🧥 Cold morning! Wear a warm jacket');
+          else if (low < 65) tips.push('🧶 Chilly morning! Bring a sweater');
+        } else {                                                // later: what it feels like now
+          if (now < 50) tips.push('🧥 It\'s cold out! Grab a warm jacket');
+          else if (now < 65) tips.push('🧶 A little chilly! Grab a sweater');
+        }
         if (high >= 95) tips.push('🥵 Hot day! Wear light clothes and bring water');
         if (rain >= 50) tips.push('☔ It might rain! Bring a raincoat');
         if (tips.length === 0) tips.push('😎 Nice weather today!');
@@ -1788,11 +1817,11 @@ Finish a whole list to feed your pet, earn 3 ⭐, get paid into your 💵 Wallet
     }
 
     // ---------- Start up ----------
-    show('morning');
+    show(typeof listForNow === 'function' ? listForNow() : 'morning');     // the list for right now (home.js)
     // Each step runs on its own: if one fails, the rest still load (and the problem shows at the bottom)
     ['showSpecials', 'showToday', 'showWeather', 'showPet', 'applyProfile', 'showPracticeStats', 'showChallengeButton',
      'checkPayday', 'showCatchUp', 'showLeagueCard', 'showUploadCard', 'showWeekendCard', 'showStreakCard',
-     'showNoteCard', 'showSuppliesCard', 'showCareerCard', 'showBillsCard', 'showMoneyCard', 'showEarnbackCard', 'showTownButton', 'showFamilyTurns', 'showClock'].forEach(safeRun);
+     'showNoteCard', 'showSuppliesCard', 'showCareerCard', 'showBillsCard', 'showMoneyCard', 'showEarnbackCard', 'showTownButton', 'showFamilyTurns', 'showClock', 'startKidHome'].forEach(safeRun);
 
     // ---------- ✨ "A new version is ready" ----------
     // Phones keep a saved copy of the app for a while after an update. When the app opens
