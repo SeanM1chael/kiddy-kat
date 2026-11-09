@@ -993,3 +993,17 @@ test('daily play time: counts while playing, warns, then closes until tomorrow',
   await expect(page.locator('#townTitle')).toContainText('Kat Town');
   await expectNoProblems(page, errors);
 });
+
+// Nov 9: "← Town" in My House showed "[object PointerEvent]" on the map
+test('every "← Town" button goes back to a clean map', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR });
+  await page.click('#townButton');
+  const screens = ['showTownHome()', 'townCreating = Object.assign(townDefaultAvatar(), loadTown().avatar); showTownCreator(false)', 'showTownJobs()', 'showTownBank()', 'showTownKitchen()', 'showTownSafety()', 'showTownHall()'];
+  for (const open of screens) {
+    await page.evaluate(code => eval(code), open);
+    await page.locator('#townBody .arcadeBack', { hasText: '← Town' }).first().click();
+    await expect(page.locator('#townTitle')).toContainText('Kat Town');
+    await expect(page.locator('#townBody')).not.toContainText('[object');
+  }
+  await expectNoProblems(page, errors);
+});

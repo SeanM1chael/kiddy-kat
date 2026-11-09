@@ -268,7 +268,7 @@ function showTownCreator(first) {
   const box = townBody(first ? '🎨 Make your character' : '🎨 My look');
   const t = loadTown();
   const a = townCreating;
-  if (!first) townAdd(box, 'button', '← Town', 'arcadeBack').addEventListener('click', showTownMap);
+  if (!first) townAdd(box, 'button', '← Town', 'arcadeBack').addEventListener('click', () => showTownMap());
   if (first) townAdd(box, 'div', 'Welcome to Kat Town! First, make someone who looks like you (or anyone you like).', 'arcadeHint');
   const stage = townAdd(box, 'div', undefined, 'townStage');
   stage.appendChild(townAvatarSvg(a, 130));
@@ -308,6 +308,7 @@ function showTownCreator(first) {
 
 // ---------- 🗺️ The town map ----------
 function showTownMap(message) {
+  if (typeof message !== 'string') message = '';      // a button's tap event is not a message (Nov 9: "[object PointerEvent]")
   townView = 'map';
   const t = loadTown();
   const level = townLevel(t);
@@ -659,7 +660,7 @@ function showTownHome(message) {
   const t = loadTown();
   townView = 'home';
   const box = townBody('🏠 My House');
-  townAdd(box, 'button', '← Town', 'arcadeBack').addEventListener('click', showTownMap);
+  townAdd(box, 'button', '← Town', 'arcadeBack').addEventListener('click', () => showTownMap());
   const stage = townAdd(box, 'div', undefined, 'townStage');
   stage.appendChild(townAvatarSvg(t.avatar || townDefaultAvatar(), 110));
   townAdd(box, 'button', '🎨 Change my look', 'arcadeGo').addEventListener('click', () => {
