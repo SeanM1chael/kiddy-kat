@@ -172,3 +172,64 @@ test('the morning list opens before school', async ({ page }) => {
   expect(await page.evaluate(() => [listForNow(new Date(2026, 0, 1, 10, 59)), listForNow(new Date(2026, 0, 1, 11, 0)), listForNow(new Date(2026, 0, 1, 18, 0))]))
     .toEqual(['morning', 'afternoon', 'bedtime']);
 });
+
+// Nov 9: a finished list folds into a "Next up" card; its tab opens it again
+test('a finished list folds into Next up: progress, next list, a town idea; the tab opens it again', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 10, 7, 30));
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: { avatar: { skin: 1, hair: 'short', hairColor: 0, outfit: 'tee', color: 0, extra: 'none' } } });
+  const tasks = page.locator('#morning .task');
+  const n = await tasks.count();
+  for (let i = 0; i < n; i++) await tasks.nth(i).click();
+  await page.evaluate(() => { const p = document.getElementById('party'); if (p) p.style.display = 'none'; });
+  const card = page.locator('#listDoneCard');
+  await expect(card).toBeVisible({ timeout: 4000 });
+  await expect(card).toContainText('Morning done!');
+  await expect(page.locator('#morning')).toBeHidden();
+  await expect(page.locator('.listDot.finished')).toHaveCount(1);
+  await expect(page.locator('.listDot')).toHaveCount(3);
+  await expect(page.locator('.listNextButton')).toHaveAttribute('data-list', 'afternoon');
+  await expect(page.locator('.listTownIdea')).toHaveAttribute('data-idea', 'gift');            // the daily gift comes first
+  // The card sits where the list was: above the pet
+  expect((await card.boundingBox()).y).toBeLessThan((await page.locator('#petCard').boundingBox()).y);
+  // Tap the Morning tab: the full list is back, all checked
+  await page.click('.tabs >> text=Morning');
+  await expect(page.locator('#morning')).toBeVisible();
+  await expect(card).toBeHidden();
+  await expect(page.locator('#morning .task.done')).toHaveCount(n);
+  // Close and reopen the app (same day): folded again
+  await page.reload();
+  await page.waitForTimeout(800);
+  await expect(card).toBeVisible();
+  await expect(page.locator('#morning')).toBeHidden();
+  // "Next: After School" opens that list
+  await page.click('.listNextButton');
+  await expect(page.locator('#afternoon')).toBeVisible();
+  await expect(card).toBeHidden();
+  // The town idea opens Kat Town
+  await page.click('.tabs >> text=Morning');
+  await page.reload();
+  await page.waitForTimeout(800);
+  await page.click('.listTownIdea');
+  await expect(page.locator('#town')).toBeVisible();
+  await expectNoProblems(page, errors);
+});
+
+test('Next up: all lists done says see you tomorrow; town ideas follow the day', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 10, 20, 30));
+  const errors = await openAppAs(page, 'kitten', { ...PET, kiddyKatTown: { avatar: { skin: 1, hair: 'short', hairColor: 0, outfit: 'tee', color: 0, extra: 'none' }, gift: { last: new Date(2026, 10, 10).toDateString(), streak: 1, total: 1 } } });
+  for (const id of ['morning', 'afternoon', 'bedtime']) {
+    await page.evaluate(i => { document.querySelectorAll(`#${i} .task`).forEach(t => t.classList.add('done')); }, id);
+  }
+  await page.evaluate(() => homeFoldIfDone('bedtime'));
+  await expect(page.locator('#listDoneCard')).toContainText('All done for today');
+  await expect(page.locator('.listNextButton')).toHaveCount(0);
+  await expect(page.locator('.listDot.finished')).toHaveCount(3);
+  // Gift already opened today → the gym challenge is next; the idea list never errors
+  const ideas = await page.evaluate(() => [homeTownIdea().id, ...[0, 1, 2, 3, 4].map(d => { challengeStatus = () => ({ done: true }); return homeTownIdea(new Date(2026, 10, 10 + d, 20)).id; })]);
+  expect(ideas[0]).toBe('gym');
+  expect(new Set(ideas.slice(1)).size).toBe(5);                                   // a different spot each day
+  // Grown-ups get no town idea
+  await page.evaluate(() => { animal.theme = 'eagle'; });
+  expect(await page.evaluate(() => homeTownIdea())).toBeNull();
+  await expectNoProblems(page, errors);
+});
