@@ -1357,7 +1357,11 @@ function townBedtime() {
   let v = null;
   try { v = localStorage.getItem('kiddyKatBedTime'); } catch (err) {}
   const m = /^(\d{1,2}):(\d{2})$/.exec(v || '');
-  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  if (!m) return null;
+  let bed = Number(m[1]) * 60 + Number(m[2]);
+  // A morning bedtime (like 8:30 AM) is almost always a PM time picked by mistake on the clock wheel
+  if (bed >= TOWN_OPENS_AT && bed < 12 * 60) bed += 12 * 60;
+  return bed;
 }
 function townAsleep(now = new Date()) {
   const bed = townBedtime();

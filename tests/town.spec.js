@@ -1259,3 +1259,12 @@ test('when Kat Town is closed for the day, Practice, Wallet and Stickers are sti
   await expect(page.locator('.townStillOpen')).not.toContainText('Practice');      // Practice sleeps at bedtime too
   await expectNoProblems(page, errors);
 });
+
+// Nov 9: a bedtime picked as AM on the clock wheel closed Kat Town all afternoon
+test('a morning bedtime (8:30 AM) is read as 8:30 PM', async ({ page }) => {
+  const errors = await openAppAs(page, 'tiger', { ...PET, kiddyKatTown: AVATAR, kiddyKatBedTime: '08:30' });
+  const at = await page.evaluate(() => [13, 20.4, 20.5, 23, 3, 7].map(h => townAsleep(new Date(2026, 10, 9, Math.floor(h), Math.round((h % 1) * 60)))));
+  expect(at).toEqual([false, false, true, true, true, false]);
+  expect(await page.evaluate(() => { localStorage.setItem('kiddyKatBedTime', '21:00'); return [townAsleep(new Date(2026, 10, 9, 13, 0)), townAsleep(new Date(2026, 10, 9, 21, 5))]; })).toEqual([false, true]);
+  await expectNoProblems(page, errors);
+});

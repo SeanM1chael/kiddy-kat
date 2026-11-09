@@ -157,7 +157,12 @@ function showParentClock() {
   bedSave.addEventListener('click', () => {
     if (bedInput.value) localStorage.setItem('kiddyKatBedTime', bedInput.value);
     else localStorage.removeItem('kiddyKatBedTime');
-    bedStatus.textContent = bedInput.value ? '✅ Saved. A reminder comes 30 minutes before bedtime if the bedtime list isn\'t done.' : '✅ Bedtime reminder turned off.';
+    const [h, mm] = (bedInput.value || '0:0').split(':').map(Number);
+    const morning = bedInput.value && h >= 6 && h < 12;
+    const nice = bedInput.value ? new Date(2000, 0, 1, morning ? h + 12 : h, mm).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+    bedStatus.textContent = bedInput.value
+      ? (morning ? `⚠️ That was an AM time, so the app will use ${nice}. ` : '') + `✅ Bedtime is ${nice}. Kat Town goes to sleep then, and a reminder comes 30 minutes before if the bedtime list isn't done.`
+      : '✅ Bedtime reminder turned off.';
   });
   const tip = document.createElement('div');
   tip.className = 'pushNote';
