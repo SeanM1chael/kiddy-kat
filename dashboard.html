@@ -88,6 +88,7 @@
     .fanRow button, #fans .small { font-size: 14px; padding: 6px 12px; }
     .fanForm { display: none; margin-top: 8px; }
     .fanLink { font-size: 14px; color: var(--muted); margin-top: 8px; }
+    .holidayList { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin: 6px 0; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -119,8 +120,8 @@
     <div id="familyPanel"></div>
   </div>
 
-  <script src="config.js?v=2026-11-09b"></script>
-  <script src="push.js?v=2026-11-09b"></script>
+  <script src="config.js?v=2026-11-09c"></script>
+  <script src="push.js?v=2026-11-09c"></script>
   <script>
     // =================================================================
     // Parent dashboard: every kid's day at a glance (read-only).
@@ -203,6 +204,7 @@
       const uploads = await cloudCall('list_uploads', { p_token: token });
       uploadCounts = {};
       (uploads.uploads || []).forEach(u => uploadCounts[u.nickname] = (uploadCounts[u.nickname] || 0) + 1);
+      window.boardKids = result.kids;                       // used by the 🎉 holidays settings
       result.kids.forEach(kid => box.appendChild(kidCard(kid)));
       if (!document.getElementById('pushBox').childElementCount)
         pushSwitch(document.getElementById('pushBox'), () => sessionStorage.getItem('kiddyKatDashToken'), 'this device (grown-up alerts)');
@@ -563,6 +565,68 @@
       });
     }
 
+    // 🎉 Holidays Kat Town celebrates (sent to every kid's phone). Same ids as holidays.js.
+    const DASH_HOLIDAYS = [['newyear', '🎆 New Year\'s Day', true], ['mlk', '🕊️ Martin Luther King Jr. Day', false], ['valentine', '💝 Valentine\'s Day', true],
+      ['stpatrick', '🍀 St. Patrick\'s Day', true], ['easter', '🐣 Easter', false], ['earth', '🌎 Earth Day', true], ['mothers', '💐 Mother\'s Day', false],
+      ['fathers', '👔 Father\'s Day', false], ['july4', '🇺🇸 Fourth of July', true], ['halloween', '🎃 Halloween', true], ['thanksgiving', '🦃 Thanksgiving', true],
+      ['winter', '❄️ Winter holidays (Dec 24–26)', true], ['christmas', '🎄 Christmas', false]];
+    function showHolidaysPanel(box, add) {
+      const wrap = add(box, 'div', undefined, 'groceryDay holidaysPanel');
+      add(wrap, 'div', '🎉 Holidays in Kat Town', 'who').style.fontWeight = 'bold';
+      add(wrap, 'div', 'On these days, Kat Town decorates and kids get a free room decoration and a holiday activity. Add your own family celebrations below.', 'who');
+      // Start from what the kids' phones have now
+      let current = null;
+      try { const k = (window.boardKids || []).find(k => k.data && k.data.kiddyKatHolidays); current = k ? JSON.parse(k.data.kiddyKatHolidays) : null; } catch (err) { current = null; }
+      const on = new Set(current && Array.isArray(current.on) ? current.on : DASH_HOLIDAYS.filter(h => h[2]).map(h => h[0]));
+      const custom = current && Array.isArray(current.custom) ? current.custom.slice() : [];
+      const list = add(wrap, 'div', undefined, 'holidayList');
+      DASH_HOLIDAYS.forEach(([id, name]) => {
+        const label = add(list, 'label', undefined, 'holidayCheck');
+        const c = document.createElement('input');
+        c.type = 'checkbox'; c.checked = on.has(id); c.dataset.holiday = id;
+        c.addEventListener('change', () => { if (c.checked) on.add(id); else on.delete(id); });
+        label.appendChild(c);
+        label.appendChild(document.createTextNode(' ' + name));
+      });
+      add(wrap, 'div', 'Your own holidays (for example a cultural or religious holiday, a family tradition, or a day whose date changes each year):', 'who');
+      const customBox = add(wrap, 'div');
+      const drawCustom = () => {
+        customBox.textContent = '';
+        custom.forEach((h, i) => {
+          const row = add(customBox, 'div', undefined, 'groceryRow');
+          add(row, 'span', `${h.emoji} ${h.name} · ${h.date.replace('-', '/')}`);
+          add(row, 'button', '✖', 'plain').addEventListener('click', () => { custom.splice(i, 1); drawCustom(); });
+        });
+      };
+      drawCustom();
+      const addRow = add(wrap, 'div', undefined, 'groceryRow');
+      const emoji = add(addRow, 'select');
+      ['🎉', '🪔', '🕎', '🌙', '🧧', '🕯️', '🎊', '🌺', '⛪', '🕌', '🛕', '🎂'].forEach(e => { const o = document.createElement('option'); o.textContent = e; emoji.appendChild(o); });
+      const name = add(addRow, 'input');
+      name.placeholder = 'Holiday name'; name.maxLength = 30; name.style.width = '130px'; name.className = 'customHolidayName';
+      const date = add(addRow, 'input');
+      date.type = 'date'; date.className = 'customHolidayDate';
+      add(addRow, 'button', '➕ Add', 'plain').addEventListener('click', () => {
+        if (!name.value.trim() || !date.value) return;
+        custom.push({ name: name.value.trim(), emoji: emoji.value, date: date.value.slice(5) });   // month and day
+        name.value = ''; date.value = '';
+        drawCustom();
+      });
+      const note = add(wrap, 'div', '', 'who');
+      add(wrap, 'button', '💾 Save holidays for all kids', 'plain').addEventListener('click', async () => {
+        const token = sessionStorage.getItem('kiddyKatDashToken');
+        const value = JSON.stringify({ on: [...on], custom: custom });
+        const kids = (window.boardKids || []).filter(k => k.animal !== 'eagle');
+        note.textContent = '⏳ Saving...';
+        let ok = 0, err = '';
+        for (const k of kids) {
+          const r = await cloudCall('parent_send_to_kid', { p_token: token, p_nickname: k.nickname, p_key: 'kiddyKatHolidays', p_value: value });
+          if (r.ok) ok++; else err = r.error;
+        }
+        note.textContent = err ? '⚠️ ' + err : `✅ Saved for ${ok} kid${ok === 1 ? '' : 's'}. Phones pick it up next time the app opens.`;
+      });
+    }
+
     function showFamilyPanel(familyName) {
       const box = document.getElementById('familyPanel');
       box.textContent = '';
@@ -572,6 +636,7 @@
       policy.href = 'privacy.html';
       policy.target = '_blank';
       showTownVisitsSwitch(box, add);
+      showHolidaysPanel(box, add);
       const open = add(add(box, 'div'), 'button', '🗑️ Delete my family', 'plain');
       const form = add(box, 'div', undefined, 'dangerBox');
       form.style.display = 'none';

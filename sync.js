@@ -14,7 +14,7 @@
 
 const CLOUD_ANIMALS = { kitten: '🐱', tiger: '🐯', lion: '🦁', eagle: '🦅' };
 // Never sent online. kiddyKatParentPin = the grown-up PIN that locks settings on this phone (Nov 5: it used to be copied online as typed)
-const LOCAL_ONLY = ['kiddyKatProofPhotos', 'kiddyKatParentPhone', 'kiddyKatPlace', 'kiddyKatSpoken', 'kiddyKatBills', 'kiddyKatMoneyGoals', 'kiddyKatParentPin'];
+const LOCAL_ONLY = ['kiddyKatProofPhotos', 'kiddyKatParentPhone', 'kiddyKatPlace', 'kiddyKatSpoken', 'kiddyKatBills', 'kiddyKatMoneyGoals', 'kiddyKatParentPin', 'kiddyKatBirthday'];   // the birthday stays on this phone too
 // Online, a profile carries only the age group, not the birth year. A new phone gets a birth year from the group's middle age.
 const CLOUD_GROUP_AGE = { kitten: 8, tiger: 12, lion: 16, eagle: 40 };
 

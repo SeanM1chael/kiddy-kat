@@ -40,7 +40,8 @@ const TOWN_PLACES = [
   ['home', '🏠', 'My House', 'Home', 1, 1], ['closet', '👕', 'Kat Closet', 'Closet', 4, 1], ['burger', '🍔', 'Paw Burger', 'Burger', 6, 2],
   ['school', '🏫', 'Kat Academy', 'School', 1, 6], ['arcade', '🕹️', 'Arcade', 'Arcade', 4, 6], ['toys', '🧸', 'Toy Box', 'Toys', 6, 7],
   ['bank', '🏦', 'Kat Bank', 'Bank', 1, 3], ['kitchen', '🍳', 'Kat Kitchen', 'Kitchen', 5, 3],
-  ['safety', '🛡️', 'Safety HQ', 'Safety', 5, 5], ['hall', '🏛️', 'Town Hall', 'Town Hall', 2, 3]
+  ['safety', '🛡️', 'Safety HQ', 'Safety', 5, 5], ['hall', '🏛️', 'Town Hall', 'Town Hall', 2, 3],
+  ['rewards', '🎟️', 'Reward Shop', 'Rewards', 2, 5]
 ];
 function townIsRoad(c, r) { return c === TOWN_ROAD_COL || r === TOWN_ROAD_ROW; }
 function townPlaceAt(c, r) { return TOWN_PLACES.find(p => p[4] === c && p[5] === r); }
@@ -222,6 +223,7 @@ function openTown() {
 function closeTown() {
   if (townView === 'closed') { leaveTown(); return; }
   if (String(townView).startsWith('bank:')) { showTownBank(); return; }
+  if (townView === 'holiday:quiz') { showHolidayFun(); return; }
   if (String(townView).startsWith('hall:')) { showTownHall(); return; }
   if (String(townView).startsWith('kitchen:')) { showTownKitchen(); return; }
   if (String(townView).startsWith('safety:')) { showTownSafety(); return; }
@@ -325,6 +327,7 @@ function showTownMap(message) {
   }
   if (message) townAdd(box, 'div', message, 'arcadeMessage');
 
+  if (typeof hdMapBanner === 'function' && !townBuilding) hdMapBanner(box);          // 🎂🎃 holidays.js
   const map = townAdd(box, 'div', undefined, 'townMap' + (townBuilding ? ' building' : ''));
   map.style.gridTemplateColumns = `repeat(${TOWN_COLS}, 1fr)`;
   const built = {};
@@ -367,6 +370,7 @@ function showTownMap(message) {
 
   const timeLine = townTimeLine(t);
   if (timeLine) townAdd(box, 'div', timeLine, 'arcadeHint townTimeLeft');
+  if (typeof giftButton === 'function' && !townBuilding) giftButton(townAdd(box, 'div', undefined, 'giftRow'));     // 🎁 gift.js
   if (typeof kkReadAloudToggle === 'function' && !townBuilding) kkReadAloudToggle(townAdd(box, 'div', undefined, 'kkReadRow'));
   if (townBuilding) { townAdd(box, 'div', townSpendLine(), 'arcadeHint townSpendLine'); showTownPalette(box); }
   else {
@@ -376,6 +380,7 @@ function showTownMap(message) {
     if (visit && TOWN_REACTIONS[visit.reaction]) townAdd(box, 'div', `📬 ${visit.from} visited your town: ${TOWN_REACTIONS[visit.reaction].join(' ')}`, 'arcadeHint townVisitNote');
     townAdd(box, 'div', `🏗️ You've built ${t.built.length} thing${t.built.length === 1 ? '' : 's'}.` + (level.next ? ` ${level.next - t.built.length} more to become a ${level.nextName}!` : ''), 'arcadeHint');
   }
+  if (typeof celebrateBadges === 'function' && !townBuilding) celebrateBadges();     // 🏆 badges.js
 }
 
 // Puts the character on a tile (its feet near the bottom of the tile)
@@ -407,6 +412,11 @@ function townEnter(id) {
   if (id === 'home') { showTownHome(); return; }
   if (id === 'school') { leaveTown(); townReturn = true; if (typeof openPractice === 'function') openPractice(); return; }
   if (id === 'arcade') { leaveTown(); townReturn = true; if (typeof openArcade === 'function') openArcade(); return; }
+  if (id === 'rewards') {
+    if (typeof showTownRewardShop === 'function') showTownRewardShop();
+    else showTownMap('🎟️ The Reward Shop is opening soon! Close the app all the way and open it again to finish updating.');
+    return;
+  }
   if (id === 'hall') {
     if (typeof showTownHall === 'function') showTownHall();
     else showTownMap('🏛️ Town Hall is opening soon! Close the app all the way and open it again to finish updating.');
@@ -669,6 +679,7 @@ function showTownHome(message) {
   });
   if (message) townAdd(box, 'div', message, 'arcadeMessage');
   townRoomSection(box);
+  if (typeof townBadgeSection === 'function') townBadgeSection(box);      // 🏆 badges.js
 
   // My stuff
   townAdd(box, 'h3', '🧸 My stuff', 'fgHead');
@@ -906,7 +917,7 @@ function townRoom(t) {
   if (!Array.isArray(t.room.items)) t.room.items = [];
   return t.room;
 }
-function townDecorItem(id) { return TOWN_DECOR.find(d => d[0] === id); }
+function townDecorItem(id) { return TOWN_DECOR.find(d => d[0] === id) || (typeof hdDecorItem === 'function' ? hdDecorItem(id) : undefined); }
 
 // The room picture inside My House
 function townRoomSection(box) {
@@ -1173,6 +1184,7 @@ async function showTownFamily(message) {
     const level = townLevel({ built: o.built || [] });
     townAdd(info, 'div', `${o.nickname}'s town`, 'townJobName');
     townAdd(info, 'div', `${level.emoji} ${level.name} · ${(o.built || []).length} built`, 'townJobGoal');
+    if (typeof hdIsPartyToday === 'function' && hdIsPartyToday(o)) townAdd(info, 'div', '🎂 Birthday today! Visit with a gift', 'hdCardBirthday');
     townAdd(card, 'button', '🚶 Visit', 'arcadeGo').addEventListener('click', () => showTownVisit(o));
   });
 }
@@ -1238,10 +1250,12 @@ function showTownVisitRoom(o) {
 
 // The four preset reactions (no typing, so visits stay kind and safe)
 function townReactionRow(box, o) {
-  townAdd(box, 'h3', `Send ${o.nickname} a reaction`, 'fgHead');
+  const party = typeof hdIsPartyToday === 'function' && hdIsPartyToday(o);       // 🎂 it's their birthday: send a gift
+  townAdd(box, 'h3', party ? `🎂 It's ${o.nickname}'s birthday! Send a gift` : `Send ${o.nickname} a reaction`, 'fgHead');
   const row = townAdd(box, 'div', undefined, 'townReactions');
-  if (o.reacted) { townAdd(box, 'div', '✅ You sent a reaction today. Come back tomorrow!', 'arcadeHint'); return; }
-  Object.entries(TOWN_REACTIONS).forEach(([key, [emoji, words]]) => {
+  if (o.reacted) { townAdd(box, 'div', party ? '✅ You sent a birthday gift. That was kind!' : '✅ You sent a reaction today. Come back tomorrow!', 'arcadeHint'); return; }
+  const choices = party ? Object.entries(BIRTHDAY_GIFTS).map(([k, [emoji, what]]) => [k, [emoji, what.replace(/^an? /, '').replace(/^./, c => c.toUpperCase())]]) : Object.entries(TOWN_REACTIONS);
+  choices.forEach(([key, [emoji, words]]) => {
     const b = townAdd(row, 'button', `${emoji} ${words}`, 'townReaction');
     b.addEventListener('click', async () => {
       row.querySelectorAll('button').forEach(x => { x.disabled = true; });
@@ -1263,7 +1277,8 @@ function townReactionRow(box, o) {
 
 // A brother or sister visited my town (from the parent inbox, sync.js)
 function receiveTownVisit(d) {
-  const reaction = TOWN_REACTIONS[d.reaction];
+  const gift = typeof BIRTHDAY_GIFTS !== 'undefined' ? BIRTHDAY_GIFTS[d.reaction] : null;     // 🎂 a birthday gift (holidays.js)
+  const reaction = TOWN_REACTIONS[d.reaction] || gift;
   if (!reaction) return '';
   const from = String(d.from || 'Someone').slice(0, 30);
   const t = loadTown();
@@ -1271,6 +1286,7 @@ function receiveTownVisit(d) {
   t.visits.push({ from: from, reaction: d.reaction, at: new Date().toISOString().slice(0, 10) });
   t.visits = t.visits.slice(-10);
   saveTown(t);
+  if (gift) return `🎁 ${from} sent you ${gift[1]} for your birthday! ${gift[0]}`;
   return `🏙️ ${from} visited your Kat Town: ${reaction[0]} ${reaction[1]}`;
 }
 
